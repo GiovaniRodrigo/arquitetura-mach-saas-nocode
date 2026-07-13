@@ -1,0 +1,22 @@
+version: v2
+clean: true
+plugins:
+  # --- Go (mensagens + gRPC) — consumido pelos serviços e Gateway ---
+  - remote: buf.build/protocolbuffers/go
+    out: gen/go
+    opt: paths=source_relative
+  - remote: buf.build/grpc/go
+    out: gen/go
+    opt: paths=source_relative
+
+  # --- TypeScript — consumido pelo Headless Player via Gateway ---
+  - remote: buf.build/bufbuild/es
+    out: gen/ts
+    opt: target=ts
+
+  # --- Elixir (mensagens) — consumido pelo motor de colaboração (Fase 6) ---
+  # Fixar o plugin BSR correto ao iniciar o collab/. Ex.:
+  #   - remote: buf.build/<owner>/elixir
+  #     out: gen/elixir
+  # A geração Elixir não é pré-requisito das Fases 1–5/10, por isso fica
+  # desativada até a Fase 6 para manter `make proto` verde offline-friendly.

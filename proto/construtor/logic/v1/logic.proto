@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package construtor.logic.v1;
+
+option go_package = "github.com/machv4/platform/gen/go/construtor/logic/v1;logicv1";
+
+// Contrato oficial transcrito de doc/CONTRACTS_PERFORMANCE.md §5,
+// ampliado com o CRUD de regras (RF02, RF07).
+
+// Submissão de dados operacionais dinâmicos.
+message SalvarFormularioRequest {
+  string sistema_id = 1;
+  // Mapa dinâmico chave-valor ligando o Blind Index do input ao valor preenchido.
+  map<string, string> dados_formulario = 2;
+}
+
+// Estado da validação e persistência.
+message SalvarFormularioResponse {
+  bool sucesso = 1;
+  // Mapa de erros indexado pelo Blind Index do componente falhado (RNF08).
+  map<string, string> erros_validacao = 2;
+  string mensagem_status = 3;
+}
+
+message Regra {
+  string id = 1;
+  string sistema_id = 2;
+  // Árvore de decisão serializada (nós lógicos).
+  bytes arvore_decisao = 3;
+}
+
+message ObterRegraRequest {
+  string id = 1;
+}
+
+message RemoverResponse {
+  bool sucesso = 1;
+}
+
+service LogicEngineService {
+  // Ação Unary para validar e gravar dados na base partilhada (RF07, RN08).
+  rpc SalvarFormulario(SalvarFormularioRequest) returns (SalvarFormularioResponse);
+
+  rpc CriarRegra(Regra) returns (Regra);
+  rpc ObterRegra(ObterRegraRequest) returns (Regra);
+  rpc AtualizarRegra(Regra) returns (Regra);
+  rpc RemoverRegra(ObterRegraRequest) returns (RemoverResponse);
+}

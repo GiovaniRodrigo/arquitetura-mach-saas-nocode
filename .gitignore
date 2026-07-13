@@ -1,0 +1,32 @@
+# Go
+/bin/
+*.exe
+*.test
+*.out
+go.work.sum
+
+# Stubs gerados a partir dos .proto (reproduzíveis via `make proto`)
+/gen/
+
+# Elixir / Phoenix (collab)
+/collab/_build/
+/collab/deps/
+/collab/*.ez
+
+# Node / Player
+node_modules/
+/player/dist/
+
+# Infra / segredos locais
+.env
+*.local
+/infra/postgres/data/
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Claude Code — configurações locais da máquina
+.claude/settings.local.json
+.claude/*.tmp.*

@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package construtor.export.v1;
+
+option go_package = "github.com/machv4/platform/gen/go/construtor/export/v1;exportv1";
+
+// Exportação assíncrona com coleta via Server Streaming (RF05, RNF01).
+
+message CriarJobRequest {
+  string sistema_id = 1;
+}
+
+message Job {
+  string id = 1;
+  // criado | coletando | pronto | erro | expirado
+  string status = 2;
+  // Presigned URL quando pronto.
+  string arquivo_url = 3;
+  // RFC 3339.
+  string expira_em = 4;
+}
+
+message ObterJobRequest {
+  string id = 1;
+}
+
+message ColetarDadosRequest {
+  string sistema_id = 1;
+}
+
+message ChunkDados {
+  // design | regras | operacional
+  string origem = 1;
+  bytes conteudo = 2;
+}
+
+service ExportEngineService {
+  rpc CriarJob(CriarJobRequest) returns (Job);
+  rpc ObterJob(ObterJobRequest) returns (Job);
+  // Server Streaming: consumo em chunks para não sobrecarregar a RAM (RNF01).
+  rpc ColetarDados(ColetarDadosRequest) returns (stream ChunkDados);
+}

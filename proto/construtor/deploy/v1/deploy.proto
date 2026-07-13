@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package construtor.deploy.v1;
+
+option go_package = "github.com/machv4/platform/gen/go/construtor/deploy/v1;deployv1";
+
+// Publicação por flag ativa e rollback instantâneo (RF04, RN04, RN05).
+
+message PublicarRequest {
+  string sistema_id = 1;
+}
+
+message PublicarResponse {
+  string versao_id = 1;
+  int32 numero = 2;
+}
+
+message RollbackRequest {
+  string sistema_id = 1;
+  // 0 = versão imediatamente anterior.
+  int32 versao_numero = 2;
+}
+
+message RollbackResponse {
+  int32 versao_ativa = 1;
+}
+
+message ObterVersaoAtivaRequest {
+  string sistema_id = 1;
+}
+
+message VersaoAtiva {
+  string versao_id = 1;
+  int32 numero = 2;
+  // Árvore + campos_definicao consolidados.
+  bytes definicao_json = 3;
+}
+
+service DeployEngineService {
+  rpc Publicar(PublicarRequest) returns (PublicarResponse);
+  rpc Rollback(RollbackRequest) returns (RollbackResponse);
+  rpc ObterVersaoAtiva(ObterVersaoAtivaRequest) returns (VersaoAtiva);
+}

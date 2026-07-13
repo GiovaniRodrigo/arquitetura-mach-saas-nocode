@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package construtor.design.v1;
+
+option go_package = "github.com/machv4/platform/gen/go/construtor/design/v1;designv1";
+
+// CRUD da árvore recursiva (padrão Composite) e persistência em lote
+// da colaboração write-behind (RF01, RN06).
+
+message Componente {
+  string blind_index = 1;
+  string tipo = 2;
+  // JSON serializado das propriedades do componente.
+  bytes propriedades = 3;
+  // Padrão Composite: filhos recursivos.
+  repeated Componente componente_filhos = 4;
+}
+
+message Design {
+  string id = 1;
+  string sistema_id = 2;
+  string nome = 3;
+  Componente arvore = 4;
+}
+
+message ObterDesignRequest {
+  string id = 1;
+}
+
+message SalvarDesignRequest {
+  // Payload consolidado enviado pelo motor Elixir após o debounce de 5s (RN06).
+  Design design = 1;
+}
+
+message SalvarDesignResponse {
+  bool sucesso = 1;
+}
+
+message RemoverResponse {
+  bool sucesso = 1;
+}
+
+service DesignEngineService {
+  rpc CriarDesign(Design) returns (Design);
+  rpc ObterDesign(ObterDesignRequest) returns (Design);
+  rpc AtualizarDesign(Design) returns (Design);
+  rpc RemoverDesign(ObterDesignRequest) returns (RemoverResponse);
+  // Chamada única em lote da colaboração (write-behind).
+  rpc SalvarDesign(SalvarDesignRequest) returns (SalvarDesignResponse);
+}

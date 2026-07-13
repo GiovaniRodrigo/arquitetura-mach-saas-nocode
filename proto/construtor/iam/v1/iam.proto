@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package construtor.iam.v1;
+
+option go_package = "github.com/machv4/platform/gen/go/construtor/iam/v1;iamv1";
+
+// Autenticação e avaliação de permissões por componente (RF03, RN03).
+
+message ValidarTokenRequest {
+  string jwt = 1;
+}
+
+message ValidarTokenResponse {
+  bool valido = 1;
+  string tenant_id = 2;
+  string user_id = 3;
+  // dono | parceiro | cliente
+  string tipo = 4;
+}
+
+message AvaliarPermissoesRequest {
+  string sistema_id = 1;
+  // Blind indexes dos componentes do ecrã em renderização.
+  repeated string blind_indexes = 2;
+}
+
+message PermissaoComponente {
+  bool view = 1;
+  bool click = 2;
+}
+
+message AvaliarPermissoesResponse {
+  // Mapa booleano final — a lógica das regras nunca sai do servidor (RN03).
+  map<string, PermissaoComponente> permissions = 1;
+}
+
+service IAMService {
+  rpc ValidarToken(ValidarTokenRequest) returns (ValidarTokenResponse);
+  rpc AvaliarPermissoes(AvaliarPermissoesRequest) returns (AvaliarPermissoesResponse);
+}

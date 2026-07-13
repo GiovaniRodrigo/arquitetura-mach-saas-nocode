@@ -1,0 +1,7 @@
+go 1.22
+
+// Monorepo poliglota — workspace Go único cobrindo os serviços, bibliotecas
+// partilhadas (pkg/), o Gateway, os workers e os stubs gerados (gen/go).
+// Novos módulos por serviço podem ser adicionados com `use ./services/<nome>`
+// à medida que forem isolados.
+use .
