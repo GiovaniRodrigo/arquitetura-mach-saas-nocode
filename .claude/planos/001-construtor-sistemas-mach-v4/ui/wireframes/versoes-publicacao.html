@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Versões, Publicação & Exportação</title>
+<!--
+  Painel de Versões (RF04, RN04, RN05) + Exportação assíncrona (RF05).
+  Foca "Reversão Clara" (princípio 2): rollback com confirmação explícita.
+  Timeline vertical = sequência temporal (visualização de dados adequada — princípio 8).
+-->
+<style>
+  :root{
+    --bg:#0A0A0A; --panel:#141414; --panel-2:#1C1C1C; --border:#262626; --border-strong:#333;
+    --text:#FAFAFA; --text-2:#A1A1A1; --muted:#6B6B6B;
+    --accent:#5B63F5; --accent-hover:#4A50DB; --accent-soft:rgba(91,99,245,.14);
+    --success:#3FB950; --warning:#D29922; --danger:#F85149; --info:#58A6FF;
+    --r-sm:6px; --r-md:10px; --font:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5;min-height:100vh;padding:32px 16px;-webkit-font-smoothing:antialiased}
+  .mono{font-family:var(--mono)}
+  button{font-family:inherit;cursor:pointer}
+  .grid{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
+  h2.t{font-size:18px;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+  .sub{color:var(--text-2);font-size:13px;margin-bottom:16px}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:20px}
+  .btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:var(--r-sm);border:1px solid transparent;font-weight:500;font-size:13px}
+  .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover)}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--text)}.btn-ghost:hover{border-color:var(--border-strong)}
+  .btn-danger{background:transparent;border-color:rgba(248,81,73,.4);color:var(--danger)}.btn-danger:hover{background:rgba(248,81,73,.1)}
+
+  /* ===== Timeline de versões (princípio 8) ===== */
+  .timeline{position:relative;margin-top:8px}
+  .timeline::before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--border)}
+  .v{position:relative;padding:14px 0 14px 36px;border-bottom:1px solid var(--border)}
+  .v:last-child{border-bottom:0}
+  .v .knob{position:absolute;left:4px;top:18px;width:16px;height:16px;border-radius:50%;background:var(--panel);border:2px solid var(--border-strong)}
+  .v.active .knob{border-color:var(--success);background:var(--success);box-shadow:0 0 0 4px rgba(63,185,80,.18)}
+  .v .head{display:flex;align-items:center;gap:10px}
+  .v .num{font-weight:600}
+  .v .badge{font-size:11px;padding:2px 9px;border-radius:999px;font-weight:500}
+  .b-live{background:rgba(63,185,80,.14);color:var(--success)}
+  .b-prev{background:var(--panel-2);color:var(--text-2);border:1px solid var(--border)}
+  .v .when{margin-left:auto;color:var(--muted);font-size:12px}
+  .v .meta{color:var(--text-2);font-size:12px;margin-top:5px;display:flex;align-items:center;gap:10px}
+  .v .meta .av{width:18px;height:18px;border-radius:50%;background:#8B5CF6;display:inline-grid;place-items:center;font-size:9px;font-weight:700;color:#fff}
+  .v .acts{margin-top:10px;display:flex;gap:8px}
+
+  /* ===== Exportação (RF05) — stepper de job assíncrono ===== */
+  .job{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-top:12px}
+  .steps{display:flex;align-items:center;gap:0;margin:6px 0 12px}
+  .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;color:var(--muted);font-size:11px}
+  .step .c{width:22px;height:22px;border-radius:50%;border:2px solid var(--border-strong);display:grid;place-items:center;font-size:11px;background:var(--panel)}
+  .step.done{color:var(--success)} .step.done .c{border-color:var(--success);background:var(--success);color:#08210d}
+  .step.now{color:var(--info)} .step.now .c{border-color:var(--info);color:var(--info)}
+  .step .c .sp{width:10px;height:10px;border-radius:50%;border:2px solid rgba(88,166,255,.3);border-top-color:var(--info);animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .step::after{content:"";position:absolute;top:11px;left:60%;width:80%;height:2px;background:var(--border)}
+  .step:last-child::after{display:none}
+  .step.done::after{background:var(--success)}
+  .expwarn{display:flex;align-items:center;gap:7px;color:var(--warning);font-size:12px;background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.3);border-radius:var(--r-sm);padding:8px 10px;margin-top:10px}
+
+  /* ===== Toast (feedback não intrusivo — princípio 5) ===== */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--border-strong);border-left:3px solid var(--success);border-radius:var(--r-sm);padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .toast .ic{color:var(--success)}
+
+  /* ===== Modal de confirmação de ROLLBACK (reversão clara — princípio 2) ===== */
+  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:20px;z-index:50}
+  .modal{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+  .modal .warn{width:40px;height:40px;border-radius:50%;background:rgba(210,153,34,.14);color:var(--warning);display:grid;place-items:center;font-size:20px;margin-bottom:14px}
+  .modal h3{font-size:17px;font-weight:600;margin-bottom:8px}
+  .modal p{color:var(--text-2);font-size:13px;margin-bottom:6px}
+  .modal .diff{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;margin:12px 0;display:flex;align-items:center;gap:10px}
+  .modal .diff .from{color:var(--danger)} .modal .diff .to{color:var(--success)}
+  .modal .row{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="grid">
+
+  <!-- ============ VERSÕES & ROLLBACK (RF04) ============ -->
+  <section class="panel">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <h2 class="t">🕓 Histórico de versões</h2>
+        <p class="sub">Uma única versão ativa por sistema (RN04). Rollback é instantâneo (RN05).</p>
+      </div>
+      <button class="btn btn-primary" title="Publica nova versão a partir do estado atual (RF04)">↑ Publicar v8</button>
+    </div>
+
+    <div class="timeline">
+      <!-- versão ATIVA (no ar) -->
+      <div class="v active" data-principle="feedback">
+        <span class="knob"></span>
+        <div class="head">
+          <span class="num">Versão 7</span>
+          <span class="badge b-live">● ativa · no ar</span>
+          <span class="when">há 2 h</span>
+        </div>
+        <div class="meta"><span class="av">G</span> Giovani · <span class="mono">42 componentes · 6 regras</span></div>
+      </div>
+
+      <!-- versão anterior (candidata a rollback) -->
+      <div class="v" data-principle="reversao-clara">
+        <span class="knob"></span>
+        <div class="head">
+          <span class="num">Versão 6</span>
+          <span class="badge b-prev">estável anterior</span>
+          <span class="when">ontem, 18:40</span>
+        </div>
+        <div class="meta"><span class="av">A</span> Ana · <span class="mono">40 componentes · 6 regras</span></div>
+        <!-- reversão clara: rollback em 1 clique, mas confirma antes (princípio 2) -->
+        <div class="acts">
+          <button class="btn btn-ghost" onclick="document.getElementById('m').style.display='grid'">⤺ Reverter para esta</button>
+          <button class="btn btn-ghost">👁 Ver diferenças</button>
+        </div>
+      </div>
+
+      <div class="v">
+        <span class="knob"></span>
+        <div class="head"><span class="num">Versão 5</span><span class="when">3 dias atrás</span></div>
+        <div class="meta"><span class="av">A</span> Ana · <span class="mono">38 componentes · 5 regras</span></div>
+        <div class="acts"><button class="btn btn-ghost">⤺ Reverter para esta</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EXPORTAÇÃO ASSÍNCRONA (RF05) ============ -->
+  <section class="panel" style="height:fit-content">
+    <h2 class="t">⭳ Exportação de dados</h2>
+    <p class="sub">Coleta assíncrona de UI, regras e dados operacionais. Resposta imediata; download por link temporário.</p>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center">＋ Nova exportação</button>
+
+    <!-- Job em andamento — stepper (feedback princípio 5) -->
+    <div class="job">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <strong style="font-size:13px">Exportação #a3f2…</strong>
+        <span class="mono" style="font-size:11px;color:var(--info)">coletando</span>
+      </div>
+      <div class="steps">
+        <div class="step done"><span class="c">✓</span>Criado</div>
+        <div class="step now"><span class="c"><span class="sp"></span></span>Coletando</div>
+        <div class="step"><span class="c">3</span>Pronto</div>
+      </div>
+      <span style="color:var(--text-2);font-size:12px">Coletando via streaming em chunks (RNF01)…</span>
+    </div>
+
+    <!-- Job pronto — download + aviso de expiração (reversão/segurança) -->
+    <div class="job">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <strong style="font-size:13px">Exportação #7b1c…</strong>
+        <span class="mono" style="font-size:11px;color:var(--success)">pronto</span>
+      </div>
+      <div class="steps">
+        <div class="step done"><span class="c">✓</span>Criado</div>
+        <div class="step done"><span class="c">✓</span>Coletado</div>
+        <div class="step done"><span class="c">✓</span>Pronto</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px">⭳ Baixar pacote (.zip)</button>
+      <!-- Presigned URL de expiração curta (RF05) -->
+      <div class="expwarn">⏳ O link de download expira em <b>9 min</b>. Depois disso, solicite nova exportação.</div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ TOAST (após publicar) ============ -->
+<div class="toast" data-principle="feedback">
+  <span class="ic">✓</span> Versão 7 publicada · ativa agora
+</div>
+
+<!-- ============ MODAL DE CONFIRMAÇÃO DE ROLLBACK (princípio 2) ============ -->
+<div class="backdrop" id="m" style="display:none">
+  <div class="modal" data-principle="reversao-clara">
+    <div class="warn">⤺</div>
+    <h3>Reverter para a versão 6?</h3>
+    <p>O sistema publicado passará a servir a <b>versão 6</b> imediatamente, sem downtime (RN05).</p>
+    <div class="diff">
+      <span class="from">v7 (atual)</span> → <span class="to">v6 (estável)</span>
+      <span style="margin-left:auto;color:var(--muted)" class="mono">&lt; 100 ms</span>
+    </div>
+    <p style="color:var(--muted);font-size:12px">Esta ação é reversível — pode voltar à v7 a qualquer momento.</p>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="document.getElementById('m').style.display='none'">Cancelar</button>
+      <button class="btn btn-danger">⤺ Confirmar rollback</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

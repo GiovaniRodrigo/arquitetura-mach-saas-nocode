@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Dashboard de Sistemas</title>
+<!-- Tela: Dashboard (RF01, RF04). Público: Criador/Administrador. Tema: dark-first (Geist/Linear). -->
+<style>
+  :root{
+    --bg-base:#0A0A0A; --bg-surface:#141414; --bg-surface-2:#1C1C1C;
+    --border:#262626; --border-strong:#333; --text:#FAFAFA; --text-2:#A1A1A1; --muted:#6B6B6B;
+    --accent:#5B63F5; --accent-hover:#4A50DB; --accent-soft:rgba(91,99,245,.14);
+    --success:#3FB950; --warning:#D29922; --danger:#F85149;
+    --r-sm:6px; --r-md:10px; --r-lg:14px;
+    --font:"Inter",system-ui,-apple-system,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg-base);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .mono{font-family:var(--mono);font-size:12px}
+
+  /* ===== Top bar (posição fixa, princípio 3 consistência) ===== */
+  header.topbar{height:48px;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--bg-surface);position:sticky;top:0;z-index:10}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:600}
+  .logo .mark{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#8E9BFF);display:grid;place-items:center;font-size:12px}
+  /* seletor de tenant hierárquico (multi-tenant, RN01) */
+  .tenant{display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text-2);cursor:pointer}
+  .tenant:hover{border-color:var(--border-strong)}
+  .tenant .badge{font-size:10px;background:var(--accent-soft);color:#B8C0FF;padding:1px 6px;border-radius:999px}
+  /* command palette Cmd+K (convenção Linear) — princípio 4 */
+  .search{flex:1;max-width:420px;margin:0 auto;display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-base);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--muted);cursor:text}
+  .search kbd{margin-left:auto;font-family:var(--mono);font-size:11px;background:var(--bg-surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+  .avatar{width:28px;height:28px;border-radius:50%;background:#8B5CF6;display:grid;place-items:center;font-size:12px;font-weight:600}
+
+  /* ===== Layout ===== */
+  .wrap{max-width:1200px;margin:0 auto;padding:28px 20px 64px}
+  .pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px}
+  .pagehead h1{font-size:28px;font-weight:600;letter-spacing:-.02em}
+  .pagehead p{color:var(--text-2);margin-top:4px}
+  /* CTA primário = início óbvio (princípio 1) */
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:var(--r-sm);border:1px solid transparent;font-weight:500;font-size:14px;cursor:pointer;font-family:inherit;transition:.12s}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-hover)}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--text)}
+  .btn-ghost:hover{border-color:var(--border-strong);background:var(--bg-surface)}
+
+  /* filtros/segmented */
+  .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+  .seg{display:flex;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--text-2);padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+  .seg button.active{background:var(--bg-surface-2);color:var(--text)}
+  .spacer{flex:1}
+  .count{color:var(--muted);font-size:13px}
+
+  /* ===== Grid de sistemas (proximidade, princípio 6) ===== */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:18px;cursor:pointer;transition:.12s;position:relative}
+  .card:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+  .card .thumb{height:96px;border-radius:var(--r-sm);background:
+     repeating-linear-gradient(45deg,#161616,#161616 10px,#191919 10px,#191919 20px);
+     border:1px solid var(--border);margin-bottom:14px;display:grid;place-items:center;color:var(--muted);font-size:12px}
+  .card h3{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card .desc{color:var(--text-2);font-size:13px;margin:4px 0 12px}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  /* status de versão — forma reforça significado (princípio 8) */
+  .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border-radius:999px;font-weight:500}
+  .dot{width:7px;height:7px;border-radius:50%}
+  .st-live{background:rgba(63,185,80,.12);color:var(--success)} .st-live .dot{background:var(--success);box-shadow:0 0 0 3px rgba(63,185,80,.18)}
+  .st-draft{background:rgba(210,153,34,.12);color:var(--warning)} .st-draft .dot{background:var(--warning)}
+  .st-err{background:rgba(248,81,73,.12);color:var(--danger)} .st-err .dot{background:var(--danger)}
+  .ver{font-family:var(--mono);font-size:11px;color:var(--text-2);background:var(--bg-surface-2);border:1px solid var(--border);padding:2px 7px;border-radius:5px}
+  .meta{color:var(--muted);font-size:12px;margin-left:auto}
+  /* presença de colaboradores (RF06) */
+  .stack{display:flex}
+  .stack .av{width:22px;height:22px;border-radius:50%;border:2px solid var(--bg-surface);margin-left:-7px;display:grid;place-items:center;font-size:10px;font-weight:600;color:#fff}
+  .stack .av:first-child{margin-left:0}
+  /* menu de ações da linha (convenção: à direita, princípio 3) */
+  .kebab{position:absolute;top:14px;right:14px;color:var(--muted);border:0;background:transparent;cursor:pointer;font-size:18px;line-height:1;padding:4px;border-radius:6px}
+  .kebab:hover{background:var(--bg-surface-2);color:var(--text)}
+
+  /* card "novo sistema" (início óbvio reforçado) */
+  .card-new{display:grid;place-items:center;border-style:dashed;color:var(--text-2);min-height:230px;gap:6px;text-align:center}
+  .card-new .plus{width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:#B8C0FF;display:grid;place-items:center;font-size:22px}
+
+  /* ===== Empty state (feedback, princípio 5) ===== */
+  .empty{display:none;text-align:center;padding:80px 20px;color:var(--text-2)}
+  .empty .ill{width:64px;height:64px;border-radius:16px;background:var(--bg-surface);border:1px solid var(--border);display:grid;place-items:center;margin:0 auto 16px;font-size:28px}
+
+  /* skeleton (loading, princípio 5) — visível na 3ª "linha" */
+  .sk{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:18px}
+  .sk .bar{height:12px;border-radius:6px;background:linear-gradient(90deg,#1a1a1a,#222,#1a1a1a);background-size:200% 100%;animation:sh 1.2s infinite}
+  .sk .thumb{height:96px;border-radius:var(--r-sm);background:linear-gradient(90deg,#1a1a1a,#222,#1a1a1a);background-size:200% 100%;animation:sh 1.2s infinite;margin-bottom:14px}
+  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  footer.note{max-width:1200px;margin:0 auto;padding:20px;color:var(--muted);font-size:12px;border-top:1px solid var(--border)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+
+  @media(max-width:640px){
+    .search{display:none} .pagehead{flex-direction:column;align-items:flex-start}
+    .grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== TOP BAR ===================== -->
+<header class="topbar">
+  <div class="logo"><span class="mark">◩</span> MACH Builder</div>
+  <!-- Multi-tenant: contexto do tenant sempre visível (RN01) -->
+  <div class="tenant" title="Tenant ativo — hierarquia Dono › Parceiro (RN01)">
+    Acme Corp <span class="badge">Dono</span> ▾
+  </div>
+  <!-- Command palette Cmd+K (princípio 1 início óbvio / princípio 4 convenção) -->
+  <div class="search" data-principle="inicio-obvio" title="Busca e ações rápidas (Cmd+K)">
+    🔍 Buscar sistemas, ações… <kbd>⌘K</kbd>
+  </div>
+  <button class="btn btn-ghost" style="height:32px;padding:0 10px" title="Notificações / alertas de DLQ do tenant (RN09)">🔔</button>
+  <div class="avatar" title="Giovani (você)">G</div>
+</header>
+
+<div class="wrap">
+
+  <!-- ===================== PAGE HEAD ===================== -->
+  <div class="pagehead">
+    <div>
+      <h1>Meus Sistemas</h1>
+      <p>Construa, publique e colabore em sistemas visuais multi-tenant.</p>
+    </div>
+    <!-- CTA PRIMÁRIO = ponto de partida visual (princípio 1: início óbvio) -->
+    <button class="btn btn-primary" data-principle="inicio-obvio">＋ Novo Sistema</button>
+  </div>
+
+  <!-- ===================== TOOLBAR / FILTROS ===================== -->
+  <div class="toolbar">
+    <div class="seg" role="tablist">
+      <button class="active">Todos</button>
+      <button>Publicados</button>
+      <button>Rascunhos</button>
+    </div>
+    <div class="seg">
+      <button class="active" title="Grelha">▦</button>
+      <button title="Lista">☰</button>
+    </div>
+    <span class="spacer"></span>
+    <span class="count">6 sistemas</span>
+  </div>
+
+  <!-- ===================== GRID ===================== -->
+  <div class="grid">
+
+    <!-- Card: sistema PUBLICADO com colaboração ativa -->
+    <article class="card" data-principle="feedback">
+      <button class="kebab" title="Ações: Editar · Duplicar · Exportar · Excluir">⋯</button>
+      <div class="thumb">Pré-visualização do ecrã inicial</div>
+      <h3>Portal de Licenciamento</h3>
+      <p class="desc">Formulários ambientais e fluxos de aprovação.</p>
+      <div class="row" style="margin-bottom:10px">
+        <span class="status st-live"><span class="dot"></span> Publicado</span>
+        <span class="ver">v7 · ativa</span>
+      </div>
+      <div class="row">
+        <!-- presença de colaboradores em tempo real (RF06) -->
+        <div class="stack" title="3 colaboradores online agora">
+          <span class="av" style="background:#F97316">A</span>
+          <span class="av" style="background:#EC4899">B</span>
+          <span class="av" style="background:#06B6D4">+2</span>
+        </div>
+        <span class="meta">editado há 3 min</span>
+      </div>
+    </article>
+
+    <!-- Card: RASCUNHO (não publicado) -->
+    <article class="card">
+      <button class="kebab">⋯</button>
+      <div class="thumb">Pré-visualização do ecrã inicial</div>
+      <h3>CRM de Parceiros</h3>
+      <p class="desc">Cadastro e pipeline comercial.</p>
+      <div class="row" style="margin-bottom:10px">
+        <span class="status st-draft"><span class="dot"></span> Rascunho</span>
+        <span class="ver">sem versão ativa</span>
+      </div>
+      <div class="row">
+        <div class="stack"><span class="av" style="background:#8B5CF6">G</span></div>
+        <span class="meta">editado ontem</span>
+      </div>
+    </article>
+
+    <!-- Card: sistema com FALHA (alerta DLQ do tenant, RN09) -->
+    <article class="card">
+      <button class="kebab">⋯</button>
+      <div class="thumb">Pré-visualização do ecrã inicial</div>
+      <h3>Onboarding Clientes</h3>
+      <p class="desc">Webhooks de integração externos.</p>
+      <div class="row" style="margin-bottom:10px">
+        <span class="status st-err"><span class="dot"></span> Falha em integração</span>
+        <span class="ver">v3 · ativa</span>
+      </div>
+      <div class="row">
+        <span class="status st-err" style="font-size:11px" title="Falhas desviadas para DLQ (RN09)">⚠ 12 eventos na DLQ</span>
+        <span class="meta">há 1 h</span>
+      </div>
+    </article>
+
+    <!-- Card: novo sistema (reforço do início óbvio) -->
+    <article class="card card-new" data-principle="inicio-obvio">
+      <div class="plus">＋</div>
+      <strong>Criar novo sistema</strong>
+      <span style="font-size:12px;color:var(--muted)">Comece do zero ou a partir de um modelo</span>
+    </article>
+
+    <!-- Cards em LOADING (skeleton em vez de spinner — princípio 5) -->
+    <div class="sk" aria-hidden="true">
+      <div class="thumb"></div>
+      <div class="bar" style="width:60%;margin-bottom:8px"></div>
+      <div class="bar" style="width:85%;height:10px"></div>
+    </div>
+    <div class="sk" aria-hidden="true">
+      <div class="thumb"></div>
+      <div class="bar" style="width:50%;margin-bottom:8px"></div>
+      <div class="bar" style="width:80%;height:10px"></div>
+    </div>
+  </div>
+
+  <!-- ===================== EMPTY STATE (alternativo) ===================== -->
+  <div class="empty" id="empty">
+    <div class="ill">◩</div>
+    <h2 style="font-size:20px;font-weight:600;margin-bottom:6px">Nenhum sistema ainda</h2>
+    <p style="margin-bottom:18px">Crie o seu primeiro sistema visual — leva menos de um minuto.</p>
+    <button class="btn btn-primary" style="margin:0 auto">＋ Novo Sistema</button>
+  </div>
+
+</div>
+
+<footer class="note">
+  Wireframe de fidelidade média — Dashboard de Sistemas · RF01, RF04, RF06 (presença), RN09 (DLQ do tenant).
+  <div class="legend">
+    <span><span class="dot" style="background:var(--success)"></span> Publicado / ativo</span>
+    <span><span class="dot" style="background:var(--warning)"></span> Rascunho</span>
+    <span><span class="dot" style="background:var(--danger)"></span> Falha / DLQ</span>
+    <span>🎨 acento reservado ao CTA primário (contenção Linear)</span>
+  </div>
+</footer>
+
+</body>
+</html>

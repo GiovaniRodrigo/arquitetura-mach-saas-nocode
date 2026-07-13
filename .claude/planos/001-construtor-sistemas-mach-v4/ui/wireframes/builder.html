@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Construtor Visual (Builder)</title>
+<!--
+  Tela FLAGSHIP: Construtor Visual. RF01 (árvore Composite), RF02 (regras), RF06 (colaboração tempo real).
+  Layout de 3 colunas (referência Retool) + camada de colaboração (referência Figma multiplayer).
+  Estados representados: seleção, hover, componente bloqueado (RN07), salvando/salvo (RN06), cursores de presença.
+-->
+<style>
+  :root{
+    --bg:#0A0A0A; --panel:#141414; --panel-2:#1C1C1C; --canvas:#101012;
+    --border:#262626; --border-strong:#333; --text:#FAFAFA; --text-2:#A1A1A1; --muted:#6B6B6B;
+    --accent:#5B63F5; --accent-hover:#4A50DB; --accent-soft:rgba(91,99,245,.14);
+    --success:#3FB950; --warning:#D29922; --danger:#F85149; --info:#58A6FF;
+    --u1:#F97316; --u2:#EC4899; --u3:#06B6D4; /* cores de colaboradores (Figma) */
+    --r-sm:6px; --r-md:10px;
+    --font:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5;height:100vh;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
+  .mono{font-family:var(--mono)}
+  button{font-family:inherit;cursor:pointer}
+
+  /* ============ TOP BAR ============ */
+  .topbar{height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--panel);border-bottom:1px solid var(--border);z-index:20}
+  .back{color:var(--text-2);border:0;background:transparent;font-size:16px;padding:6px;border-radius:6px}
+  .back:hover{background:var(--panel-2);color:var(--text)}
+  .crumbs{display:flex;align-items:center;gap:8px;color:var(--text-2)}
+  .crumbs b{color:var(--text);font-weight:600}
+  .screen-tab{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 10px;color:var(--text);font-size:12px}
+  /* indicador de persistência write-behind (RN06) — feedback (princípio 5) */
+  .savestate{display:flex;align-items:center;gap:7px;color:var(--text-2);font-size:12px}
+  .savestate .ring{width:13px;height:13px;border-radius:50%;border:2px solid var(--border-strong);border-top-color:var(--accent);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .savestate.saved .ring{border:none;background:var(--success);position:relative}
+  .savestate.saved .ring::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:#08210d;font-size:9px;font-weight:900}
+  .spacer{flex:1}
+  /* presença (RF06) */
+  .presence{display:flex;align-items:center}
+  .presence .av{width:28px;height:28px;border-radius:50%;border:2px solid var(--panel);margin-left:-8px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;position:relative}
+  .presence .av:first-child{margin-left:0}
+  .presence .av .on{position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:var(--success);border:2px solid var(--panel)}
+  .modes{display:flex;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;margin:0 4px}
+  .modes button{background:transparent;border:0;color:var(--text-2);padding:5px 12px;font-size:12px}
+  .modes button.active{background:var(--accent-soft);color:#B8C0FF}
+  .btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 14px;border-radius:var(--r-sm);border:1px solid transparent;font-weight:500;font-size:13px}
+  .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover)}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--text)}.btn-ghost:hover{border-color:var(--border-strong)}
+
+  /* ============ BODY: 3 COLUNAS ============ */
+  .body{flex:1;display:flex;min-height:0}
+  .col{background:var(--panel);display:flex;flex-direction:column;min-height:0}
+  .col-left{width:250px;border-right:1px solid var(--border)}
+  .col-right{width:300px;border-left:1px solid var(--border)}
+  .col-canvas{flex:1;background:var(--canvas);position:relative;overflow:hidden}
+  .col-title{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 14px 8px;font-weight:600}
+  .scroll{overflow:auto;flex:1}
+
+  /* ---- Coluna esquerda: biblioteca + árvore (Composite RF01) ---- */
+  .tabset{display:flex;border-bottom:1px solid var(--border)}
+  .tabset button{flex:1;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--text-2);padding:10px 0;font-size:12px;font-weight:500}
+  .tabset button.active{color:var(--text);border-bottom-color:var(--accent)}
+  .palette{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px}
+  .comp{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 8px;text-align:center;color:var(--text-2);font-size:11px;display:grid;gap:6px;cursor:grab}
+  .comp:hover{border-color:var(--accent);color:var(--text);background:var(--accent-soft)}
+  .comp .ic{font-size:18px}
+  /* árvore de componentes (metáfora tree-view de arquivos — princípio 8) */
+  .tree{padding:6px 8px;font-size:12px}
+  .node{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;color:var(--text-2)}
+  .node:hover{background:var(--panel-2);color:var(--text)}
+  .node.sel{background:var(--accent-soft);color:#fff;box-shadow:inset 2px 0 0 var(--accent)}
+  .node.locked{color:var(--muted)}
+  .node .ind{width:12px;display:inline-block}
+  .node .ic{opacity:.8}
+  .node .lock{margin-left:auto;font-size:11px}
+
+  /* ---- Canvas ---- */
+  .canvas-toolbar{position:absolute;top:12px;left:12px;display:flex;gap:6px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px;z-index:5}
+  .canvas-toolbar button{background:transparent;border:0;color:var(--text-2);width:30px;height:26px;border-radius:5px}
+  .canvas-toolbar button:hover{background:var(--panel-2);color:var(--text)}
+  .zoom{position:absolute;bottom:12px;right:12px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 10px;color:var(--text-2);font-size:12px;z-index:5}
+  .artboard{position:absolute;top:64px;left:50%;transform:translateX(-50%);width:420px;background:#fff;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden;color:#171717}
+  .ab-head{background:#5B63F5;color:#fff;padding:16px 20px;font-weight:600}
+  .ab-body{padding:20px;display:grid;gap:14px}
+  .fld label{display:block;font-size:12px;color:#525252;margin-bottom:5px;font-weight:500}
+  .fld .box{border:1px solid #E5E5E5;border-radius:6px;height:38px;background:#FAFAFA}
+  /* componente SELECIONADO por mim (princípio 3 estado selected) */
+  .sel-wrap{position:relative;outline:2px solid var(--accent);border-radius:6px;outline-offset:2px}
+  .sel-wrap .tag{position:absolute;top:-22px;left:-2px;background:var(--accent);color:#fff;font-size:10px;padding:1px 7px;border-radius:4px;font-weight:600}
+  /* floating toolbar do componente (ações contextuais — proximidade princípio 6) */
+  .float{position:absolute;top:-22px;right:-2px;display:flex;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:2px}
+  .float button{background:transparent;border:0;color:var(--text-2);width:22px;height:20px;border-radius:4px;font-size:11px}
+  .float button:hover{background:var(--panel-2);color:var(--text)}
+  /* componente BLOQUEADO por outro colaborador (RN07) */
+  .lock-wrap{position:relative;outline:2px dashed var(--u2);border-radius:6px;outline-offset:2px;opacity:.85}
+  .lock-wrap .tag{position:absolute;top:-22px;left:-2px;background:var(--u2);color:#fff;font-size:10px;padding:1px 7px;border-radius:4px;font-weight:600;display:flex;gap:4px;align-items:center}
+
+  /* CURSORES de colaboração (RF06 — referência Figma) */
+  .cursor{position:absolute;z-index:8;pointer-events:none;transition:.4s cubic-bezier(.2,.8,.2,1)}
+  .cursor svg{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+  .cursor .name{position:absolute;top:16px;left:12px;font-size:11px;font-weight:600;color:#fff;padding:2px 7px;border-radius:4px;white-space:nowrap}
+
+  /* ---- Coluna direita: propriedades (agrupadas — proximidade princípio 6) ---- */
+  .prop-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .prop-head .ic{width:26px;height:26px;border-radius:6px;background:var(--accent-soft);display:grid;place-items:center;color:#B8C0FF}
+  .prop-head b{font-size:13px}
+  .prop-head .bi{font-family:var(--mono);font-size:10px;color:var(--muted);display:block;margin-top:2px}
+  .group{border-bottom:1px solid var(--border)}
+  .group summary{padding:10px 14px;font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
+  .group summary::-webkit-details-marker{display:none}
+  .group summary::before{content:"▾";font-size:10px;color:var(--muted)}
+  .group[open] summary{color:var(--text)}
+  .field{padding:0 14px 12px;display:grid;gap:5px}
+  .field label{font-size:11px;color:var(--text-2)}
+  .field input,.field select{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);height:32px;padding:0 10px;font-family:inherit;font-size:12px}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .switch{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;font-size:12px;color:var(--text-2)}
+  .toggle{width:34px;height:19px;border-radius:999px;background:var(--accent);position:relative}
+  .toggle::after{content:"";position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:#fff}
+  /* aba Regras (RF02 — árvore de decisão) */
+  .rule{margin:10px 14px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;font-size:12px}
+  .rule .cond{color:var(--info)} .rule .then{color:var(--success)}
+  .rule .chip{font-family:var(--mono);font-size:10px;background:var(--bg);border:1px solid var(--border);padding:1px 5px;border-radius:4px}
+
+  /* ============ STATUS BAR ============ */
+  .statusbar{height:26px;flex:none;display:flex;align-items:center;gap:16px;padding:0 14px;background:var(--panel);border-top:1px solid var(--border);color:var(--muted);font-size:11px}
+  .statusbar .live{display:flex;align-items:center;gap:6px;color:var(--success)}
+  .statusbar .live .dot{width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px rgba(63,185,80,.2)}
+
+  @media(max-width:900px){
+    .col-left,.col-right{display:none}
+    .cover{position:absolute;inset:0;background:rgba(10,10,10,.95);display:grid;place-items:center;text-align:center;padding:30px;z-index:30;color:var(--text-2)}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== TOP BAR ===================== -->
+<div class="topbar">
+  <button class="back" title="Voltar ao Dashboard">←</button>
+  <div class="crumbs">Portal de Licenciamento <span>/</span> <b>Ecrã: Formulário de Entrada</b></div>
+  <span class="screen-tab">＋ ecrã</span>
+
+  <!-- Indicador write-behind de 5s (RN06) — alterna Salvando… / Salvo -->
+  <div class="savestate saved" data-principle="feedback" title="Persistência write-behind: flush gRPC após 5s de inatividade (RN06)">
+    <span class="ring"></span> Todas as alterações salvas
+  </div>
+
+  <span class="spacer"></span>
+
+  <!-- Presença em tempo real (RF06) -->
+  <div class="presence" data-principle="feedback" title="Colaboradores online agora">
+    <div class="av" style="background:var(--u1)">A<span class="on"></span></div>
+    <div class="av" style="background:var(--u2)">B<span class="on"></span></div>
+    <div class="av" style="background:#8B5CF6">G<span class="on"></span></div>
+  </div>
+
+  <!-- Modos: Editar / Pré-visualizar (referência Framer) -->
+  <div class="modes">
+    <button class="active">✎ Editar</button>
+    <button title="Pré-visualiza como o Headless Player renderiza (RNF07)">▷ Preview</button>
+  </div>
+
+  <button class="btn btn-ghost" title="Exportar dados (RF05)">⭳ Exportar</button>
+  <!-- Publicar (RF04) — início óbvio da ação-marco -->
+  <button class="btn btn-primary" data-principle="inicio-obvio" title="Publica nova versão e ativa a flag (RF04, RN04)">↑ Publicar</button>
+</div>
+
+<!-- ===================== BODY ===================== -->
+<div class="body">
+
+  <!-- ---------- COLUNA ESQUERDA ---------- -->
+  <aside class="col col-left">
+    <div class="tabset">
+      <button class="active">Componentes</button>
+      <button>Árvore</button>
+    </div>
+
+    <div class="col-title">Biblioteca</div>
+    <!-- paleta arrastável (RF01) — empty-state convida ao 1º arrasto -->
+    <div class="palette">
+      <div class="comp" draggable="true"><span class="ic">▭</span>Container</div>
+      <div class="comp" draggable="true"><span class="ic">✎</span>Texto</div>
+      <div class="comp" draggable="true"><span class="ic">⌨</span>Input</div>
+      <div class="comp" draggable="true"><span class="ic">▾</span>Select</div>
+      <div class="comp" draggable="true"><span class="ic">☑</span>Checkbox</div>
+      <div class="comp" draggable="true"><span class="ic">◉</span>Botão</div>
+    </div>
+
+    <div class="col-title">Árvore do ecrã (Composite)</div>
+    <div class="tree scroll">
+      <div class="node"><span class="ind"></span><span class="ic">▭</span> Container raiz</div>
+      <div class="node"><span class="ind">↳</span><span class="ic">✎</span> Título</div>
+      <!-- nó selecionado por mim -->
+      <div class="node sel"><span class="ind">↳</span><span class="ic">⌨</span> Nome completo</div>
+      <!-- nó bloqueado por outro colaborador (RN07) -->
+      <div class="node locked"><span class="ind">↳</span><span class="ic">⌨</span> E-mail <span class="lock" title="Bloqueado por Bruno (RN07)">🔒</span></div>
+      <div class="node"><span class="ind">↳</span><span class="ic">▾</span> Município</div>
+      <div class="node"><span class="ind">↳</span><span class="ic">◉</span> Enviar</div>
+    </div>
+  </aside>
+
+  <!-- ---------- CANVAS ---------- -->
+  <main class="col-canvas">
+    <div class="canvas-toolbar">
+      <button title="Selecionar">⬚</button>
+      <button title="Mover">✥</button>
+      <button title="Comentar (colaboração)">💬</button>
+    </div>
+
+    <!-- Artboard = pré-visualização fiel ao Player (paridade de render, princípio 3) -->
+    <div class="artboard">
+      <div class="ab-head">Solicitação de Licença Ambiental</div>
+      <div class="ab-body">
+        <div class="fld"><label>Título</label></div>
+
+        <!-- Componente SELECIONADO por mim: outline de acento + toolbar contextual -->
+        <div class="fld">
+          <div class="sel-wrap" data-principle="proximidade">
+            <span class="tag">Nome completo</span>
+            <div class="float">
+              <button title="Duplicar">⎘</button>
+              <button title="Bloquear">🔒</button>
+              <button title="Excluir (confirma antes — princípio 2)">🗑</button>
+            </div>
+            <label>Nome completo *</label>
+            <div class="box"></div>
+          </div>
+        </div>
+
+        <!-- Componente BLOQUEADO por outro colaborador (RN07) -->
+        <div class="fld">
+          <div class="lock-wrap" data-principle="feedback">
+            <span class="tag">🔒 Bruno está editando</span>
+            <label>E-mail *</label>
+            <div class="box"></div>
+          </div>
+        </div>
+
+        <div class="fld"><label>Município</label><div class="box"></div></div>
+        <div style="height:38px;border-radius:6px;background:#5B63F5;color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px">Enviar</div>
+      </div>
+    </div>
+
+    <!-- CURSORES de colaboradores em tempo real (RF06 — Figma) -->
+    <div class="cursor" style="top:180px;left:62%">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 2l14 6-6 2-2 6z" fill="#F97316"/></svg>
+      <span class="name" style="background:#F97316">Ana</span>
+    </div>
+    <div class="cursor" style="top:300px;left:48%">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 2l14 6-6 2-2 6z" fill="#EC4899"/></svg>
+      <span class="name" style="background:#EC4899">Bruno</span>
+    </div>
+
+    <div class="zoom">100% ⌄</div>
+  </main>
+
+  <!-- ---------- COLUNA DIREITA: PROPRIEDADES ---------- -->
+  <aside class="col col-right">
+    <div class="prop-head">
+      <span class="ic">⌨</span>
+      <div>
+        <b>Input · Nome completo</b>
+        <!-- blind_index visível só em contexto técnico, como badge mono (RNF08/RN02) -->
+        <span class="bi">blind_index: 8f3b2a1e…c4</span>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <!-- Grupos colapsáveis (proximidade — princípio 6) -->
+      <details class="group" open>
+        <summary>Layout</summary>
+        <div class="field"><label>Largura</label><select><option>100%</option><option>50%</option></select></div>
+        <div class="field"><label>Espaçamento</label><input value="16px"></div>
+      </details>
+
+      <details class="group" open>
+        <summary>Dados & Validação</summary>
+        <div class="field"><label>Rótulo (label)</label><input value="Nome completo"></div>
+        <div class="field"><label>Tipo</label><select><option>Texto</option><option>Número</option><option>E-mail</option></select></div>
+        <div class="field"><label>Máx. de caracteres (limites)</label><input value="120"></div>
+        <div class="switch">Obrigatório <span class="toggle"></span></div>
+      </details>
+
+      <details class="group">
+        <summary>Regras de negócio (RF02)</summary>
+        <!-- árvore de decisão resumida -->
+        <div class="rule">
+          <span class="cond">SE</span> <span class="chip">este campo</span> igual a <span class="chip">"Empresa"</span><br>
+          <span class="then">ENTÃO</span> dispara <span class="chip">webhook.disparo</span>
+        </div>
+        <div style="padding:0 14px 12px"><button class="btn btn-ghost" style="width:100%;height:30px;justify-content:center">＋ Nova regra</button></div>
+      </details>
+
+      <details class="group">
+        <summary>Permissões (RF03 · RN03)</summary>
+        <div class="switch">Visível (view) <span class="toggle"></span></div>
+        <div class="switch">Clicável (click) <span class="toggle" style="background:var(--border-strong)"></span></div>
+      </details>
+    </div>
+  </aside>
+
+  <!-- aviso mobile: builder é desktop-only (honestidade — princípio 6) -->
+  <div class="cover" style="display:none" id="mcover">
+    Abra num ecrã maior para editar.<br>O construtor visual exige espaço de tela.
+  </div>
+</div>
+
+<!-- ===================== STATUS BAR ===================== -->
+<div class="statusbar">
+  <span class="live"><span class="dot"></span> Colaboração ativa · canal <span class="mono">screen:sist-42:ecr-1</span></span>
+  <span>3 online</span>
+  <span class="spacer" style="flex:1"></span>
+  <span class="mono">trace: 00-a3f…-01</span>
+  <span>Última publicação: v7 · há 2 h</span>
+</div>
+
+</body>
+</html>
