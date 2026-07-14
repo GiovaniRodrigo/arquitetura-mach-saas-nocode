@@ -1,0 +1,136 @@
+# Pipeline de Entrega Contínua por artefatos (spec 002, tasks 11–12).
+#
+# Fluxo: [Git] -> [Runner compila] -> [Host recebe só artefatos].
+#   push em main  -> valida (gate) -> compila -> entrega a STAGING (auto)
+#   tag vX.Y.Z    -> valida (gate) -> compila -> entrega a PRODUCTION (aprovação)
+# Nenhum código-fonte/dependência de dev/.git chega ao host (RN01, RNF01).
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false # não cancelar um deploy em andamento
+
+env:
+  GO_VERSION: "1.26"
+  OTP_VERSION: "26.2"
+  ELIXIR_VERSION: "1.17.3"
+  NODE_VERSION: "20"
+
+jobs:
+  # 1) Gate: reusa o pipeline de validação. Sem verde, nada é compilado (RF10).
+  ci-gate:
+    uses: ./.github/workflows/ci.yml
+
+  # 2) Compila e empacota os artefatos (só executável) e os publica.
+  build:
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.meta.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: player/package-lock.json
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.42.0"
+          github_token: ${{ github.token }}
+
+      - name: Instalar protoc-gen-elixir
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix escript.install --force hex protobuf
+          echo "$HOME/.mix/escripts" >> "$GITHUB_PATH"
+
+      - id: meta
+        name: Metadados do release
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar e empacotar artefatos
+        run: SHA="${{ steps.meta.outputs.sha }}" scripts/build-artifacts.sh
+
+      - name: Publicar artefatos
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ steps.meta.outputs.sha }}
+          path: dist/artifacts/
+          retention-days: 14
+          if-no-files-found: error
+
+  # 3a) Entrega automática a STAGING no push para main.
+  deploy-staging:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifacts-${{ needs.build.outputs.sha }}
+          path: dist/artifacts/
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          eval "$(ssh-agent -s)"; ssh-add ~/.ssh/id_ed25519
+      - name: Deploy
+        run: scripts/deploy.sh --env staging --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}" --sha "${{ needs.build.outputs.sha }}"
+      - name: Smoke test (rollback automático em falha)
+        run: |
+          if ! scripts/smoke-test.sh --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"; then
+            echo "::error::smoke test falhou — revertendo"
+            scripts/rollback.sh --env staging --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"
+            exit 1
+          fi
+
+  # 3b) Entrega a PRODUCTION em tag vX.Y.Z, após aprovação manual (RN02, RN03).
+  deploy-production:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: production # proteção com required reviewers => aprovação manual
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifacts-${{ needs.build.outputs.sha }}
+          path: dist/artifacts/
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          eval "$(ssh-agent -s)"; ssh-add ~/.ssh/id_ed25519
+      - name: Deploy
+        run: scripts/deploy.sh --env production --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}" --sha "${{ needs.build.outputs.sha }}"
+      - name: Smoke test (rollback automático em falha)
+        run: |
+          if ! scripts/smoke-test.sh --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"; then
+            echo "::error::smoke test falhou — revertendo"
+            scripts/rollback.sh --env production --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"
+            exit 1
+          fi

@@ -11,6 +11,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Reutilizável como gate pelo pipeline de release (cd.yml): nenhum artefato é
+  # compilado ou entregue sem esta validação verde (RF10).
+  workflow_call:
 
 # Cancela execuções antigas da mesma ref quando chega um novo push.
 concurrency:

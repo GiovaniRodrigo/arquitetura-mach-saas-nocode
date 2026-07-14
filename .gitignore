@@ -8,6 +8,9 @@ go.work.sum
 # Stubs gerados a partir dos .proto (reproduzíveis via `make proto`)
 /gen/
 
+# Artefatos de build da entrega contínua (spec 002; reproduzíveis via build-artifacts.sh)
+/dist/
+
 # Elixir / Phoenix (collab)
 /collab/_build/
 /collab/deps/

@@ -9,7 +9,20 @@ defmodule Collab.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      releases: releases()
+    ]
+  end
+
+  # Release OTP autocontido para a entrega por artefatos (spec 002): empacota o
+  # BEAM compilado + ERTS, dispensando Mix/deps/toolchain no host de produção.
+  # Gerado com `MIX_ENV=prod mix release collab`; iniciado com `bin/collab start`.
+  defp releases do
+    [
+      collab: [
+        include_executables_for: [:unix],
+        applications: [collab: :permanent]
+      ]
     ]
   end
 

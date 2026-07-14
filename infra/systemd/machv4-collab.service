@@ -1,0 +1,30 @@
+# Unidade systemd do motor de colaboração Elixir/Phoenix (spec 002, task 5).
+# Inicia o release OTP autocontido a partir do release ativo, como usuário
+# non-root (RNF01). rel/env.sh.eex define os padrões; o EnvironmentFile abaixo
+# (SECRET_KEY_BASE, REDIS_URL, etc.) sobrepõe em runtime — nunca no artefato.
+[Unit]
+Description=MACH V4 collab (Phoenix)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=machv4
+Group=machv4
+WorkingDirectory=/opt/machv4/current/collab
+ExecStart=/opt/machv4/current/collab/bin/collab start
+ExecStop=/opt/machv4/current/collab/bin/collab stop
+EnvironmentFile=/etc/machv4/collab.env
+# O release grava seus arquivos temporários fora da árvore read-only.
+Environment=RELEASE_TMP=/tmp
+Restart=on-failure
+RestartSec=2
+# Endurecimento
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/machv4
+
+[Install]
+WantedBy=multi-user.target

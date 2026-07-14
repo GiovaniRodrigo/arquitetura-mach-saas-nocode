@@ -1,0 +1,27 @@
+# Unidade systemd do serviço MACH V4 "iam" (spec 002, task 5). Executa o binário
+# estático a partir do release ativo (/opt/machv4/current), como usuário non-root
+# (RNF01). Variáveis de runtime (DSN, OTLP, portas) vêm do EnvironmentFile — nunca
+# do artefato.
+[Unit]
+Description=MACH V4 iam
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=machv4
+Group=machv4
+WorkingDirectory=/opt/machv4/current
+ExecStart=/opt/machv4/current/bin/iam
+EnvironmentFile=/etc/machv4/iam.env
+Restart=on-failure
+RestartSec=2
+# Endurecimento
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/machv4
+
+[Install]
+WantedBy=multi-user.target
