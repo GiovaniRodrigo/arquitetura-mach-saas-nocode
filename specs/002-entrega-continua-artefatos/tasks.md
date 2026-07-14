@@ -14,7 +14,7 @@
 - [x] 10. Escrever o script de rollback (repontar `current` ao release anterior/sha informado + restart, sem build) (`scripts/rollback.sh`) [RF09, RN07, RN08]
 - [x] 11. Criar o pipeline de release: gate de CI, build/empacotamento, publicação de artefatos e deploy a staging (push `main`) e produção (tag `v*`, com aprovação) (`.github/workflows/cd.yml`) [RF04, RF05, RF06, RN02, RN03]
 - [x] 12. Encadear o smoke test com rollback automático no job de deploy (`.github/workflows/cd.yml`, `scripts/smoke-test.sh`, `scripts/rollback.sh`) [RF11, RN08]
-- [x] 13. Configurar os GitHub Environments `staging` e `production` (secrets SSH; *required reviewers* em produção) — documentar em (`infra/deploy/README.md`) [RF06, RN03, RNF01]
+- [x] 13. Configurar os GitHub Environments `staging` e `production` (secrets SSH; gate de produção por disparo manual `workflow_dispatch`, pois *required reviewers* exigem plano pago) — documentar em (`infra/deploy/README.md`) [RF06, RN03, RNF01]
 - [x] 14. Validar o build localmente: `scripts/build-artifacts.sh` produz tarballs só com executáveis; inspecionar ausência de fonte/`.git`/`node_modules`/`deps` (`scripts/build-artifacts.sh`) [Critério 1, RN01]
 - [x] 15. Ensaiar o fluxo fim-a-fim em um host de staging (deploy → smoke → rollback) e ajustar regressões (`scripts/deploy.sh`, `scripts/rollback.sh`, `.github/workflows/cd.yml`) [Critérios 2–7]
 - [x] 16. Executar a suíte de testes completa do repositório (`make test` + Elixir + player + integração/E2E) garantindo que a refatoração do `ci.yml` não regrediu nada

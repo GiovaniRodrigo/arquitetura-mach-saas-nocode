@@ -32,7 +32,7 @@ scripts/smoke-test.sh --host "$STAGING_HOST"
 scripts/rollback.sh --env staging --host "$STAGING_HOST"
 ```
 
-No CI, o mesmo caminho é executado por `.github/workflows/cd.yml`: push em `main` entrega a staging automaticamente; uma tag `vX.Y.Z` entrega a produção após aprovação manual no *environment* `production`.
+No CI, o mesmo caminho é executado por `.github/workflows/cd.yml`: push em `main` entrega a staging automaticamente; uma tag `vX.Y.Z` compila/publica os artefatos, e a produção é promovida por disparo manual (`gh workflow run cd.yml --ref vX.Y.Z`).
 
 ---
 

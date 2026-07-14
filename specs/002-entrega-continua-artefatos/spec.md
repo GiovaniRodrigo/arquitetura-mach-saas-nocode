@@ -6,7 +6,7 @@ Esta demanda define o pipeline de Integração e Entrega Contínuas do monorepo 
 
 ## 1. Objetivo
 
-Automatizar a validação, compilação e entrega do MACH V4 de modo que cada commit em `main` seja validado e entregue a *staging* automaticamente, e cada tag semântica (`vX.Y.Z`) seja entregue a produção mediante aprovação manual — transferindo **somente** os artefatos compilados, com ativação atômica (troca de symlink) e rollback rápido sem recompilação. O ambiente de produção nunca hospeda fonte, ferramentas de build ou segredos de compilação.
+Automatizar a validação, compilação e entrega do MACH V4 de modo que cada commit em `main` seja validado e entregue a *staging* automaticamente, e cada tag semântica (`vX.Y.Z`) seja promovida a produção por disparo manual do pipeline — transferindo **somente** os artefatos compilados, com ativação atômica (troca de symlink) e rollback rápido sem recompilação. O ambiente de produção nunca hospeda fonte, ferramentas de build ou segredos de compilação.
 
 ---
 
@@ -19,7 +19,7 @@ Automatizar a validação, compilação e entrega do MACH V4 de modo que cada co
 | RF03 | Empacotar cada artefato como tarball versionado pelo git sha curto, contendo **exclusivamente** conteúdo executável — sem fonte, testes, `.git`, `node_modules` ou `deps`. | Runner CI | Alta |
 | RF04 | Publicar os tarballs como artefatos do pipeline (retidos por N dias) para rastreabilidade e reuso na entrega. | Runner CI | Média |
 | RF05 | Ao integrar `main`, entregar os artefatos ao host de **staging** automaticamente. | Sistema CD | Alta |
-| RF06 | Ao publicar uma tag semver `vX.Y.Z`, entregar ao host de **produção** após **aprovação manual**. | Aprovador | Alta |
+| RF06 | Publicar uma tag semver `vX.Y.Z` compila e publica os artefatos do release; a entrega ao host de **produção** ocorre por **disparo manual** do pipeline (o disparo é o gate humano). | Aprovador | Alta |
 | RF07 | Transferir os artefatos ao host via rsync sobre SSH para um diretório de release versionado (`releases/<sha>`), enviando apenas o delta. | Sistema CD | Alta |
 | RF08 | Ativar o release por **troca atômica de symlink** (`current → releases/<sha>`) e reiniciar as unidades `systemd`; servir o player pelo Nginx a partir do novo docroot. | Sistema CD | Alta |
 | RF09 | Executar **rollback** repontando o symlink `current` ao release anterior e reiniciando os serviços — sem novo build. | Aprovador | Alta |
@@ -47,7 +47,7 @@ Automatizar a validação, compilação e entrega do MACH V4 de modo que cada co
 |------|-------|
 | RN01 | Somente conteúdo compilado é enviado a produção (binários, release OTP, `dist/`). É proibido transferir fonte, testes, `.git`, `node_modules` ou `deps`. |
 | RN02 | Artefato de produção só é gerado a partir de uma tag semver `vX.Y.Z`; *staging* é gerado a partir de `main`. |
-| RN03 | O deploy de produção exige aprovação manual (proteção de *environment*). |
+| RN03 | O deploy de produção exige ação humana deliberada: é acionado por disparo manual do pipeline (`workflow_dispatch`), nunca automaticamente na tag. |
 | RN04 | O nome do release é o git sha curto (imutável); o alias `current` move-se atomicamente entre releases. |
 | RN05 | Os stubs `.proto` (`gen/`) são gerados no runner antes do build; nunca são versionados nem enviados a produção. |
 | RN06 | Os binários Go são compilados com `CGO_ENABLED=0` (estáticos, independentes da libc do host). |
@@ -65,12 +65,11 @@ Automatizar a validação, compilação e entrega do MACH V4 de modo que cada co
 * **E** o estágio de CD transfere apenas os artefatos ao host de staging, ativa o novo release por troca de symlink e reinicia os serviços
 * **E** o smoke test confirma os serviços saudáveis
 
-### Cenário 2: Release de produção com aprovação
-* **Dado que** uma tag `v1.4.0` foi publicada em `main`
-* **Quando** o pipeline gera os artefatos e alcança o estágio de deploy de produção
-* **Então** o pipeline pausa aguardando aprovação manual do Release Manager
-* **E** após a aprovação, entrega os artefatos ao host de produção e ativa o release
-* **E** registra o git sha ativo em produção
+### Cenário 2: Release de produção por disparo manual
+* **Dado que** uma tag `v1.4.0` foi publicada em `main` e seus artefatos compilados/publicados
+* **Quando** o Release Manager dispara manualmente o pipeline apontando a tag (`workflow_dispatch`, `--ref v1.4.0`)
+* **Então** o pipeline valida, recompila os artefatos da tag e entrega ao host de produção
+* **E** ativa o release e registra o git sha ativo em produção
 
 ### Cenário 3: Rollback automático por falha de smoke test
 * **Dado que** um novo release foi ativado em um ambiente
@@ -89,7 +88,7 @@ Automatizar a validação, compilação e entrega do MACH V4 de modo que cada co
 
 1. Após um deploy, o host de destino contém **apenas** binários/release/`dist/` no diretório do release — inspeção não encontra `.go`, `.ex`, `.git`, `node_modules` ou `deps`.
 2. Um merge em `main` resulta, sem intervenção, em staging atualizado e serviços saudáveis.
-3. Uma tag `vX.Y.Z` só chega a produção após aprovação manual registrada.
+3. Uma tag `vX.Y.Z` só chega a produção por disparo manual deliberado do pipeline (nunca automaticamente).
 4. A ativação de um release é atômica: em nenhum instante o `current` aponta para um diretório parcialmente transferido.
 5. Um rollback (manual ou automático) restaura o release anterior em < 2 min sem recompilar.
 6. Nenhum artefato é entregue quando qualquer etapa de CI falha.

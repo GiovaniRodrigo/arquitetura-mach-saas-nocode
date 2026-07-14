@@ -79,10 +79,12 @@ scripts/rollback.sh --env <staging|production> --host <host> [--sha <sha>]
 | `staging`, `production` | `SSH_HOST` | Host alvo do deploy |
 | `staging`, `production` | `SSH_USER` | Usuário de serviço non-root |
 | `staging`, `production` | `SSH_KNOWN_HOSTS` | Fingerprint do host (evita TOFU no runner) |
-| `production` | *required reviewers* | Aprovação manual obrigatória antes do deploy (RN03) |
 
-- `staging`: acionado por push em `main`.
-- `production`: acionado por tag `vX.Y.Z`, com gate de aprovação (RN02, RN03).
+- `staging`: acionado automaticamente por push em `main`.
+- `production`: acionado por **disparo manual** do `cd.yml` (`workflow_dispatch`,
+  normalmente com `--ref vX.Y.Z`) — o disparo é o gate humano (RN02, RN03).
+  *Required reviewers* de environment exigem plano pago/repo público; o disparo
+  manual cumpre o mesmo papel no plano free.
 
 ---
 

@@ -2,14 +2,23 @@
 #
 # Fluxo: [Git] -> [Runner compila] -> [Host recebe só artefatos].
 #   push em main  -> valida (gate) -> compila -> entrega a STAGING (auto)
-#   tag vX.Y.Z    -> valida (gate) -> compila -> entrega a PRODUCTION (aprovação)
+#   tag vX.Y.Z    -> valida (gate) -> compila -> publica artefatos (sem deploy)
+#   dispatch manual (ref = tag) -> valida -> compila -> entrega a PRODUCTION
+# O deploy de produção é acionado manualmente (workflow_dispatch): gate humano
+# equivalente à aprovação, sem exigir required reviewers de plano pago (RN03).
 # Nenhum código-fonte/dependência de dev/.git chega ao host (RN01, RNF01).
 name: CD
 
 on:
   push:
-    branches: [main]
-    tags: ["v*"]
+    branches: [main]    # -> STAGING automático
+    tags: ["v*"]        # -> apenas compila e publica os artefatos do release
+  workflow_dispatch:    # -> deploy MANUAL a produção (dispare com --ref vX.Y.Z)
+    inputs:
+      ref_nota:
+        description: "Tag/ref sendo promovida a produção (informativo, ex.: v1.2.3)"
+        required: false
+        default: ""
 
 concurrency:
   group: cd-${{ github.ref }}
@@ -80,7 +89,7 @@ jobs:
   # 3a) Entrega automática a STAGING no push para main.
   deploy-staging:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -106,12 +115,14 @@ jobs:
             exit 1
           fi
 
-  # 3b) Entrega a PRODUCTION em tag vX.Y.Z, após aprovação manual (RN02, RN03).
+  # 3b) Entrega a PRODUCTION apenas por disparo manual (workflow_dispatch): o ato
+  # de disparar é o gate humano (RN02, RN03). Dispare a partir da tag desejada:
+  #   gh workflow run cd.yml --ref vX.Y.Z
   deploy-production:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: production # proteção com required reviewers => aprovação manual
+    environment: production # escopo dos secrets de produção
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

@@ -61,10 +61,18 @@ OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector.internal:4317
 
 Configurar dois *environments* no repositório (**Settings → Environments**):
 
-| Environment | Acionado por | Proteção |
-|-------------|--------------|----------|
+| Environment | Acionado por | Gate |
+|-------------|--------------|------|
 | `staging` | push em `main` | — (deploy automático) |
-| `production` | tag `vX.Y.Z` | **Required reviewers** (aprovação manual — RN03) |
+| `production` | **disparo manual** (`workflow_dispatch`) | o próprio ato de disparar é a aprovação humana — RN03 |
+
+> Nota: *required reviewers* de environment exigem repo público ou plano pago
+> (Pro/Team/Enterprise). Neste repositório privado no plano free, o gate de
+> produção é o **disparo manual** do `cd.yml`. Para promover uma tag:
+>
+> ```bash
+> gh workflow run cd.yml --ref vX.Y.Z
+> ```
 
 Secrets por environment (mesmos nomes; valores distintos):
 

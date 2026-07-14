@@ -31,7 +31,7 @@ A estratégia reaproveita o pipeline de validação da Fase 11 (`.github/workflo
 
 ### 1.5. Segredos e ambientes
 
-* **GitHub Environments `staging` e `production`** *(configurar)*: secrets `SSH_PRIVATE_KEY`, `SSH_HOST`, `SSH_USER`, `SSH_KNOWN_HOSTS`; proteção com *required reviewers* em `production`. [RF06, RN03, RNF01]
+* **GitHub Environments `staging` e `production`** *(configurar)*: secrets `SSH_PRIVATE_KEY`, `SSH_HOST`, `SSH_USER`, `SSH_KNOWN_HOSTS`. O gate de produção é o **disparo manual** do `cd.yml` (`workflow_dispatch`), pois *required reviewers* exigem plano pago/repo público. [RF06, RN03, RNF01]
 
 ---
 

@@ -38,7 +38,7 @@
 |------------|-----|--------------|
 | Deploying Elixir releases | https://hexdocs.pm/mix/Mix.Tasks.Release.html | Configuração de `mix release` autocontido |
 | Go — build de binários estáticos | https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies | Flags `-trimpath`, `-ldflags`, `CGO_ENABLED=0` |
-| GitHub Environments & required reviewers | https://docs.github.com/actions/deployment/targeting-different-environments | Aprovação manual para produção (RN03) |
+| GitHub Environments / workflow_dispatch | https://docs.github.com/actions/deployment/targeting-different-environments | Escopo de secrets por ambiente; gate de produção por disparo manual (RN03). *Required reviewers* precisam de plano pago/repo público. |
 | rsync deploy pattern | https://rsync.samba.org/documentation.html | Entrega incremental e `--delete` |
 | Zero-downtime symlink swap | https://12factor.net (build/release/run) | Separação build → release → run; ativação atômica |
 
