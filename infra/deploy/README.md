@@ -25,15 +25,32 @@ repositório nem possui toolchain de build (RNF01, RN01).
 
 ## 2. Pré-requisitos do host (provisionamento — fora do escopo desta demanda)
 
+O script idempotente [`provision-host.sh`](./provision-host.sh) cria e configura
+tudo o que segue. Rode-o como root **em cada host** (staging e produção), passando
+a chave pública do CI correspondente ao ambiente:
+
+```bash
+sudo ./infra/deploy/provision-host.sh --pubkey ~/ci_machv4_staging.pub
+```
+
+Ele executa, de forma reexecutável:
+
 - Usuário de serviço non-root `machv4` (dono de `/opt/machv4`).
-- Usuário de deploy SSH (ex.: `deploy`) com permissão de escrita em `/opt/machv4`
-  e autorização para `systemctl restart 'machv4-*'` via `sudo` sem senha
-  (regra `sudoers` restrita apenas a esse comando).
-- `systemd`, `rsync`, `tar` e Nginx instalados.
-- Unidades copiadas de `infra/systemd/*.service` para `/etc/systemd/system/` e
-  habilitadas (`systemctl enable machv4-gateway ... machv4-collab`).
-- Nginx apontando para `infra/nginx/machv4.conf` (symlink em `sites-enabled/`).
-- OTel Collector alcançável (endpoint em cada `*.env`).
+- Usuário de deploy SSH (ex.: `deploy`) membro do grupo `machv4`, com escrita em
+  `/opt/machv4` (dir `2775`/setgid) e autorização para `systemctl restart 'machv4-*'`
+  via `sudo` sem senha (regra `sudoers` restrita — `/etc/sudoers.d/machv4-deploy`,
+  validada com `visudo -cf`).
+- Chave pública do CI autorizada em `~deploy/.ssh/authorized_keys` (via `--pubkey`).
+- `/etc/machv4/` (0750) com um stub `<serviço>.env` por unidade (a preencher — §3).
+- Unidades de `infra/systemd/*.service` instaladas em `/etc/systemd/system/` e
+  habilitadas (sem `start` — só após o 1º deploy criar `current`).
+- Nginx apontando para `infra/nginx/machv4.conf` (`sites-enabled/` ou `conf.d/`),
+  com `nginx -t` + reload.
+
+Flags: `--service-user`, `--deploy-user`, `--base`, `--env-dir`, `--no-systemd`,
+`--no-nginx`, `--repo-dir`, `--help`. Pré-requisitos do SO que **não** são criados
+pelo script: `systemd`, `rsync`, `tar`, Nginx instalados, e o OTel Collector
+alcançável (endpoint em cada `*.env`).
 
 ## 3. EnvironmentFiles (`/etc/machv4/<serviço>.env`)
 
