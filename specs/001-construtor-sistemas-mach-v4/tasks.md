@@ -22,14 +22,14 @@
 
 ## Fase 2 — IAM Service e Gateway
 
-- [ ] 13. IAM: store de tenants hierárquicos e papéis com testes (`services/iam/internal/store/`) [RF03]
-- [ ] 14. IAM: emissão e validação de JWT RS256 com claims `tenant_id`/`sub`/`tipo` (`services/iam/internal/auth/jwt.go`) [RF03]
-- [ ] 15. IAM: avaliador de permissões server-side retornando mapa `blind_index → {view, click}` com testes (`services/iam/internal/permissions/evaluator.go`) [RN03]
-- [ ] 16. IAM: servidor gRPC + bootstrap com telemetry (`services/iam/internal/server/grpc.go`, `services/iam/cmd/main.go`)
-- [ ] 17. Gateway: middleware de autenticação JWT → Metadata gRPC (`gateway/internal/middleware/auth.go`) [RF03, RNF02]
-- [ ] 18. Gateway: middlewares de rate limiting por tenant e tracing raiz (`gateway/internal/middleware/{ratelimit,tracing}.go`) [RNF04]
-- [ ] 19. Gateway: bootstrap HTTP + clientes gRPC + rota de permissões (`gateway/cmd/main.go`, `gateway/internal/routes/permissions.go`) [RF03]
-- [ ] 20. Teste de integração: request sem JWT → 401; JWT tenant A nunca acessa dados do tenant B (`gateway/tests/auth_integration_test.go`) [RN01, critério 1]
+- [x] 13. IAM: store de tenants hierárquicos e papéis com testes (`services/iam/internal/store/`) [RF03]
+- [x] 14. IAM: emissão e validação de JWT RS256 com claims `tenant_id`/`sub`/`tipo` (`services/iam/internal/auth/jwt.go`) [RF03]
+- [x] 15. IAM: avaliador de permissões server-side retornando mapa `blind_index → {view, click}` com testes (`services/iam/internal/permissions/evaluator.go`) [RN03]
+- [x] 16. IAM: servidor gRPC + bootstrap com telemetry (`services/iam/internal/server/grpc.go`, `services/iam/cmd/main.go`)
+- [x] 17. Gateway: middleware de autenticação JWT → Metadata gRPC (`gateway/internal/middleware/auth.go`) [RF03, RNF02]
+- [x] 18. Gateway: middlewares de rate limiting por tenant e tracing raiz (`gateway/internal/middleware/{ratelimit,tracing}.go`) [RNF04]
+- [x] 19. Gateway: bootstrap HTTP + clientes gRPC + rota de permissões (`gateway/cmd/main.go`, `gateway/internal/routes/permissions.go`) [RF03]
+- [x] 20. Teste de integração: request sem JWT → 401; JWT tenant A nunca acessa dados do tenant B (`gateway/tests/auth_integration_test.go`) [RN01, critério 1]
 
 ## Fase 3 — Design Engine
 
