@@ -1,0 +1,96 @@
+{
+  "rabbit_version": "3.13.0",
+  "users": [
+    {
+      "name": "mach",
+      "password_hash": "kI3GCgyjGXGWkp2V8KvhLjDu/Zu5LTXd2FXpMnlbf79YZNXO",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    { "user": "mach", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }
+  ],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "ha-eventos",
+      "pattern": "^(webhooks\\.disparo|notificacoes\\.envio).*",
+      "apply-to": "queues",
+      "priority": 0,
+      "definition": { "queue-mode": "lazy" }
+    }
+  ],
+  "exchanges": [
+    { "name": "eventos", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "queues": [
+    {
+      "name": "webhooks.disparo",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "webhooks.disparo.retry",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "",
+        "x-dead-letter-routing-key": "webhooks.disparo"
+      }
+    },
+    {
+      "name": "webhooks.disparo.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "notificacoes.envio",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "notificacoes.envio.retry",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "",
+        "x-dead-letter-routing-key": "notificacoes.envio"
+      }
+    },
+    {
+      "name": "notificacoes.envio.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "eventos",
+      "vhost": "/",
+      "destination": "webhooks.disparo",
+      "destination_type": "queue",
+      "routing_key": "webhook.disparo.*",
+      "arguments": {}
+    },
+    {
+      "source": "eventos",
+      "vhost": "/",
+      "destination": "notificacoes.envio",
+      "destination_type": "queue",
+      "routing_key": "notificacao.envio.*",
+      "arguments": {}
+    }
+  ]
+}

@@ -32,14 +32,15 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.13-management
-    environment:
-      RABBITMQ_DEFAULT_USER: mach
-      RABBITMQ_DEFAULT_PASS: mach
+    # Utilizador `mach` e toda a topologia (exchanges/filas/DLQs) vêm das
+    # definitions.json carregadas via rabbitmq.conf (RN09).
     ports:
       - "5672:5672"    # AMQP
       - "15672:15672"  # Management UI
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s

@@ -65,11 +65,11 @@
 
 ## Fase 7 — Mensageria Assíncrona e Workers
 
-- [ ] 41. Definições RabbitMQ: exchanges, filas `webhooks.disparo`/`notificacoes.envio`, DLQs e políticas de fair queuing (`infra/rabbitmq/definitions.json`) [RN09]
-- [ ] 42. Publisher AMQP no Logic Engine com `tenant_id`, `component_blind_index` e `traceparent` nos headers (`services/logic/internal/events/publisher.go`) [RF08, RNF04]
-- [ ] 43. Worker consumidor genérico com extração de trace e handlers de webhook/notificação (`workers/cmd/main.go`, `workers/internal/handlers/`) [RF08]
-- [ ] 44. Roteamento de falhas contínuas para DLQ + alerta ao tenant (`workers/internal/dlq/`) [RN09, RNF06]
-- [ ] 45. Manifests k8s dos workers + `ScaledObject` KEDA (`minReplicaCount: 0`, `maxReplicaCount: 50`, trigger QueueLength) (`infra/k8s/keda/scaledobject-workers.yaml`) [RN10, RNF03, critério 5]
+- [x] 41. Definições RabbitMQ: exchanges, filas `webhooks.disparo`/`notificacoes.envio`, DLQs e políticas de fair queuing (`infra/rabbitmq/definitions.json`) [RN09]
+- [x] 42. Publisher AMQP no Logic Engine com `tenant_id`, `component_blind_index` e `traceparent` nos headers (`services/logic/internal/events/publisher.go`) [RF08, RNF04]
+- [x] 43. Worker consumidor genérico com extração de trace e handlers de webhook/notificação (`workers/cmd/main.go`, `workers/internal/handlers/`) [RF08]
+- [x] 44. Roteamento de falhas contínuas para DLQ + alerta ao tenant (`workers/internal/dlq/`) [RN09, RNF06]
+- [x] 45. Manifests k8s dos workers + `ScaledObject` KEDA (`minReplicaCount: 0`, `maxReplicaCount: 50`, trigger QueueLength) (`infra/k8s/keda/scaledobject-workers.yaml`) [RN10, RNF03, critério 5]
 
 ## Fase 8 — Export Engine
 

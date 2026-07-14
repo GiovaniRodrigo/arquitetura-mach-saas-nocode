@@ -1,0 +1,98 @@
+# Autoscaling dos workers assíncronos por profundidade de fila no RabbitMQ (RN10,
+# RNF03, critério 5). O KEDA escala de 0 a 50 réplicas reagindo exclusivamente ao
+# QueueLength — sem custo ocioso quando não há eventos (scale-to-zero).
+#
+# Aplicar: kubectl apply -f infra/k8s/keda/scaledobject-workers.yaml
+# Requer o KEDA instalado no cluster (https://keda.sh) e o Secret abaixo.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-workers
+  namespace: mach
+type: Opaque
+stringData:
+  # host de conexão AMQP usado pelo scaler (inclui credenciais e vhost).
+  host: "amqp://mach:mach@rabbitmq.mach.svc.cluster.local:5672/"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workers
+  namespace: mach
+  labels:
+    app: workers
+spec:
+  # Réplicas geridas pelo KEDA; começa em 0 (scale-to-zero).
+  replicas: 0
+  selector:
+    matchLabels:
+      app: workers
+  template:
+    metadata:
+      labels:
+        app: workers
+    spec:
+      containers:
+        - name: workers
+          image: ghcr.io/machv4/workers:latest
+          env:
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-workers
+                  key: host
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "otel-collector.mach.svc.cluster.local:4317"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: rabbitmq-workers-auth
+  namespace: mach
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: rabbitmq-workers
+      key: host
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: workers
+  namespace: mach
+spec:
+  scaleTargetRef:
+    name: workers
+  # Escala a zero quando não há mensagens; custo ocioso nulo (RN10).
+  minReplicaCount: 0
+  maxReplicaCount: 50
+  # Janela de estabilização antes de descer (evita flapping no fim de um pico).
+  cooldownPeriod: 120
+  pollingInterval: 15
+  triggers:
+    # Um trigger por fila principal: o autoscaling reage exclusivamente ao
+    # QueueLength no RabbitMQ (RN10). value = mensagens por réplica alvo.
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: webhooks.disparo
+        mode: QueueLength
+        value: "100"
+      authenticationRef:
+        name: rabbitmq-workers-auth
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: notificacoes.envio
+        mode: QueueLength
+        value: "100"
+      authenticationRef:
+        name: rabbitmq-workers-auth
