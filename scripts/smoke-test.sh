@@ -26,7 +26,7 @@ tcp() { # $1=porta $2=rótulo — liveness gRPC (conexão TCP)
 }
 
 echo "==> smoke test em $HOST"
-http "http://$HOST:8080/healthz" "gateway"
+http "http://$HOST:8080/health"  "gateway"
 http "http://$HOST:4000/healthz" "collab"
 http "http://$HOST/"             "player (nginx)"
 tcp 50051 "iam"

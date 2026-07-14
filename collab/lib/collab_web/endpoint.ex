@@ -43,5 +43,15 @@ defmodule CollabWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+
+  # Healthcheck do smoke test pós-deploy (spec 002, RF11): responde 200 em
+  # /healthz antes de entrar no Router, sem depender de rotas de negócio.
+  plug :healthz
   plug CollabWeb.Router
+
+  defp healthz(%Plug.Conn{request_path: "/healthz"} = conn, _opts) do
+    conn |> Plug.Conn.send_resp(200, "ok") |> Plug.Conn.halt()
+  end
+
+  defp healthz(conn, _opts), do: conn
 end
