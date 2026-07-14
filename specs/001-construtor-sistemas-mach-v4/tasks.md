@@ -33,10 +33,10 @@
 
 ## Fase 3 — Design Engine
 
-- [ ] 21. Modelo Composite da árvore recursiva com validação estrutural e testes (`services/design/internal/tree/composite.go`) [RF01]
-- [ ] 22. Persistência JSONB com `TenantScopedQuerier` (`services/design/internal/store/jsonb.go`) [RF01, RN01]
-- [ ] 23. Servidor gRPC do Design Engine incluindo `SalvarDesign` em lote (`services/design/internal/server/grpc.go`, `services/design/cmd/main.go`) [RF01, RN06]
-- [ ] 24. Gateway: rotas REST→gRPC de designs (`gateway/internal/routes/designs.go`) [RF01]
+- [x] 21. Modelo Composite da árvore recursiva com validação estrutural e testes (`services/design/internal/tree/composite.go`) [RF01]
+- [x] 22. Persistência JSONB com `TenantScopedQuerier` (`services/design/internal/store/jsonb.go`) [RF01, RN01]
+- [x] 23. Servidor gRPC do Design Engine incluindo `SalvarDesign` em lote (`services/design/internal/server/grpc.go`, `services/design/cmd/main.go`) [RF01, RN06]
+- [x] 24. Gateway: rotas REST→gRPC de designs (`gateway/internal/routes/designs.go`) [RF01]
 
 ## Fase 4 — Logic Engine
 

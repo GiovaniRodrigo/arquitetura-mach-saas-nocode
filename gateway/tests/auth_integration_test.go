@@ -92,7 +92,8 @@ func harness(t *testing.T) (handler http.Handler, iss *auth.Issuer, tenantA, ten
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 
-	handler = gatewayapp.NewRouter(iamv1.NewIAMServiceClient(conn), middleware.NewRateLimiter(1000, 1000))
+	// Este teste exercita apenas /permissoes; o Design Engine não é dialado aqui.
+	handler = gatewayapp.NewRouter(iamv1.NewIAMServiceClient(conn), nil, middleware.NewRateLimiter(1000, 1000))
 	return handler, auth.NewIssuer(priv, time.Hour), idA, idB
 }
 
