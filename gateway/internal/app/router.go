@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	deployv1 "github.com/machv4/platform/gen/go/construtor/deploy/v1"
 	designv1 "github.com/machv4/platform/gen/go/construtor/design/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
@@ -19,7 +20,7 @@ import (
 // Ordem: Tracing (span raiz) é o mais externo; dentro do grupo autenticado,
 // Auth valida o JWT e injeta o TenantContext, e só então o RateLimiter aplica a
 // cota por tenant. /health fica fora da autenticação.
-func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceClient, logic logicv1.LogicEngineServiceClient, rl *middleware.RateLimiter) http.Handler {
+func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceClient, logic logicv1.LogicEngineServiceClient, deploy deployv1.DeployEngineServiceClient, rl *middleware.RateLimiter) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Tracing)
 
@@ -44,6 +45,10 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 		r.Delete("/api/v1/regras/{id}", routes.RemoverRegra(logic))
 
 		r.Post("/api/v1/formularios", routes.SalvarFormulario(logic))
+
+		r.Post("/api/v1/sistemas/{sistema_id}/publicar", routes.Publicar(deploy))
+		r.Post("/api/v1/sistemas/{sistema_id}/rollback", routes.Rollback(deploy))
+		r.Get("/api/v1/sistemas/{sistema_id}/versao-ativa", routes.VersaoAtiva(deploy))
 	})
 
 	return r

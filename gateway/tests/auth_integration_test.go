@@ -92,8 +92,8 @@ func harness(t *testing.T) (handler http.Handler, iss *auth.Issuer, tenantA, ten
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 
-	// Este teste exercita apenas /permissoes; Design e Logic não são dialados aqui.
-	handler = gatewayapp.NewRouter(iamv1.NewIAMServiceClient(conn), nil, nil, middleware.NewRateLimiter(1000, 1000))
+	// Este teste exercita apenas /permissoes; Design, Logic e Deploy não são dialados aqui.
+	handler = gatewayapp.NewRouter(iamv1.NewIAMServiceClient(conn), nil, nil, nil, middleware.NewRateLimiter(1000, 1000))
 	return handler, auth.NewIssuer(priv, time.Hour), idA, idB
 }
 

@@ -49,9 +49,9 @@
 
 ## Fase 5 — Deploy Engine
 
-- [ ] 31. Gerenciador de versões: publicar/rollback em transação atômica com índice único parcial (`services/deploy/internal/versions/manager.go`) [RN04, RN05]
-- [ ] 32. Servidor gRPC `Publicar`/`Rollback`/`ObterVersaoAtiva` + rotas no Gateway (`services/deploy/internal/server/grpc.go`, `gateway/internal/routes/deploy.go`) [RF04]
-- [ ] 33. Teste de integração: rollback < 100ms e unicidade da flag ativa sob concorrência (`services/deploy/tests/rollback_test.go`) [RNF05, critério 3]
+- [x] 31. Gerenciador de versões: publicar/rollback em transação atômica com índice único parcial (`services/deploy/internal/versions/manager.go`) [RN04, RN05]
+- [x] 32. Servidor gRPC `Publicar`/`Rollback`/`ObterVersaoAtiva` + rotas no Gateway (`services/deploy/internal/server/grpc.go`, `gateway/internal/routes/deploy.go`) [RF04]
+- [x] 33. Teste de integração: rollback < 100ms e unicidade da flag ativa sob concorrência (`services/deploy/tests/rollback_test.go`) [RNF05, critério 3]
 
 ## Fase 6 — Motor de Colaboração (Elixir)
 
