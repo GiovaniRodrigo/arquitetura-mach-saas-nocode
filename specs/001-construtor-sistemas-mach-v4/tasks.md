@@ -55,13 +55,13 @@
 
 ## Fase 6 — Motor de Colaboração (Elixir)
 
-- [ ] 34. Bootstrap do projeto Phoenix (sem HTML), socket e `ScreenChannel` com autorização por JWT (`collab/lib/collab_web/channels/screen_channel.ex`) [RF06]
-- [ ] 35. `ScreenServer` (GenServer por ecrã via Registry): estado da árvore + aplicação de mutações (`collab/lib/collab/session/screen_server.ex`) [RF06]
-- [ ] 36. Snapshots incrementais no Redis + reidratação na inicialização (`collab/lib/collab/session/redis_snapshot.ex`) [RN06, risco de perda de edições]
-- [ ] 37. Debounce de 5s e flush único via cliente gRPC `SalvarDesign` (`collab/lib/collab/session/screen_server.ex`, `collab/lib/collab/grpc/design_client.ex`) [RN06, critério 4]
-- [ ] 38. Phoenix Presence para cursores/utilizadores online (`collab/lib/collab_web/presence.ex`) [RF06]
-- [ ] 39. Bloqueio otimista por blind_index com liberação por timeout (`collab/lib/collab/session/locks.ex`) [RN07]
-- [ ] 40. Teste ExUnit: mutação de A chega a B; 5s de silêncio → exatamente 1 chamada gRPC (`collab/test/collab/session/screen_server_test.exs`) [RN06, critério 4]
+- [x] 34. Bootstrap do projeto Phoenix (sem HTML), socket e `ScreenChannel` com autorização por JWT (`collab/lib/collab_web/channels/screen_channel.ex`) [RF06]
+- [x] 35. `ScreenServer` (GenServer por ecrã via Registry): estado da árvore + aplicação de mutações (`collab/lib/collab/session/screen_server.ex`) [RF06]
+- [x] 36. Snapshots incrementais no Redis + reidratação na inicialização (`collab/lib/collab/session/redis_snapshot.ex`) [RN06, risco de perda de edições]
+- [x] 37. Debounce de 5s e flush único via cliente gRPC `SalvarDesign` (`collab/lib/collab/session/screen_server.ex`, `collab/lib/collab/grpc/design_client.ex`) [RN06, critério 4]
+- [x] 38. Phoenix Presence para cursores/utilizadores online (`collab/lib/collab_web/presence.ex`) [RF06]
+- [x] 39. Bloqueio otimista por blind_index com liberação por timeout (`collab/lib/collab/session/locks.ex`) [RN07]
+- [x] 40. Teste ExUnit: mutação de A chega a B; 5s de silêncio → exatamente 1 chamada gRPC (`collab/test/collab/session/screen_server_test.exs`) [RN06, critério 4]
 
 ## Fase 7 — Mensageria Assíncrona e Workers
 

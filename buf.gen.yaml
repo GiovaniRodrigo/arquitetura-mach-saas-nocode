@@ -14,9 +14,11 @@ plugins:
     out: gen/ts
     opt: target=ts
 
-  # --- Elixir (mensagens) — consumido pelo motor de colaboração (Fase 6) ---
-  # Fixar o plugin BSR correto ao iniciar o collab/. Ex.:
-  #   - remote: buf.build/<owner>/elixir
-  #     out: gen/elixir
-  # A geração Elixir não é pré-requisito das Fases 1–5/10, por isso fica
-  # desativada até a Fase 6 para manter `make proto` verde offline-friendly.
+  # --- Elixir (mensagens + gRPC) — consumido pelo motor de colaboração (Fase 6) ---
+  # Plugin local `protoc-gen-elixir` (escript do pacote hex `protobuf`), instalado
+  # com `mix escript.install hex protobuf` e disponível no PATH
+  # ($HOME/.mix/escripts). opt=plugins=grpc gera também os stubs de serviço.
+  - local: protoc-gen-elixir
+    out: gen/elixir
+    opt:
+      - plugins=grpc
