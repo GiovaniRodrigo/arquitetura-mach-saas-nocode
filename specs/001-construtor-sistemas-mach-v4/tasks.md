@@ -85,12 +85,12 @@
 
 ## Fase 10 — Headless Player
 
-- [ ] 52. Bootstrap Vite + React + TS e cliente HTTP autenticado (`player/package.json`, `player/src/api/client.ts`)
-- [ ] 53. `CompositeRenderer`: renderização recursiva por `componente_filhos` a partir da versão ativa (`player/src/renderer/CompositeRenderer.tsx`) [RF01, RN04]
-- [ ] 54. Batcher de 16ms com diffing único por lote + teste de timing (`player/src/renderer/batcher.ts`) [RNF07]
-- [ ] 55. Validador local por mapa de blind_index (`player/src/validation/blindIndexValidator.ts`) [RN08]
-- [ ] 56. Aplicação do mapa de permissões `{view, click}` e rotas dinâmicas SPA (`player/src/permissions/permissionMap.ts`, `player/src/router/dynamicRoutes.ts`) [RN03]
-- [ ] 57. Cliente WebSocket Phoenix para colaboração no modo builder-preview (`player/src/collab/phoenixSocket.ts`) [RF06]
+- [x] 52. Bootstrap Vite + React + TS e cliente HTTP autenticado (`player/package.json`, `player/src/api/client.ts`)
+- [x] 53. `CompositeRenderer`: renderização recursiva por `componente_filhos` a partir da versão ativa (`player/src/renderer/CompositeRenderer.tsx`) [RF01, RN04]
+- [x] 54. Batcher de 16ms com diffing único por lote + teste de timing (`player/src/renderer/batcher.ts`) [RNF07]
+- [x] 55. Validador local por mapa de blind_index (`player/src/validation/blindIndexValidator.ts`) [RN08]
+- [x] 56. Aplicação do mapa de permissões `{view, click}` e rotas dinâmicas SPA (`player/src/permissions/permissionMap.ts`, `player/src/router/dynamicRoutes.ts`) [RN03]
+- [x] 57. Cliente WebSocket Phoenix para colaboração no modo builder-preview (`player/src/collab/phoenixSocket.ts`) [RF06]
 
 ## Fase 11 — Encerramento
 
