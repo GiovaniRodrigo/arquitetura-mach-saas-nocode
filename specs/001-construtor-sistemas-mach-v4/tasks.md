@@ -73,9 +73,9 @@
 
 ## Fase 8 — Export Engine
 
-- [ ] 46. Gerenciador do ciclo de vida do Job com estados e testes (`services/export/internal/jobs/manager.go`) [RF05]
-- [ ] 47. Coletor via gRPC Server Streaming em chunks dos 3 serviços fonte (`services/export/internal/collector/streaming.go`) [RF05, RNF01]
-- [ ] 48. Upload S3/MinIO + Presigned URL com expiração curta + rotas no Gateway (`services/export/internal/storage/s3.go`, `gateway/internal/routes/export.go`) [RF05, critério 7]
+- [x] 46. Gerenciador do ciclo de vida do Job com estados e testes (`services/export/internal/jobs/manager.go`) [RF05]
+- [x] 47. Coletor via gRPC Server Streaming em chunks dos 3 serviços fonte (`services/export/internal/collector/streaming.go`) [RF05, RNF01]
+- [x] 48. Upload S3/MinIO + Presigned URL com expiração curta + rotas no Gateway (`services/export/internal/storage/s3.go`, `gateway/internal/routes/export.go`) [RF05, critério 7]
 
 ## Fase 9 — Observabilidade Fim-a-Fim
 

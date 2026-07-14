@@ -1,4 +1,4 @@
-go 1.22
+go 1.25.0
 
 // Monorepo poliglota — workspace Go único cobrindo os serviços, bibliotecas
 // partilhadas (pkg/), o Gateway, os workers e os stubs gerados (gen/go).
