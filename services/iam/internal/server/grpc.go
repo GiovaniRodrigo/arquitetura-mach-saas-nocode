@@ -13,22 +13,25 @@ import (
 	"github.com/machv4/platform/services/iam/internal/permissions"
 )
 
-// PermissaoLoader carrega as permissões do tenant corrente (satisfeito por store.Store).
-type PermissaoLoader interface {
+// Store carrega permissões e materializa identidades (satisfeito por store.Store).
+type Store interface {
 	PermissoesDe(ctx context.Context, blindIndexes []string) ([]permissions.Permissao, error)
+	UpsertUsuarioThirdParty(ctx context.Context, provedor, externalID, email, nome string) (userID, tenantID, tipo string, err error)
 }
 
 // IAMServer implementa iamv1.IAMServiceServer.
 type IAMServer struct {
 	iamv1.UnimplementedIAMServiceServer
 	validator *auth.Validator
-	loader    PermissaoLoader
+	issuer    *auth.Issuer
+	store     Store
 	eval      permissions.Evaluator
 }
 
-// New cria o servidor com o validador de JWT e o carregador de permissões.
-func New(validator *auth.Validator, loader PermissaoLoader) *IAMServer {
-	return &IAMServer{validator: validator, loader: loader}
+// New cria o servidor com o validador/emissor de JWT e o store de identidades e
+// permissões. O issuer detém a chave privada — só o IAM emite tokens (RF03).
+func New(validator *auth.Validator, issuer *auth.Issuer, store Store) *IAMServer {
+	return &IAMServer{validator: validator, issuer: issuer, store: store}
 }
 
 // ValidarToken verifica o JWT e devolve a identidade. Token inválido não é erro
@@ -46,6 +49,29 @@ func (s *IAMServer) ValidarToken(_ context.Context, req *iamv1.ValidarTokenReque
 	}, nil
 }
 
+// AutenticarThirdParty materializa a identidade de um login social já validado
+// pelo Gateway (que conduziu o fluxo OAuth com o provedor) e emite o JWT MACH.
+// Faz find-or-create do usuário e assina o token com a identidade resultante.
+func (s *IAMServer) AutenticarThirdParty(ctx context.Context, req *iamv1.AutenticarThirdPartyRequest) (*iamv1.AutenticarThirdPartyResponse, error) {
+	if req.GetProvedor() == "" || req.GetExternalId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "provedor e external_id são obrigatórios")
+	}
+	userID, tenantID, tipo, err := s.store.UpsertUsuarioThirdParty(ctx, req.GetProvedor(), req.GetExternalId(), req.GetEmail(), req.GetNome())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao registrar usuário")
+	}
+	token, err := s.issuer.Issue(userID, tenantID, tipo)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao emitir token")
+	}
+	return &iamv1.AutenticarThirdPartyResponse{
+		Jwt:      token,
+		UserId:   userID,
+		TenantId: tenantID,
+		Tipo:     tipo,
+	}, nil
+}
+
 // AvaliarPermissoes computa o mapa booleano por componente para o tenant do
 // contexto. A lógica das regras nunca sai daqui (RN03); o cliente recebe só o
 // resultado. O tenant vem do TenantContext (Metadata gRPC), nunca do request.
@@ -55,7 +81,7 @@ func (s *IAMServer) AvaliarPermissoes(ctx context.Context, req *iamv1.AvaliarPer
 		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
 	}
 
-	perms, err := s.loader.PermissoesDe(ctx, req.GetBlindIndexes())
+	perms, err := s.store.PermissoesDe(ctx, req.GetBlindIndexes())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "falha ao carregar permissões")
 	}

@@ -18,6 +18,7 @@ import (
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
 	"github.com/machv4/platform/gateway/internal/app"
 	"github.com/machv4/platform/gateway/internal/middleware"
+	"github.com/machv4/platform/gateway/internal/routes"
 	"github.com/machv4/platform/pkg/telemetry"
 	"github.com/machv4/platform/pkg/tenantctx"
 )
@@ -39,6 +40,7 @@ func main() {
 	deployAddr := env("DEPLOY_GRPC_ADDR", "localhost:50054")
 	exportAddr := env("EXPORT_GRPC_ADDR", "localhost:50055")
 	otlp := env("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+	appURL := env("APP_URL", "http://localhost:8080")
 
 	shutdown, err := telemetry.Init(ctx, telemetry.Config{ServiceName: "gateway", OTLPEndpoint: otlp})
 	if err != nil {
@@ -84,7 +86,19 @@ func main() {
 	export := exportv1.NewExportEngineServiceClient(exportConn)
 	rl := middleware.NewRateLimiter(50, 100) // 50 req/s, burst 100 por tenant
 
-	handler := app.NewRouter(iam, design, logic, deploy, export, rl)
+	// Login social (Google/GitHub) — credenciais e allowlist por ambiente. Sem
+	// GOOGLE_/GITHUB_CLIENT_* configurados, oauth é nil e as rotas ficam desligadas.
+	oauth := routes.NewOAuthHandler(
+		iam, appURL,
+		os.Getenv("GOOGLE_CLIENT_ID"), os.Getenv("GOOGLE_CLIENT_SECRET"),
+		os.Getenv("GITHUB_CLIENT_ID"), os.Getenv("GITHUB_CLIENT_SECRET"),
+		os.Getenv("OAUTH_ALLOWED_REDIRECT_URIS"),
+	)
+	if oauth != nil {
+		log.Println("login social habilitado (/auth/{provedor})")
+	}
+
+	handler := app.NewRouter(iam, design, logic, deploy, export, rl, oauth)
 
 	log.Printf("Gateway ouvindo em %s (IAM %s, Design %s, Logic %s, Deploy %s, Export %s)", httpAddr, iamAddr, designAddr, logicAddr, deployAddr, exportAddr)
 	if err := http.ListenAndServe(httpAddr, handler); err != nil {

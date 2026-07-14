@@ -21,13 +21,18 @@ import (
 // Ordem: Tracing (span raiz) é o mais externo; dentro do grupo autenticado,
 // Auth valida o JWT e injeta o TenantContext, e só então o RateLimiter aplica a
 // cota por tenant. /health fica fora da autenticação.
-func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceClient, logic logicv1.LogicEngineServiceClient, deploy deployv1.DeployEngineServiceClient, export exportv1.ExportEngineServiceClient, rl *middleware.RateLimiter) http.Handler {
+func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceClient, logic logicv1.LogicEngineServiceClient, deploy deployv1.DeployEngineServiceClient, export exportv1.ExportEngineServiceClient, rl *middleware.RateLimiter, oauth *routes.OAuthHandler) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Tracing)
 
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+
+	// Login social — rotas públicas (não autenticadas), fora do grupo com Auth.
+	if oauth != nil {
+		oauth.Registrar(r)
+	}
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(iam))

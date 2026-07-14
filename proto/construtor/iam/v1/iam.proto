@@ -34,7 +34,28 @@ message AvaliarPermissoesResponse {
   map<string, PermissaoComponente> permissions = 1;
 }
 
+// Login social (third-party): o Gateway conduz o fluxo OAuth com o provedor
+// (Google/GitHub) e delega ao IAM a materialização da identidade — find-or-create
+// do usuário e emissão do JWT MACH. O IAM é o único detentor da chave de assinatura.
+message AutenticarThirdPartyRequest {
+  // google | github
+  string provedor = 1;
+  // Identificador estável do usuário no provedor.
+  string external_id = 2;
+  string email = 3;
+  string nome = 4;
+}
+
+message AutenticarThirdPartyResponse {
+  string jwt = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  // dono | parceiro | cliente
+  string tipo = 4;
+}
+
 service IAMService {
   rpc ValidarToken(ValidarTokenRequest) returns (ValidarTokenResponse);
   rpc AvaliarPermissoes(AvaliarPermissoesRequest) returns (AvaliarPermissoesResponse);
+  rpc AutenticarThirdParty(AutenticarThirdPartyRequest) returns (AutenticarThirdPartyResponse);
 }

@@ -27,6 +27,7 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!config.sistemaId) return;
     let vivo = true;
     (async () => {
       try {
@@ -46,6 +47,8 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
     };
   }, [client, config.sistemaId]);
 
+  if (!config.sistemaId)
+    return <div>Autenticado ✓. Nenhum sistema selecionado — acesse com <code>?sistema=&lt;id&gt;</code>.</div>;
   if (erro) return <div role="alert">{erro}</div>;
   if (!versao) return <div>Carregando…</div>;
 
@@ -53,7 +56,7 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
   const porScreen = new Map(versao.definicao.designs.map((d) => [d.id, d.arvore]));
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <nav>
         {rotas.map((r) => (
           <Link key={r.path} to={r.path}>

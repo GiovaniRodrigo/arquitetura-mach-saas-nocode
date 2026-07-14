@@ -25,6 +25,10 @@ var ErrNaoEncontrado = errors.New("store: tenant não encontrado")
 // ErrSemTenant indica ausência de tenant no contexto ao consultar dados isolados.
 var ErrSemTenant = errors.New("store: contexto sem tenant (RN01)")
 
+// TenantPadraoID é o tenant fixo onde entram os usuários autenticados via
+// provedor third-party (migração 0013). Todo login OAuth vira 'cliente' aqui.
+const TenantPadraoID = "00000000-0000-0000-0000-000000000001"
+
 // Tenant é um nó da hierarquia Dono → Parceiro → Cliente Final.
 type Tenant struct {
 	ID       string
@@ -99,6 +103,24 @@ func (s *Store) ListarFilhos(ctx context.Context, parentID string) ([]Tenant, er
 		out = append(out, t)
 	}
 	return out, rows.Err()
+}
+
+// UpsertUsuarioThirdParty faz find-or-create do usuário por (provedor, external_id)
+// e devolve a identidade para emissão do JWT. Novos usuários entram no tenant
+// padrão como 'cliente' (migração 0013); logins seguintes atualizam email/nome.
+func (s *Store) UpsertUsuarioThirdParty(ctx context.Context, provedor, externalID, email, nome string) (userID, tenantID, tipo string, err error) {
+	err = s.db.QueryRow(ctx,
+		`INSERT INTO users (provedor, external_id, email, nome, tenant_id, tipo)
+		 VALUES ($1, $2, $3, $4, $5, 'cliente')
+		 ON CONFLICT (provedor, external_id)
+		 DO UPDATE SET email = EXCLUDED.email, nome = EXCLUDED.nome, atualizado_em = now()
+		 RETURNING id, tenant_id, tipo::text`,
+		provedor, externalID, email, nome, TenantPadraoID,
+	).Scan(&userID, &tenantID, &tipo)
+	if err != nil {
+		return "", "", "", fmt.Errorf("store: upsert usuário third-party: %w", err)
+	}
+	return userID, tenantID, tipo, nil
 }
 
 // PermissoesDe carrega as permissões do tenant corrente para os componentes

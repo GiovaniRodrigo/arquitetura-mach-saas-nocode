@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -48,12 +49,16 @@ func main() {
 	}
 	defer pool.Close()
 
-	pub, err := loadPublicKey(env("JWT_PUBLIC_KEY_PATH", ""))
+	priv, err := loadPrivateKey(env("JWT_PRIVATE_KEY_PATH", ""))
 	if err != nil {
 		log.Fatalf("chave JWT: %v", err)
 	}
+	ttl, err := time.ParseDuration(env("JWT_TTL", "12h"))
+	if err != nil {
+		log.Fatalf("JWT_TTL inválido: %v", err)
+	}
 
-	iam := app.NewServer(pub, pool)
+	iam := app.NewServer(priv, ttl, pool)
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
@@ -72,16 +77,13 @@ func main() {
 	}
 }
 
-// loadPublicKey carrega a chave pública RS256 de um PEM. Sem caminho, gera um par
-// efêmero (apenas dev) — nesse modo, tokens só validam se emitidos por este processo.
-func loadPublicKey(path string) (*rsa.PublicKey, error) {
+// loadPrivateKey carrega a chave privada RSA (PEM PKCS#1 ou PKCS#8) usada para
+// emitir e validar os JWT. Sem caminho, gera um par efêmero (apenas dev) — nesse
+// modo, tokens não sobrevivem a reinícios do processo.
+func loadPrivateKey(path string) (*rsa.PrivateKey, error) {
 	if path == "" {
-		log.Println("AVISO: JWT_PUBLIC_KEY_PATH não definido — gerando chave efêmera (dev)")
-		priv, err := auth.GenerateKey()
-		if err != nil {
-			return nil, err
-		}
-		return &priv.PublicKey, nil
+		log.Println("AVISO: JWT_PRIVATE_KEY_PATH não definido — gerando chave efêmera (dev)")
+		return auth.GenerateKey()
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -91,13 +93,16 @@ func loadPublicKey(path string) (*rsa.PublicKey, error) {
 	if block == nil {
 		return nil, errors.New("PEM inválido")
 	}
-	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+		return key, nil
+	}
+	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
-	rsaPub, ok := pub.(*rsa.PublicKey)
+	rsaPriv, ok := parsed.(*rsa.PrivateKey)
 	if !ok {
 		return nil, errors.New("chave não é RSA")
 	}
-	return rsaPub, nil
+	return rsaPriv, nil
 }

@@ -12,26 +12,34 @@ import (
 	"github.com/machv4/platform/services/iam/internal/permissions"
 )
 
-type fakeLoader struct {
+type fakeStore struct {
 	perms []permissions.Permissao
 	err   error
+	// resposta do upsert de identidade
+	userID, tenantID, tipo string
+	upsertErr              error
 }
 
-func (f fakeLoader) PermissoesDe(context.Context, []string) ([]permissions.Permissao, error) {
+func (f fakeStore) PermissoesDe(context.Context, []string) ([]permissions.Permissao, error) {
 	return f.perms, f.err
 }
 
-func newServer(t *testing.T, loader PermissaoLoader) (*IAMServer, *auth.Issuer) {
+func (f fakeStore) UpsertUsuarioThirdParty(context.Context, string, string, string, string) (string, string, string, error) {
+	return f.userID, f.tenantID, f.tipo, f.upsertErr
+}
+
+func newServer(t *testing.T, store Store) (*IAMServer, *auth.Issuer) {
 	t.Helper()
 	priv, err := auth.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return New(auth.NewValidator(&priv.PublicKey), loader), auth.NewIssuer(priv, time.Hour)
+	iss := auth.NewIssuer(priv, time.Hour)
+	return New(auth.NewValidator(&priv.PublicKey), iss, store), iss
 }
 
 func TestValidarToken_ValidoEInvalido(t *testing.T) {
-	srv, iss := newServer(t, fakeLoader{})
+	srv, iss := newServer(t, fakeStore{})
 	token, _ := iss.Issue("user-1", "tenant-A", "dono")
 
 	resp, _ := srv.ValidarToken(context.Background(), &iamv1.ValidarTokenRequest{Jwt: token})
@@ -45,15 +53,42 @@ func TestValidarToken_ValidoEInvalido(t *testing.T) {
 	}
 }
 
+func TestAutenticarThirdParty_EmiteTokenValido(t *testing.T) {
+	store := fakeStore{userID: "user-9", tenantID: "tenant-padrao", tipo: "cliente"}
+	srv, _ := newServer(t, store)
+
+	resp, err := srv.AutenticarThirdParty(context.Background(), &iamv1.AutenticarThirdPartyRequest{
+		Provedor: "google", ExternalId: "g-123", Email: "a@b.com", Nome: "Ana",
+	})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if resp.GetUserId() != "user-9" || resp.GetTenantId() != "tenant-padrao" || resp.GetTipo() != "cliente" {
+		t.Fatalf("identidade inesperada: %+v", resp)
+	}
+	// O JWT emitido deve validar no mesmo servidor.
+	val, _ := srv.ValidarToken(context.Background(), &iamv1.ValidarTokenRequest{Jwt: resp.GetJwt()})
+	if !val.GetValido() || val.GetUserId() != "user-9" || val.GetTipo() != "cliente" {
+		t.Fatalf("token emitido não validou: %+v", val)
+	}
+}
+
+func TestAutenticarThirdParty_RejeitaCamposObrigatorios(t *testing.T) {
+	srv, _ := newServer(t, fakeStore{})
+	if _, err := srv.AutenticarThirdParty(context.Background(), &iamv1.AutenticarThirdPartyRequest{Provedor: "google"}); err == nil {
+		t.Fatal("external_id ausente deveria falhar")
+	}
+}
+
 func TestAvaliarPermissoes_SemTenantContext(t *testing.T) {
-	srv, _ := newServer(t, fakeLoader{})
+	srv, _ := newServer(t, fakeStore{})
 	if _, err := srv.AvaliarPermissoes(context.Background(), &iamv1.AvaliarPermissoesRequest{}); err == nil {
 		t.Fatal("sem TenantContext deveria retornar erro Unauthenticated")
 	}
 }
 
 func TestAvaliarPermissoes_MapaBooleano(t *testing.T) {
-	loader := fakeLoader{perms: []permissions.Permissao{
+	loader := fakeStore{perms: []permissions.Permissao{
 		{BlindIndex: "bi-1", Papel: "dono", View: true, Click: true},
 	}}
 	srv, _ := newServer(t, loader)
