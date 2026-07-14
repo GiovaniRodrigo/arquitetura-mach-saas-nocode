@@ -1,0 +1,217 @@
+# Pipeline de Integração Contínua do monorepo poliglota MACH V4 (Fase 11, task 58).
+#
+# Ordem: os contratos .proto são a fonte única de verdade — o job `proto` valida
+# (lint/breaking) e gera os stubs (gen/), publicados como artefato. Os jobs de
+# build/teste por linguagem (Go, Elixir, Player) consomem esse artefato, pois
+# `gen/` é gitignored e reproduzível. `integration` sobe o Compose e roda os
+# testes marcados com as tags `integration`/`e2e`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancela execuções antigas da mesma ref quando chega um novo push.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.26"
+  OTP_VERSION: "26.2"
+  ELIXIR_VERSION: "1.17.3"
+  NODE_VERSION: "20"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Contratos: lint + breaking + geração dos stubs (Go/TS via plugins remotos,
+  # Elixir via escript local protoc-gen-elixir). Publica gen/ como artefato.
+  # ---------------------------------------------------------------------------
+  proto:
+    name: Proto (lint · breaking · generate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # buf breaking precisa do histórico para comparar com main
+
+      - name: Setup Elixir (escript protoc-gen-elixir)
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+
+      - name: Setup buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.42.0"
+          github_token: ${{ github.token }}
+
+      - name: Instalar protoc-gen-elixir (hex protobuf)
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix escript.install --force hex protobuf
+          echo "$HOME/.mix/escripts" >> "$GITHUB_PATH"
+
+      - name: buf lint
+        run: buf lint
+
+      - name: buf breaking (contra a base do PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+          buf breaking --against ".git#ref=FETCH_HEAD"
+
+      - name: buf generate
+        run: buf generate
+
+      - name: Publicar stubs gerados
+        uses: actions/upload-artifact@v4
+        with:
+          name: gen
+          path: gen/
+          retention-days: 1
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Go: serviços, Gateway, workers e libs partilhadas (workspace único).
+  # ---------------------------------------------------------------------------
+  go:
+    name: Go (build · vet · test)
+    runs-on: ubuntu-latest
+    needs: proto
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+
+      - name: Baixar stubs gerados
+        uses: actions/download-artifact@v4
+        with:
+          name: gen
+          path: gen/
+
+      - name: go build
+        run: go build ./...
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test (unitários)
+        run: go test ./...
+
+  # ---------------------------------------------------------------------------
+  # Elixir: motor de colaboração (Phoenix). Compila os stubs Elixir de gen/.
+  # ---------------------------------------------------------------------------
+  elixir:
+    name: Elixir (collab · ExUnit)
+    runs-on: ubuntu-latest
+    needs: proto
+    defaults:
+      run:
+        working-directory: collab
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+
+      - name: Baixar stubs gerados
+        uses: actions/download-artifact@v4
+        with:
+          name: gen
+          path: gen/ # relativo à raiz do repo (elixirc_paths compila ../gen/elixir)
+
+      - name: Cache deps e _build
+        uses: actions/cache@v4
+        with:
+          path: |
+            collab/deps
+            collab/_build
+          key: mix-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('collab/mix.lock') }}
+          restore-keys: |
+            mix-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+
+      - name: mix deps.get
+        run: mix deps.get
+
+      - name: mix test
+        run: mix test
+
+  # ---------------------------------------------------------------------------
+  # Player: SPA headless (Vite/React/TS). Sem dependência dos stubs Go/Elixir.
+  # ---------------------------------------------------------------------------
+  player:
+    name: Player (typecheck · vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: player
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: player/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      - name: typecheck
+        run: npm run typecheck
+
+      - name: testes
+        run: npm test
+
+  # ---------------------------------------------------------------------------
+  # Integração + E2E: sobe o Compose, aplica migrações e roda as suítes com as
+  # tags `integration` (serial, -p 1: evita a corrida de GRANT ON SCHEMA) e `e2e`.
+  # ---------------------------------------------------------------------------
+  integration:
+    name: Integração + E2E (Compose)
+    runs-on: ubuntu-latest
+    needs: proto
+    env:
+      DATABASE_URL: postgres://mach:mach@localhost:5432/machv4?sslmode=disable
+      RABBITMQ_URL: amqp://mach:mach@localhost:5672/
+      S3_ENDPOINT: localhost:9000
+      OTLP_ENDPOINT: localhost:4317
+      JAEGER_QUERY: localhost:16686
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+
+      - name: Baixar stubs gerados
+        uses: actions/download-artifact@v4
+        with:
+          name: gen
+          path: gen/
+
+      - name: Subir infraestrutura (Compose)
+        run: docker compose up -d --wait postgres redis rabbitmq jaeger otel-collector minio
+
+      - name: Aplicar migrações
+        run: docker compose --profile tools run --rm migrate
+
+      - name: Testes de integração (serial)
+        run: go test -tags integration -p 1 ./...
+
+      - name: Teste E2E de tracing
+        run: go test -tags e2e ./tests/e2e/...
+
+      - name: Logs do Compose (em falha)
+        if: failure()
+        run: docker compose logs --no-color

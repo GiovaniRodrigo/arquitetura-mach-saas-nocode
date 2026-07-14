@@ -94,5 +94,5 @@
 
 ## Fase 11 — Encerramento
 
-- [ ] 58. Pipeline CI: buf lint/breaking, testes Go, ExUnit, testes player, subida do Compose para integração (`.github/workflows/ci.yml`)
-- [ ] 59. Executar a suíte de testes completa (Go + ExUnit + player + integração + E2E) e corrigir regressões (`make test`)
+- [x] 58. Pipeline CI: buf lint/breaking, testes Go, ExUnit, testes player, subida do Compose para integração (`.github/workflows/ci.yml`)
+- [x] 59. Executar a suíte de testes completa (Go + ExUnit + player + integração + E2E) e corrigir regressões (`make test`)
