@@ -31,7 +31,11 @@ defmodule Collab.Grpc.DesignClient.Grpc do
   def save_design(%{tenant_id: tenant_id} = estado) do
     with {:ok, channel} <- GRPC.Stub.connect(addr()) do
       req = %SalvarDesignRequest{design: to_design(estado)}
-      metadata = %{"x-tenant-context-bin" => TenantContext.encode(%TenantContext{tenant_id: tenant_id})}
+      # tenant como Metadata binário (RNF02) + traceparent do span atual (RNF04).
+      metadata =
+        Collab.Telemetry.inject_metadata(%{
+          "x-tenant-context-bin" => TenantContext.encode(%TenantContext{tenant_id: tenant_id})
+        })
 
       resultado =
         case Stub.salvar_design(channel, req, metadata: metadata) do

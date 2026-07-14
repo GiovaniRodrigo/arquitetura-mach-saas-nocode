@@ -22,6 +22,17 @@ config :collab,
 # Endereço do Design Engine para o flush write-behind (RN06).
 config :collab, Collab.Grpc.DesignClient.Grpc, addr: "localhost:50052"
 
+# OpenTelemetry: spans exportados via OTLP ao Collector (RNF04). O endpoint real
+# vem de OTEL_EXPORTER_OTLP_ENDPOINT em runtime.
+config :opentelemetry,
+  span_processor: :batch,
+  traces_exporter: :otlp,
+  resource: %{service: %{name: "collab"}}
+
+config :opentelemetry_exporter,
+  otlp_protocol: :grpc,
+  otlp_endpoint: "http://localhost:4317"
+
 # Configures the endpoint
 config :collab, CollabWeb.Endpoint,
   url: [host: "localhost"],

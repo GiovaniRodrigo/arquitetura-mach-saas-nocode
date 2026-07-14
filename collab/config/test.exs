@@ -20,3 +20,6 @@ config :collab,
   lock_timeout_ms: 120,
   snapshot_store: Collab.Session.SnapshotStore.Noop,
   design_client: Collab.Grpc.DesignClientMock
+
+# Sem exportador de traces em teste (não há Collector); os spans viram no-op.
+config :opentelemetry, traces_exporter: :none

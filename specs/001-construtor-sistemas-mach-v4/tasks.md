@@ -79,9 +79,9 @@
 
 ## Fase 9 — Observabilidade Fim-a-Fim
 
-- [ ] 49. OTel Collector config + wiring Jaeger no Compose (`infra/otel/collector-config.yaml`, `docker-compose.yml`) [RNF04]
-- [ ] 50. Instrumentar o motor Elixir com OpenTelemetry (spans de channel e flush gRPC) (`collab/lib/collab/telemetry.ex`) [RNF04]
-- [ ] 51. Teste E2E de trace: um `traceparent` atravessa Gateway → gRPC → AMQP → Worker num único trace no Jaeger (`tests/e2e/tracing_test.go`) [RNF04, critério 6]
+- [x] 49. OTel Collector config + wiring Jaeger no Compose (`infra/otel/collector-config.yaml`, `docker-compose.yml`) [RNF04]
+- [x] 50. Instrumentar o motor Elixir com OpenTelemetry (spans de channel e flush gRPC) (`collab/lib/collab/telemetry.ex`) [RNF04]
+- [x] 51. Teste E2E de trace: um `traceparent` atravessa Gateway → gRPC → AMQP → Worker num único trace no Jaeger (`tests/e2e/tracing_test.go`) [RNF04, critério 6]
 
 ## Fase 10 — Headless Player
 

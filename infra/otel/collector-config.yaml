@@ -1,0 +1,38 @@
+# OpenTelemetry Collector — ponto único de recolha dos spans de todos os serviços
+# (Go e Elixir) e reencaminhamento para o Jaeger (RNF04). Centralizar aqui permite
+# processar (batch), amostrar e, no futuro, fan-out para outros back-ends sem tocar
+# nos serviços.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+  # Limita memória para o Collector não derrubar o host sob pico de spans.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
+exporters:
+  # Exporta os traces ao Jaeger via OTLP (Jaeger 1.60 aceita OTLP nativo).
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/jaeger]
+  telemetry:
+    logs:
+      level: warn

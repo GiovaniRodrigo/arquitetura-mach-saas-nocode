@@ -70,10 +70,16 @@ defmodule CollabWeb.ScreenChannel do
 
   @impl true
   def handle_in("mutate", %{"mutation" => mutation}, socket) do
-    case ScreenServer.apply_mutation(socket.assigns.screen_id, mutation, socket.assigns.user_id) do
-      {:ok, _tree} -> {:reply, :ok, socket}
-      {:error, reason} -> {:reply, {:error, %{reason: to_string(reason)}}, socket}
-    end
+    Collab.Telemetry.with_span(
+      "collab.screen.mutate",
+      %{"platform.tenant_id" => socket.assigns.tenant_id},
+      fn ->
+        case ScreenServer.apply_mutation(socket.assigns.screen_id, mutation, socket.assigns.user_id) do
+          {:ok, _tree} -> {:reply, :ok, socket}
+          {:error, reason} -> {:reply, {:error, %{reason: to_string(reason)}}, socket}
+        end
+      end
+    )
   end
 
   def handle_in("lock", %{"blind_index" => bi}, socket) do

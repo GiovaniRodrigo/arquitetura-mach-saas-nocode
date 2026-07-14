@@ -128,13 +128,20 @@ defmodule Collab.Session.ScreenServer do
   def handle_info(:flush, %{dirty: true} = state) do
     estado_flush = Map.take(state, [:design_id, :sistema_id, :nome, :tenant_id, :tree])
 
-    case client().save_design(estado_flush) do
-      :ok ->
-        _ = store().snapshot(state.screen_id, state.tree)
+    # Span do flush write-behind; o traceparent é propagado ao Design Engine (RNF04).
+    Collab.Telemetry.with_span(
+      "collab.flush",
+      %{"platform.tenant_id" => state.tenant_id, "platform.screen_id" => state.screen_id},
+      fn ->
+        case client().save_design(estado_flush) do
+          :ok ->
+            _ = store().snapshot(state.screen_id, state.tree)
 
-      {:error, reason} ->
-        Logger.error("flush do ecrã #{state.screen_id} falhou: #{inspect(reason)}")
-    end
+          {:error, reason} ->
+            Logger.error("flush do ecrã #{state.screen_id} falhou: #{inspect(reason)}")
+        end
+      end
+    )
 
     {:noreply, %{state | dirty: false, flush_ref: nil}}
   end

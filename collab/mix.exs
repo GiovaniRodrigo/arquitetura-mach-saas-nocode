@@ -47,6 +47,11 @@ defmodule Collab.MixProject do
       {:protobuf, "~> 0.13"},
       {:joken, "~> 2.6"},
       {:mox, "~> 1.1", only: :test},
+      # Observabilidade distribuída (RNF04): spans de channel/flush e propagação
+      # do traceparent até o Design Engine (Go).
+      {:opentelemetry_api, "~> 1.4"},
+      {:opentelemetry, "~> 1.5"},
+      {:opentelemetry_exporter, "~> 1.8"},
       # jose >= 1.11.6 usa o módulo `json` do OTP 27; fixamos 1.11.5 para o OTP 25
       # deste ambiente. Usamos apenas verificação JWS (RS256), fora do CVE de JWE.
       {:jose, "1.11.5", override: true}
