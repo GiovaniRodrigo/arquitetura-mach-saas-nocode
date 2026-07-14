@@ -40,12 +40,12 @@
 
 ## Fase 4 — Logic Engine
 
-- [ ] 25. Árvore de decisão (nós lógicos) e interpretador com testes (`services/logic/internal/rules/tree.go`) [RF02]
-- [ ] 26. CRUD de `campos_definicao` por blind_index (`services/logic/internal/store/campos.go`) [RN02]
-- [ ] 27. Revalidação de payload contra schema com mapa de erros por blind_index e testes (`services/logic/internal/validation/schema.go`) [RN08, RNF08, critério 2]
-- [ ] 28. Servidor gRPC `SalvarFormulario` + persistência em `dados_operacionais` (`services/logic/internal/server/grpc.go`, `services/logic/cmd/main.go`) [RF07]
-- [ ] 29. Gateway: rotas de regras e formulários (`gateway/internal/routes/{regras,formularios}.go`) [RF02, RF07]
-- [ ] 30. Teste de integração: submissão maliciosa direto na API é rejeitada sem expor nomes reais (`services/logic/tests/validation_integration_test.go`) [RN08, RNF08, critério 2]
+- [x] 25. Árvore de decisão (nós lógicos) e interpretador com testes (`services/logic/internal/rules/tree.go`) [RF02]
+- [x] 26. CRUD de `campos_definicao` por blind_index (`services/logic/internal/store/campos.go`) [RN02]
+- [x] 27. Revalidação de payload contra schema com mapa de erros por blind_index e testes (`services/logic/internal/validation/schema.go`) [RN08, RNF08, critério 2]
+- [x] 28. Servidor gRPC `SalvarFormulario` + persistência em `dados_operacionais` (`services/logic/internal/server/grpc.go`, `services/logic/cmd/main.go`) [RF07]
+- [x] 29. Gateway: rotas de regras e formulários (`gateway/internal/routes/{regras,formularios}.go`) [RF02, RF07]
+- [x] 30. Teste de integração: submissão maliciosa direto na API é rejeitada sem expor nomes reais (`services/logic/tests/validation_integration_test.go`) [RN08, RNF08, critério 2]
 
 ## Fase 5 — Deploy Engine
 

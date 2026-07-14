@@ -9,6 +9,7 @@ import (
 
 	designv1 "github.com/machv4/platform/gen/go/construtor/design/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
+	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
 	"github.com/machv4/platform/gateway/internal/middleware"
 	"github.com/machv4/platform/gateway/internal/routes"
 )
@@ -18,7 +19,7 @@ import (
 // Ordem: Tracing (span raiz) é o mais externo; dentro do grupo autenticado,
 // Auth valida o JWT e injeta o TenantContext, e só então o RateLimiter aplica a
 // cota por tenant. /health fica fora da autenticação.
-func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceClient, rl *middleware.RateLimiter) http.Handler {
+func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceClient, logic logicv1.LogicEngineServiceClient, rl *middleware.RateLimiter) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Tracing)
 
@@ -36,6 +37,13 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 		r.Get("/api/v1/designs/{id}", routes.ObterDesign(design))
 		r.Put("/api/v1/designs/{id}", routes.AtualizarDesign(design))
 		r.Delete("/api/v1/designs/{id}", routes.RemoverDesign(design))
+
+		r.Post("/api/v1/regras", routes.CriarRegra(logic))
+		r.Get("/api/v1/regras/{id}", routes.ObterRegra(logic))
+		r.Put("/api/v1/regras/{id}", routes.AtualizarRegra(logic))
+		r.Delete("/api/v1/regras/{id}", routes.RemoverRegra(logic))
+
+		r.Post("/api/v1/formularios", routes.SalvarFormulario(logic))
 	})
 
 	return r
