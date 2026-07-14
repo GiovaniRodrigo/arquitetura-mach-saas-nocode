@@ -15,10 +15,10 @@
 
 ## Fase 1 — Bibliotecas Partilhadas Go
 
-- [ ] 9. Implementar `pkg/tenantctx` com testes: extração/injeção de tenant em gRPC Metadata + interceptores (`pkg/tenantctx/`) [RN01, RNF02]
-- [ ] 10. Implementar `pkg/blindindex` com testes: HMAC-SHA256 com chave por tenant (`pkg/blindindex/`) [RN02, RNF08]
-- [ ] 11. Implementar `pkg/database` com testes: `TenantScopedQuerier` que injeta filtro de tenant e rejeita queries sem contexto (`pkg/database/`) [RN01]
-- [ ] 12. Implementar `pkg/telemetry`: bootstrap OTel, propagador W3C, atributos `platform.tenant_id`/`platform.component.blind_index`, redator de dados sensíveis (`pkg/telemetry/`) [RNF04, RNF08]
+- [x] 9. Implementar `pkg/tenantctx` com testes: extração/injeção de tenant em gRPC Metadata + interceptores (`pkg/tenantctx/`) [RN01, RNF02]
+- [x] 10. Implementar `pkg/blindindex` com testes: HMAC-SHA256 com chave por tenant (`pkg/blindindex/`) [RN02, RNF08]
+- [x] 11. Implementar `pkg/database` com testes: `TenantScopedQuerier` que injeta filtro de tenant e rejeita queries sem contexto (`pkg/database/`) [RN01]
+- [x] 12. Implementar `pkg/telemetry`: bootstrap OTel, propagador W3C, atributos `platform.tenant_id`/`platform.component.blind_index`, redator de dados sensíveis (`pkg/telemetry/`) [RNF04, RNF08]
 
 ## Fase 2 — IAM Service e Gateway
 
