@@ -30,7 +30,7 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!config.sistemaId) return;
+    if (!config.sistemaId && import.meta.env.VITE_BYPASS_AUTH !== "true") return;
     let vivo = true;
     (async () => {
       try {
@@ -49,6 +49,19 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
       vivo = false;
     };
   }, [client, config.sistemaId]);
+
+  if (import.meta.env.VITE_BYPASS_AUTH === "true") {
+    return (
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <Routes>
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<Overview />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
 
   if (!config.sistemaId) return <SeletorSistemas client={client} />;
   if (erro) return <div role="alert">{erro}</div>;

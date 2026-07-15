@@ -21,7 +21,9 @@ const embed = window.__PLAYER_CONFIG__;
 const token = embed?.token || obterToken();
 const root = createRoot(document.getElementById("root")!);
 
-if (!token) {
+const isBypass = import.meta.env.VITE_BYPASS_AUTH === "true";
+
+if (!token && !isBypass) {
   // Sem sessão: oferece login social (Google/GitHub) via Gateway.
   root.render(
     <StrictMode>
