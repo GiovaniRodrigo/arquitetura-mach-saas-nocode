@@ -19,7 +19,7 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-describe('DashboardLayout', () => {
+describe('Template: DashboardLayout', () => {
   const renderLayout = (initialRoute = '/dashboard') => {
     return render(
       <MemoryRouter initialEntries={[initialRoute]}>

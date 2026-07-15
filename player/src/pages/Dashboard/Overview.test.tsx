@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Overview } from './Overview';
 
-describe('Overview Dashboard Page', () => {
+describe('Page: Overview Dashboard', () => {
   it('renders the Hero Card (RF03)', () => {
     render(<Overview />);
     expect(screen.getByText('Build your Next Flow')).toBeTruthy();
