@@ -14,9 +14,9 @@ describe("extrairToken", () => {
 });
 
 describe("urlLogin", () => {
-  it("monta a URL de login com redirect_uri para /app", () => {
+  it("monta a URL de login com redirect_uri para /ui", () => {
     expect(urlLogin("google", "https://gfcode.com.br")).toBe(
-      "/auth/google?redirect_uri=https%3A%2F%2Fgfcode.com.br%2Fapp",
+      "/auth/google?redirect_uri=https%3A%2F%2Fgfcode.com.br%2Fui",
     );
   });
   it("suporta github", () => {

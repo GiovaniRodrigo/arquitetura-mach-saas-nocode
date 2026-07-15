@@ -27,8 +27,8 @@ export function encerrarSessao(): void {
   localStorage.removeItem(CHAVE);
 }
 
-/** URL do endpoint de login do Gateway, devolvendo o token a este SPA (/app). */
+/** URL do endpoint de login do Gateway, devolvendo o token a este SPA (/ui). */
 export function urlLogin(provedor: "google" | "github", origin: string = window.location.origin): string {
-  const redirect = encodeURIComponent(origin + "/app");
+  const redirect = encodeURIComponent(origin + "/ui");
   return `/auth/${provedor}?redirect_uri=${redirect}`;
 }
