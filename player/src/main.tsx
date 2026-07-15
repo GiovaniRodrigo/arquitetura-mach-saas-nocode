@@ -3,6 +3,7 @@
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import "./index.css";
 import { App, type PlayerConfig } from "./App";
 import { Login } from "./auth/Login";
 import { capturarTokenDaURL, obterToken } from "./auth/session";

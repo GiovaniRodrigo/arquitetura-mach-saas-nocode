@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { ApiClient, ApiError } from "../api/client";
 import type { Sistema } from "../api/types";
+import { Monitor, Plus, RefreshCcw } from "lucide-react";
 
 /** Recarrega o Player com o sistema selecionado no query string. */
 function abrirSistema(id: string) {
@@ -59,88 +60,85 @@ export function SeletorSistemas({ client }: { client: ApiClient }) {
   }
 
   return (
-    <main className="mach-seletor" style={estilos.wrap}>
-      <h1 style={estilos.titulo}>Seus sistemas</h1>
-      <p style={estilos.sub}>Escolha um sistema para abrir ou crie um novo.</p>
-
-      {erro ? (
-        <div role="alert" style={estilos.erro}>
-          <p>Não foi possível carregar seus sistemas.</p>
-          <button type="button" style={estilos.btnGhost} onClick={() => setTentativa((t) => t + 1)}>
-            Tentar novamente
-          </button>
+    <main className="min-h-screen bg-background text-foreground font-sans p-6 md:p-12 flex flex-col items-center">
+      <div className="w-full max-w-5xl space-y-8 mt-8">
+        <div>
+          <h1 className="font-heading text-4xl font-bold tracking-tight">Seus sistemas</h1>
+          <p className="text-muted-foreground mt-2 text-lg">Escolha um sistema para abrir ou crie um novo.</p>
         </div>
-      ) : sistemas === null ? (
-        <ul aria-busy="true" style={estilos.lista}>
-          {[0, 1, 2].map((i) => (
-            <li key={i} style={{ ...estilos.item, ...estilos.skeleton }} />
-          ))}
-        </ul>
-      ) : sistemas.length === 0 ? (
-        <p style={estilos.vazio}>Nenhum sistema ainda. Crie o primeiro abaixo.</p>
-      ) : (
-        <ul style={estilos.lista}>
-          {sistemas.map((s) => (
-            <li key={s.id}>
-              <button type="button" style={estilos.item} onClick={() => abrirSistema(s.id)}>
-                {s.nome}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
 
-      <form onSubmit={criar} style={estilos.form}>
-        <label htmlFor="novo-sistema" style={estilos.label}>
-          Criar sistema
-        </label>
-        <div style={estilos.formRow}>
-          <input
-            id="novo-sistema"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Nome do sistema"
-            style={estilos.input}
-          />
-          <button type="submit" disabled={!nome.trim() || criando} style={estilos.btnPrimary}>
-            {criando ? "Criando…" : "Criar"}
-          </button>
-        </div>
-        {erroCriar && (
-          <p role="alert" style={estilos.erroInline}>
-            {erroCriar}
-          </p>
+        {erro ? (
+          <div role="alert" className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl flex flex-col items-start gap-4">
+            <p>Não foi possível carregar seus sistemas.</p>
+            <button type="button" onClick={() => setTentativa((t) => t + 1)} className="flex items-center px-4 py-2 bg-background border border-border rounded-full hover:bg-zinc-800 transition-colors">
+              <RefreshCcw className="w-4 h-4 mr-2" />
+              Tentar novamente
+            </button>
+          </div>
+        ) : sistemas === null ? (
+          <ul aria-busy="true" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[0, 1, 2].map((i) => (
+              <li key={i} className="h-40 bg-zinc-900 border border-zinc-800 rounded-2xl animate-pulse" />
+            ))}
+          </ul>
+        ) : sistemas.length === 0 ? (
+          <p className="text-muted-foreground bg-zinc-900/50 p-8 rounded-2xl text-center border border-zinc-800">Nenhum sistema ainda. Crie o primeiro abaixo.</p>
+        ) : (
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sistemas.map((s) => (
+              <li key={s.id}>
+                <button 
+                  type="button" 
+                  onClick={() => abrirSistema(s.id)}
+                  className="w-full h-full text-left p-6 bg-zinc-900 border border-zinc-800 hover:border-primary/50 hover:bg-zinc-800/80 rounded-2xl transition-all group flex flex-col gap-4"
+                >
+                  <div className="w-12 h-12 bg-zinc-800 group-hover:bg-primary/20 rounded-xl flex items-center justify-center text-zinc-400 group-hover:text-primary transition-colors">
+                    <Monitor className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-semibold text-xl text-zinc-100">{s.nome}</h3>
+                    <p className="text-zinc-400 text-sm mt-1 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Online
+                    </p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
-      </form>
+
+        <form onSubmit={criar} className="mt-12 pt-8 border-t border-border max-w-md">
+          <label htmlFor="novo-sistema" className="block text-sm font-semibold text-zinc-300 mb-2">
+            Criar novo sistema
+          </label>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              id="novo-sistema"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Nome do sistema"
+              className="flex-1 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            />
+            <button 
+              type="submit" 
+              disabled={!nome.trim() || criando} 
+              className="flex items-center justify-center px-6 py-3 bg-primary hover:bg-primary/90 text-white font-medium rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {criando ? (
+                <RefreshCcw className="w-5 h-5 mr-2 animate-spin" />
+              ) : (
+                <Plus className="w-5 h-5 mr-2" />
+              )}
+              Criar
+            </button>
+          </div>
+          {erroCriar && (
+            <p role="alert" className="text-destructive text-sm mt-3">
+              {erroCriar}
+            </p>
+          )}
+        </form>
+      </div>
     </main>
   );
 }
-
-const estilos: Record<string, React.CSSProperties> = {
-  wrap: { maxWidth: 480, margin: "8vh auto", fontFamily: "system-ui, sans-serif", padding: "0 16px" },
-  titulo: { fontSize: "1.5rem", marginBottom: 4 },
-  sub: { color: "#475569", marginTop: 0, fontSize: ".95rem" },
-  lista: { listStyle: "none", padding: 0, margin: "16px 0", display: "flex", flexDirection: "column", gap: 8 },
-  item: {
-    width: "100%", textAlign: "left", padding: "12px 14px", minHeight: 44,
-    border: "1px solid #E2E8F0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: "1rem",
-  },
-  skeleton: { background: "#EEF2F7", color: "transparent", cursor: "default", height: 44 },
-  vazio: { color: "#475569", margin: "16px 0" },
-  form: { marginTop: 24, borderTop: "1px solid #E2E8F0", paddingTop: 16 },
-  label: { fontSize: ".85rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: 6 },
-  formRow: { display: "flex", gap: 8 },
-  input: {
-    flex: 1, minHeight: 44, padding: "0 12px", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: "1rem",
-  },
-  btnPrimary: {
-    minHeight: 44, padding: "0 18px", border: "none", borderRadius: 8,
-    background: "#6366F1", color: "#fff", fontWeight: 600, cursor: "pointer",
-  },
-  btnGhost: {
-    minHeight: 40, padding: "0 14px", border: "1px solid #E2E8F0", borderRadius: 8,
-    background: "#fff", color: "#475569", cursor: "pointer", marginTop: 8,
-  },
-  erro: { border: "1px solid #FECACA", background: "#FEE2E2", borderRadius: 8, padding: 16, color: "#7F1D1D" },
-  erroInline: { color: "#DC2626", fontSize: ".85rem", marginTop: 8 },
-};
