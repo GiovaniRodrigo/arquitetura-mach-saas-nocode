@@ -73,7 +73,7 @@ func harness(t *testing.T) (handler http.Handler, iss *auth.Issuer, tenantA, ten
 	if err != nil {
 		t.Fatal(err)
 	}
-	iamSrv := iamapp.NewServer(&priv.PublicKey, pool)
+	iamSrv := iamapp.NewServer(priv, time.Hour, pool)
 
 	// IAM sobre bufconn, com o interceptor que extrai o TenantContext do Metadata.
 	lis := bufconn.Listen(1 << 20)
