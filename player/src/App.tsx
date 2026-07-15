@@ -3,7 +3,7 @@
 // formulário pré-validada localmente (RF01, RN03, RN04, RN08).
 
 import { useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ApiClient } from "./api/client";
 import type { CampoDef, Componente, MapaPermissoes, VersaoAtiva } from "./api/types";
 import { CompositeRenderer } from "./renderer/CompositeRenderer";
@@ -15,6 +15,9 @@ import { DashboardLayout } from "./layout/DashboardLayout";
 import { Overview } from "./pages/Dashboard/Overview";
 import { Projects } from "./pages/Dashboard/Projects";
 import { Settings } from "./pages/Dashboard/Settings";
+import { Perfil } from "./pages/Dashboard/Perfil";
+import { AppProvider } from "./app/AppContext";
+import { usuarioDe } from "./auth/jwt";
 
 export interface PlayerConfig {
   baseUrl: string;
@@ -61,24 +64,26 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
   const porScreen = new Map(
     (versao?.definicao.designs ?? []).map((d) => [d.id, d.arvore]),
   );
+  const usuario = usuarioDe(config.token);
 
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      {rotas.length > 0 && (
-        <nav>
-          {rotas.map((r) => (
-            <Link key={r.path} to={r.path}>
-              {r.nome}
-            </Link>
-          ))}
-        </nav>
-      )}
       <Routes>
-        {/* Casca M3: tela de entrada pós-autenticação, independente de sistema. */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
+        {/* Casca M3: tela de entrada pós-autenticação, independente de sistema.
+            A sidebar do DashboardLayout é a navegação; o AppProvider injeta
+            client + identidade do usuário (RF01-RF03). */}
+        <Route
+          path="/dashboard"
+          element={
+            <AppProvider client={client} usuario={usuario}>
+              <DashboardLayout />
+            </AppProvider>
+          }
+        >
           <Route index element={<Overview />} />
           <Route path="projects" element={<Projects />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="settings/perfil" element={<Perfil />} />
         </Route>
         {/* Seleção/criação de sistema (antes era o gate pós-login). */}
         <Route path="/sistemas" element={<SeletorSistemas client={client} />} />
