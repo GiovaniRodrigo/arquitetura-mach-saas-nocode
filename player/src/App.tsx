@@ -11,6 +11,8 @@ import { blindIndexesDe, filtrarVisiveis } from "./permissions/permissionMap";
 import { rotasDe } from "./router/dynamicRoutes";
 import { SeletorSistemas } from "./systems/SeletorSistemas";
 import { validar } from "./validation/blindIndexValidator";
+import { DashboardLayout } from "./layout/DashboardLayout";
+import { Overview } from "./pages/Dashboard/Overview";
 
 export interface PlayerConfig {
   baseUrl: string;
@@ -65,6 +67,9 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
         ))}
       </nav>
       <Routes>
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Overview />} />
+        </Route>
         {rotas.map((r) => (
           <Route
             key={r.path}
