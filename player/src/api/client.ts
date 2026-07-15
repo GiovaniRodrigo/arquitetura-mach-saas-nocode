@@ -2,7 +2,7 @@
 // Gateway e traduz as rotas REST. A identidade viaja apenas no cabeçalho
 // Authorization; o tenant é derivado do token pelo Gateway (nunca enviado no corpo).
 
-import type { MapaPermissoes, RespostaFormulario, VersaoAtiva } from "./types";
+import type { MapaPermissoes, RespostaFormulario, Sistema, VersaoAtiva } from "./types";
 
 /** `fetch` injetável para testes. */
 export type FetchFn = typeof fetch;
@@ -50,6 +50,25 @@ export class ApiClient {
     });
     const corpo = await this.parse<{ permissions: MapaPermissoes }>(resp);
     return corpo.permissions;
+  }
+
+  /** Lista os sistemas do tenant para o seletor inicial (RN01). */
+  async listarSistemas(): Promise<Sistema[]> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/sistemas`, {
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ sistemas: Sistema[] }>(resp);
+    return corpo.sistemas ?? [];
+  }
+
+  /** Cria um sistema; 403 (cliente final) vira ApiError e é tratado na UI. */
+  async criarSistema(nome: string): Promise<Sistema> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/sistemas`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ nome }),
+    });
+    return this.parse<Sistema>(resp);
   }
 
   /** Versão ativa consolidada — o Player sempre consome esta (RN04). */

@@ -20,6 +20,8 @@ type DesignCliente interface {
 	ObterDesign(ctx context.Context, in *designv1.ObterDesignRequest, opts ...grpc.CallOption) (*designv1.Design, error)
 	AtualizarDesign(ctx context.Context, in *designv1.Design, opts ...grpc.CallOption) (*designv1.Design, error)
 	RemoverDesign(ctx context.Context, in *designv1.ObterDesignRequest, opts ...grpc.CallOption) (*designv1.RemoverResponse, error)
+	CriarSistema(ctx context.Context, in *designv1.CriarSistemaRequest, opts ...grpc.CallOption) (*designv1.Sistema, error)
+	ListarSistemas(ctx context.Context, in *designv1.ListarSistemasRequest, opts ...grpc.CallOption) (*designv1.ListarSistemasResponse, error)
 }
 
 // componenteDTO espelha o nó Composite no corpo JSON. `propriedades` trafega como

@@ -40,6 +40,9 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 
 		r.Get("/api/v1/permissoes", routes.Permissoes(iam))
 
+		r.Get("/api/v1/sistemas", routes.ListarSistemas(design))
+		r.Post("/api/v1/sistemas", routes.CriarSistema(design))
+
 		r.Post("/api/v1/designs", routes.CriarDesign(design))
 		r.Get("/api/v1/designs/{id}", routes.ObterDesign(design))
 		r.Put("/api/v1/designs/{id}", routes.AtualizarDesign(design))

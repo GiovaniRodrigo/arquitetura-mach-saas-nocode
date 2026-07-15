@@ -40,6 +40,23 @@ message RemoverResponse {
   bool sucesso = 1;
 }
 
+// Sistema criado pelo utilizador, isolado por tenant (RN01). É o contêiner ao
+// qual os designs e as versões publicadas pertencem.
+message Sistema {
+  string id = 1;
+  string nome = 2;
+}
+
+message CriarSistemaRequest {
+  string nome = 1;
+}
+
+message ListarSistemasRequest {}
+
+message ListarSistemasResponse {
+  repeated Sistema sistemas = 1;
+}
+
 service DesignEngineService {
   rpc CriarDesign(Design) returns (Design);
   rpc ObterDesign(ObterDesignRequest) returns (Design);
@@ -47,4 +64,8 @@ service DesignEngineService {
   rpc RemoverDesign(ObterDesignRequest) returns (RemoverResponse);
   // Chamada única em lote da colaboração (write-behind).
   rpc SalvarDesign(SalvarDesignRequest) returns (SalvarDesignResponse);
+  // Descoberta/criação de sistemas do tenant, consumida pelo seletor do Player
+  // (RN01). Criar é restrito a dono/parceiro; listar é aberto ao tenant.
+  rpc CriarSistema(CriarSistemaRequest) returns (Sistema);
+  rpc ListarSistemas(ListarSistemasRequest) returns (ListarSistemasResponse);
 }
