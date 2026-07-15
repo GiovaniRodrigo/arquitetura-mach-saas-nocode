@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Tela dinâmica (nav + formulário renderizado)</title>
+<style>
+  :root{
+    --color-primary:#6366F1; --color-primary-600:#4F46E5;
+    --color-bg:#F8FAFC; --color-surface:#FFFFFF; --color-border:#E2E8F0;
+    --color-text:#0F172A; --color-text-2:#475569; --color-text-3:#94A3B8;
+    --color-success:#16A34A; --color-success-bg:#DCFCE7;
+    --color-error:#DC2626;
+    --radius:12px; --radius-sm:8px; --tap-min:44px;
+    --font-ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--color-bg);font-family:var(--font-ui);color:var(--color-text)}
+  /* Header com marca — data-principle="assunto-obvio" */
+  header{background:var(--color-surface);border-bottom:1px solid var(--color-border);
+         display:flex;align-items:center;gap:12px;padding:12px 20px;position:sticky;top:0}
+  .logo{width:32px;height:32px;border-radius:8px;background:var(--color-primary);color:#fff;display:grid;place-items:center;font-weight:700}
+  .sysname{font-weight:600}
+  .who{margin-left:auto;color:var(--color-text-2);font-size:.85rem}
+  .shell{display:grid;grid-template-columns:220px 1fr;gap:0;min-height:calc(100vh - 57px)}
+  /* NAV — data-principle="consistencia" + rota ativa destacada */
+  nav{background:var(--color-surface);border-right:1px solid var(--color-border);padding:16px 12px}
+  nav a{display:block;padding:10px 12px;border-radius:8px;color:var(--color-text-2);
+        text-decoration:none;font-size:.9rem;margin-bottom:4px;min-height:var(--tap-min);
+        display:flex;align-items:center}
+  nav a:hover{background:#F1F5F9;color:var(--color-text)}
+  nav a[aria-current="page"]{background:#EEF2FF;color:var(--color-primary-600);font-weight:600}
+  main{padding:28px;max-width:640px}
+  h1{font-size:1.5rem;margin:0 0 4px}
+  .crumb{color:var(--color-text-3);font-size:.8rem;margin-bottom:18px}
+  /* Formulário — data-principle="proximidade": erro inline sob o campo */
+  .field{margin-bottom:18px;display:flex;flex-direction:column;gap:6px}
+  label{font-size:.85rem;font-weight:600;color:var(--color-text-2)}
+  input{min-height:var(--tap-min);border:1px solid var(--color-border);border-radius:var(--radius-sm);
+        padding:0 12px;font-size:.95rem;font-family:inherit;background:#fff}
+  input:focus-visible{outline:3px solid #C7D2FE;outline-offset:1px;border-color:var(--color-primary)}
+  input[aria-invalid="true"]{border-color:var(--color-error)}
+  .err-inline{color:var(--color-error);font-size:.8rem}
+  .actions{display:flex;gap:10px;margin-top:8px}
+  .btn{min-height:var(--tap-min);padding:0 18px;border-radius:var(--radius-sm);font-weight:600;
+       font-size:.9rem;cursor:pointer;border:1px solid transparent;display:inline-flex;align-items:center;gap:8px}
+  .btn-primary{background:var(--color-primary);color:#fff}
+  .btn-primary:hover{background:var(--color-primary-600)}
+  .btn-ghost{background:#fff;border-color:var(--color-border);color:var(--color-text-2)}
+  /* Feedback — data-principle="feedback": toast de sucesso */
+  .toast{margin-top:18px;background:var(--color-success-bg);color:#14532D;border:1px solid #86EFAC;
+         border-radius:var(--radius-sm);padding:12px 14px;font-size:.9rem;display:flex;gap:8px;align-items:center}
+  @media (max-width:720px){.shell{grid-template-columns:1fr}nav{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--color-border)}nav a{margin:0 4px 0 0}}
+</style>
+</head>
+<body>
+  <header>
+    <div class="logo">M</div>
+    <span class="sysname">Sistema de Chamados</span>
+    <span class="who" data-principle="feedback">maria@empresa.com</span>
+  </header>
+
+  <div class="shell">
+    <!-- data-principle="inicio-obvio": rota ativa destacada -->
+    <nav aria-label="Telas do sistema">
+      <a href="#" aria-current="page">Abrir chamado</a>
+      <a href="#">Meus chamados</a>
+      <a href="#">Relatórios</a>
+    </nav>
+
+    <main>
+      <p class="crumb">Sistema de Chamados › Abrir chamado</p>
+      <h1>Abrir chamado</h1>
+
+      <form data-principle="proximidade" onsubmit="return false">
+        <div class="field">
+          <label for="titulo">Título</label>
+          <input id="titulo" value="Impressora sem tinta" />
+        </div>
+
+        <!-- campo com erro de validação inline (RN08) -->
+        <div class="field">
+          <label for="email">E-mail para contato</label>
+          <input id="email" aria-invalid="true" value="maria@" />
+          <span class="err-inline" role="alert">E-mail inválido.</span>
+        </div>
+
+        <div class="field">
+          <label for="desc">Descrição</label>
+          <input id="desc" value="Setor financeiro, 2º andar" />
+        </div>
+
+        <!-- data-principle="reversao-clara": Cancelar ao lado de Enviar -->
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Enviar chamado</button>
+          <button class="btn btn-ghost" type="reset">Cancelar</button>
+        </div>
+      </form>
+
+      <!-- estado de sucesso após submissão validada (RF01) -->
+      <div class="toast" role="status" data-principle="feedback">✓ Chamado enviado com sucesso.</div>
+    </main>
+  </div>
+</body>
+</html>
