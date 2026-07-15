@@ -23,6 +23,8 @@ type Persistencia interface {
 	Atualizar(ctx context.Context, d *designv1.Design) error
 	Remover(ctx context.Context, id string) error
 	Salvar(ctx context.Context, d *designv1.Design) error
+	CriarSistema(ctx context.Context, nome string) (string, error)
+	ListarSistemas(ctx context.Context) ([]*designv1.Sistema, error)
 }
 
 // DesignServer implementa designv1.DesignEngineServiceServer.
@@ -117,6 +119,39 @@ func (s *DesignServer) SalvarDesign(ctx context.Context, req *designv1.SalvarDes
 		return nil, mapErr(err)
 	}
 	return &designv1.SalvarDesignResponse{Sucesso: true}, nil
+}
+
+// CriarSistema cria um sistema no tenant do contexto. A criação é restrita a
+// dono/parceiro; cliente final apenas lista (RN01, RN02).
+func (s *DesignServer) CriarSistema(ctx context.Context, req *designv1.CriarSistemaRequest) (*designv1.Sistema, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	if tc.GetTipo() != "dono" && tc.GetTipo() != "parceiro" {
+		return nil, status.Error(codes.PermissionDenied, "apenas dono ou parceiro podem criar sistema")
+	}
+	if req.GetNome() == "" {
+		return nil, status.Error(codes.InvalidArgument, "nome obrigatório")
+	}
+	id, err := s.store.CriarSistema(ctx, req.GetNome())
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	return &designv1.Sistema{Id: id, Nome: req.GetNome()}, nil
+}
+
+// ListarSistemas devolve os sistemas do tenant do contexto (aberto a qualquer
+// autenticado; a RLS isola por tenant).
+func (s *DesignServer) ListarSistemas(ctx context.Context, _ *designv1.ListarSistemasRequest) (*designv1.ListarSistemasResponse, error) {
+	if err := exigirTenant(ctx); err != nil {
+		return nil, err
+	}
+	sistemas, err := s.store.ListarSistemas(ctx)
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	return &designv1.ListarSistemasResponse{Sistemas: sistemas}, nil
 }
 
 // exigirTenant rejeita chamadas sem TenantContext no Metadata (RN01, RNF02).

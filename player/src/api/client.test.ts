@@ -51,4 +51,35 @@ describe("ApiClient (RF03/RN08)", () => {
 
     await expect(client.versaoAtiva("s1")).rejects.toBeInstanceOf(ApiError);
   });
+
+  it("listarSistemas desembrulha o campo sistemas", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(200, { sistemas: [{ id: "a", nome: "Alfa" }, { id: "b", nome: "Beta" }] }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const lista = await client.listarSistemas();
+    const [url] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/sistemas");
+    expect(lista).toHaveLength(2);
+    expect(lista[0].nome).toBe("Alfa");
+  });
+
+  it("criarSistema faz POST com o nome e devolve o sistema", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(201, { id: "sis-1", nome: "Demo" }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const novo = await client.criarSistema("Demo");
+    const [, init] = fetchFn.mock.calls[0];
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ nome: "Demo" });
+    expect(novo.id).toBe("sis-1");
+  });
+
+  it("criarSistema propaga 403 como ApiError (cliente final)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(403, { codigo: "FORBIDDEN", mensagem: "sem permissão" }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await expect(client.criarSistema("Demo")).rejects.toBeInstanceOf(ApiError);
+  });
 });

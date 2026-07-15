@@ -52,3 +52,9 @@ export interface RespostaFormulario {
   erros_validacao?: Record<string, string>;
   mensagem_status: string;
 }
+
+/** Sistema do tenant, consumido pelo seletor (RN01). */
+export interface Sistema {
+  id: string;
+  nome: string;
+}
