@@ -22,7 +22,11 @@ export class ApiClient {
   constructor(
     private readonly baseUrl: string,
     private readonly token: string,
-    private readonly fetchFn: FetchFn = fetch,
+    // Encapsula o fetch nativo numa arrow: chamá-lo como `this.fetchFn(...)`
+    // ligaria `this` à instância do ApiClient, e o fetch do navegador rejeita
+    // ("Illegal invocation") qualquer `this` que não seja o objeto global. A
+    // arrow o invoca como chamada livre (this = global), preservando o binding.
+    private readonly fetchFn: FetchFn = (input, init) => fetch(input, init),
   ) {}
 
   private headers(): HeadersInit {

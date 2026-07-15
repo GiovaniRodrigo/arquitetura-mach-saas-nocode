@@ -82,4 +82,24 @@ describe("ApiClient (RF03/RN08)", () => {
 
     await expect(client.criarSistema("Demo")).rejects.toBeInstanceOf(ApiError);
   });
+
+  it("com o fetch padrão, invoca o fetch global sem quebrar o binding (this)", async () => {
+    // Reproduz o "Illegal invocation": o fetch nativo exige this global. Sem
+    // fetchFn injetado, o client deve chamá-lo como função livre (this global).
+    const orig = globalThis.fetch;
+    const espiao = vi.fn(function (this: unknown) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+      }
+      return Promise.resolve(respostaJSON(200, { sistemas: [] }));
+    });
+    globalThis.fetch = espiao as unknown as typeof fetch;
+    try {
+      const client = new ApiClient("http://gw", "t"); // usa o fetch padrão
+      await expect(client.listarSistemas()).resolves.toEqual([]);
+      expect(espiao).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
 });
