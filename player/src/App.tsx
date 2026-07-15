@@ -32,7 +32,7 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!config.sistemaId && import.meta.env.VITE_BYPASS_AUTH !== "true") return;
+    if (!config.sistemaId) return;
     let vivo = true;
     (async () => {
       try {
@@ -52,43 +52,37 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
     };
   }, [client, config.sistemaId]);
 
-  if (import.meta.env.VITE_BYPASS_AUTH === "true") {
-    return (
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Routes>
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<Overview />} />
-            <Route path="projects" element={<Projects />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-    );
-  }
+  // Um sistema explícito na URL (?sistema=…) exibe seus próprios estados de
+  // carregamento/erro; sem sistema, seguimos direto para a casca (dashboard).
+  if (config.sistemaId && erro) return <div role="alert">{erro}</div>;
+  if (config.sistemaId && !versao) return <div>Carregando…</div>;
 
-  if (!config.sistemaId) return <SeletorSistemas client={client} />;
-  if (erro) return <div role="alert">{erro}</div>;
-  if (!versao) return <div>Carregando…</div>;
-
-  const rotas = rotasDe(versao, permissoes);
-  const porScreen = new Map(versao.definicao.designs.map((d) => [d.id, d.arvore]));
+  const rotas = versao ? rotasDe(versao, permissoes) : [];
+  const porScreen = new Map(
+    (versao?.definicao.designs ?? []).map((d) => [d.id, d.arvore]),
+  );
 
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <nav>
-        {rotas.map((r) => (
-          <Link key={r.path} to={r.path}>
-            {r.nome}
-          </Link>
-        ))}
-      </nav>
+      {rotas.length > 0 && (
+        <nav>
+          {rotas.map((r) => (
+            <Link key={r.path} to={r.path}>
+              {r.nome}
+            </Link>
+          ))}
+        </nav>
+      )}
       <Routes>
+        {/* Casca M3: tela de entrada pós-autenticação, independente de sistema. */}
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Overview />} />
           <Route path="projects" element={<Projects />} />
           <Route path="settings" element={<Settings />} />
         </Route>
+        {/* Seleção/criação de sistema (antes era o gate pós-login). */}
+        <Route path="/sistemas" element={<SeletorSistemas client={client} />} />
+        {/* Telas dinâmicas do sistema ativo. */}
         {rotas.map((r) => (
           <Route
             key={r.path}
@@ -99,14 +93,20 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
                 sistemaId={config.sistemaId}
                 arvore={porScreen.get(r.screenId)!}
                 permissoes={permissoes}
-                campos={versao.definicao.campos}
+                campos={versao!.definicao.campos}
               />
             }
           />
         ))}
+        {/* Default: com sistema ativo abre sua 1ª tela; senão, o dashboard. */}
         <Route
           path="*"
-          element={rotas[0] ? <Navigate to={rotas[0].path} replace /> : <div>Sem ecrãs disponíveis</div>}
+          element={
+            <Navigate
+              to={config.sistemaId && rotas[0] ? rotas[0].path : "/dashboard"}
+              replace
+            />
+          }
         />
       </Routes>
     </BrowserRouter>

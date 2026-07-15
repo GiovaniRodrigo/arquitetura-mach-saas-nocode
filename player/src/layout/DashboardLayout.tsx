@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Home, Folder, Settings } from 'lucide-react';
+import { Home, Folder, Settings, LogOut } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { encerrarSessao } from '@/auth/session';
 import {
   SidebarProvider,
   Sidebar,
@@ -60,8 +61,18 @@ export function DashboardLayout() {
               <SidebarTrigger className="-ml-2" />
               <h1 className="text-xl font-heading font-medium text-foreground hidden sm:block">Welcome, User</h1>
             </div>
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
-              U
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => { encerrarSessao(); window.location.reload(); }}
+                className="flex items-center px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-full transition-colors"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </button>
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
+                U
+              </div>
             </div>
           </header>
 
