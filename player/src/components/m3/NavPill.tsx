@@ -16,8 +16,8 @@ export function NavPill({ to, icon, label, end = false }: NavPillProps) {
       className={({ isActive }) =>
         `flex flex-col items-center justify-center w-full py-3 gap-1 rounded-full transition-all duration-200 active:scale-95 ${
           isActive
-            ? 'bg-blue-100 text-blue-900 font-semibold'
-            : 'text-slate-600 hover:bg-slate-100'
+            ? 'bg-primary/15 text-primary font-semibold'
+            : 'text-muted-foreground hover:bg-secondary'
         }`
       }
     >
