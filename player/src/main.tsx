@@ -7,6 +7,11 @@ import "./index.css";
 import { App, type PlayerConfig } from "./App";
 import { Login } from "./auth/Login";
 import { capturarTokenDaURL, obterToken } from "./auth/session";
+import { ThemeProvider } from "./theme/ThemeProvider";
+import { initTheme } from "./theme/initTheme";
+
+// Aplica o tema salvo antes do primeiro paint, evitando flash (RNF04).
+initTheme();
 
 declare global {
   interface Window {
@@ -27,7 +32,9 @@ if (!token && !isBypass) {
   // Sem sessão: oferece login social (Google/GitHub) via Gateway.
   root.render(
     <StrictMode>
-      <Login />
+      <ThemeProvider>
+        <Login />
+      </ThemeProvider>
     </StrictMode>,
   );
 } else {
@@ -42,7 +49,9 @@ if (!token && !isBypass) {
       };
   root.render(
     <StrictMode>
-      <App config={config} />
+      <ThemeProvider>
+        <App config={config} />
+      </ThemeProvider>
     </StrictMode>,
   );
 }
