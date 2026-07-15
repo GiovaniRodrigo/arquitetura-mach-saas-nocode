@@ -9,9 +9,8 @@ describe('Page: Projects Dashboard', () => {
     expect(screen.getByText(/Gerencie seus projetos/i)).toBeTruthy();
   });
 
-  it('deve renderizar a lista de projetos mockada', () => {
+  it('exibe estado vazio, sem projetos mockados', () => {
     render(<Projects />);
-    expect(screen.getByText('ERP Financeiro')).toBeTruthy();
-    expect(screen.getByText('Criar novo projeto')).toBeTruthy();
+    expect(screen.getByText(/Nenhum projeto ainda/i)).toBeTruthy();
   });
 });

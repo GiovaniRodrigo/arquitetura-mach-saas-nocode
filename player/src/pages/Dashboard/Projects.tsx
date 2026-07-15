@@ -11,21 +11,9 @@ export function Projects() {
         </p>
       </TonalCard>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ElevatedCard className="bg-card text-card-foreground">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-lg font-heading font-bold">ERP Financeiro</h3>
-            <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">Ativo</span>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">Módulo de gestão financeira com integração bancária.</p>
-          <div className="text-sm font-medium text-primary cursor-pointer hover:underline">Abrir projeto &rarr;</div>
-        </ElevatedCard>
-
-        <ElevatedCard className="bg-card text-card-foreground border-dashed border-2 border-border shadow-none hover:border-primary/50 cursor-pointer flex items-center justify-center flex-col min-h-[160px]">
-          <div className="text-4xl text-muted-foreground mb-2">+</div>
-          <p className="text-sm font-medium text-muted-foreground">Criar novo projeto</p>
-        </ElevatedCard>
-      </div>
+      <ElevatedCard className="bg-card text-card-foreground">
+        <p className="text-sm text-muted-foreground">Nenhum projeto ainda.</p>
+      </ElevatedCard>
     </div>
   );
 }

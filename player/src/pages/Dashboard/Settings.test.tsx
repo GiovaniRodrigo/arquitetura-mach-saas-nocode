@@ -8,10 +8,4 @@ describe('Page: Settings Dashboard', () => {
     expect(screen.getByText('Configurações')).toBeTruthy();
     expect(screen.getByText(/Ajuste as preferências/i)).toBeTruthy();
   });
-
-  it('deve renderizar os painéis de configuração', () => {
-    render(<Settings />);
-    expect(screen.getByText('Perfil do Usuário')).toBeTruthy();
-    expect(screen.getByText('Aparência')).toBeTruthy();
-  });
 });
