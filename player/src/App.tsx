@@ -11,6 +11,10 @@ import { blindIndexesDe, filtrarVisiveis } from "./permissions/permissionMap";
 import { rotasDe } from "./router/dynamicRoutes";
 import { SeletorSistemas } from "./systems/SeletorSistemas";
 import { validar } from "./validation/blindIndexValidator";
+import { DashboardLayout } from "./layout/DashboardLayout";
+import { Overview } from "./pages/Dashboard/Overview";
+import { Projects } from "./pages/Dashboard/Projects";
+import { Settings } from "./pages/Dashboard/Settings";
 
 export interface PlayerConfig {
   baseUrl: string;
@@ -28,7 +32,7 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!config.sistemaId) return;
+    if (!config.sistemaId && import.meta.env.VITE_BYPASS_AUTH !== "true") return;
     let vivo = true;
     (async () => {
       try {
@@ -48,6 +52,21 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
     };
   }, [client, config.sistemaId]);
 
+  if (import.meta.env.VITE_BYPASS_AUTH === "true") {
+    return (
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <Routes>
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<Overview />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   if (!config.sistemaId) return <SeletorSistemas client={client} />;
   if (erro) return <div role="alert">{erro}</div>;
   if (!versao) return <div>Carregando…</div>;
@@ -65,6 +84,11 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
         ))}
       </nav>
       <Routes>
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Overview />} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
         {rotas.map((r) => (
           <Route
             key={r.path}
