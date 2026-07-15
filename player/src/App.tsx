@@ -13,6 +13,8 @@ import { SeletorSistemas } from "./systems/SeletorSistemas";
 import { validar } from "./validation/blindIndexValidator";
 import { DashboardLayout } from "./layout/DashboardLayout";
 import { Overview } from "./pages/Dashboard/Overview";
+import { Projects } from "./pages/Dashboard/Projects";
+import { Settings } from "./pages/Dashboard/Settings";
 
 export interface PlayerConfig {
   baseUrl: string;
@@ -56,6 +58,8 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
         <Routes>
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Overview />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
@@ -82,6 +86,8 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
       <Routes>
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Overview />} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
         {rotas.map((r) => (
           <Route
