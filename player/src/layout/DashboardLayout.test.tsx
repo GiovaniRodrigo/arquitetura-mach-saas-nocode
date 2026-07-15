@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DashboardLayout } from './DashboardLayout';
-import { TooltipProvider } from '@/components/ui/tooltip';
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

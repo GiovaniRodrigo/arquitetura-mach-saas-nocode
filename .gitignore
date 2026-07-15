@@ -19,6 +19,8 @@ go.work.sum
 # Node / Player
 node_modules/
 /player/dist/
+/player/playwright-report/
+/player/test-results/
 
 # Infra / segredos locais
 .env
