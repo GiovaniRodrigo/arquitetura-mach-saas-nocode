@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Home, Folder, Settings } from 'lucide-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   SidebarProvider,
   Sidebar,
@@ -15,7 +16,8 @@ export function DashboardLayout() {
   const location = useLocation();
 
   return (
-    <SidebarProvider>
+    <TooltipProvider>
+      <SidebarProvider>
       <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
         <Sidebar>
           <SidebarHeader className="p-4">
@@ -64,5 +66,6 @@ export function DashboardLayout() {
         </div>
       </div>
     </SidebarProvider>
+    </TooltipProvider>
   );
 }

@@ -23,7 +23,6 @@ describe('Template: DashboardLayout', () => {
   const renderLayout = (initialRoute = '/dashboard') => {
     return render(
       <MemoryRouter initialEntries={[initialRoute]}>
-        <TooltipProvider>
           <Routes>
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<div data-testid="outlet-content">Home Content</div>} />
@@ -31,7 +30,6 @@ describe('Template: DashboardLayout', () => {
               <Route path="settings" element={<div data-testid="outlet-content">Settings Content</div>} />
             </Route>
           </Routes>
-        </TooltipProvider>
       </MemoryRouter>
     );
   };
