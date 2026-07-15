@@ -7,7 +7,8 @@
 import { useEffect, useState } from "react";
 import { ApiClient, ApiError } from "../api/client";
 import type { Sistema } from "../api/types";
-import { Monitor, Plus, RefreshCcw } from "lucide-react";
+import { Monitor, Plus, RefreshCcw, LogOut } from "lucide-react";
+import { encerrarSessao } from "../auth/session";
 
 /** Recarrega o Player com o sistema selecionado no query string. */
 function abrirSistema(id: string) {
@@ -62,9 +63,19 @@ export function SeletorSistemas({ client }: { client: ApiClient }) {
   return (
     <main className="min-h-screen bg-background text-foreground font-sans p-6 md:p-12 flex flex-col items-center">
       <div className="w-full max-w-5xl space-y-8 mt-8">
-        <div>
-          <h1 className="font-heading text-4xl font-bold tracking-tight">Seus sistemas</h1>
-          <p className="text-muted-foreground mt-2 text-lg">Escolha um sistema para abrir ou crie um novo.</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="font-heading text-4xl font-bold tracking-tight">Seus sistemas</h1>
+            <p className="text-muted-foreground mt-2 text-lg">Escolha um sistema para abrir ou crie um novo.</p>
+          </div>
+          <button 
+            type="button"
+            onClick={() => { encerrarSessao(); window.location.reload(); }}
+            className="flex items-center px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-full transition-colors"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair
+          </button>
         </div>
 
         {erro ? (
