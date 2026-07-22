@@ -17,6 +17,15 @@ export const usuarioFake: UsuarioAutenticado = {
   nome: 'Ana Silva',
   email: 'ana@x.com',
   iniciais: 'AS',
+  podeCriarSistema: true,
+};
+
+/** Usuário cliente-final (sem papel dono/parceiro) — não vê CTAs de criação (RN10). */
+export const usuarioClienteFake: UsuarioAutenticado = {
+  nome: 'Bruno Cliente',
+  email: 'bruno@x.com',
+  iniciais: 'BC',
+  podeCriarSistema: false,
 };
 
 export function renderDashboard(

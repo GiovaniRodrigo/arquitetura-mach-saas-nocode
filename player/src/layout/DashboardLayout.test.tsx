@@ -22,7 +22,12 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 const client = {} as ApiClient;
-const usuario: UsuarioAutenticado = { nome: 'Ana Silva', email: 'ana@x.com', iniciais: 'AS' };
+const usuario: UsuarioAutenticado = {
+  nome: 'Ana Silva',
+  email: 'ana@x.com',
+  iniciais: 'AS',
+  podeCriarSistema: true,
+};
 
 describe('Template: DashboardLayout', () => {
   const renderLayout = (initialRoute = '/dashboard') =>

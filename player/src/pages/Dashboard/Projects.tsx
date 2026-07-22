@@ -7,14 +7,15 @@ import { abrirSistema } from '../../systems/abrirSistema';
 import { useNavigate } from 'react-router-dom';
 
 export function Projects() {
-  const { client } = useApp();
+  const { client, usuario } = useApp();
   const { estado, recarregar } = useSistemas(client);
   const navigate = useNavigate();
 
   // Criação reutiliza a tela de seleção (que contém o formulário de criação).
   const irParaCriacao = () => navigate('/sistemas');
 
-  const cardNovo = (
+  // Sem permissão de criação (RN10), a UI oculta o card em vez de expor um erro.
+  const cardNovo = usuario.podeCriarSistema ? (
     <ElevatedCard className="border-dashed border-2 border-border shadow-none hover:border-primary/50 cursor-pointer flex items-center justify-center flex-col min-h-[160px]">
       <button
         type="button"
@@ -25,7 +26,7 @@ export function Projects() {
         <p className="text-sm font-medium text-muted-foreground">Criar novo projeto</p>
       </button>
     </ElevatedCard>
-  );
+  ) : null;
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
@@ -45,13 +46,15 @@ export function Projects() {
           titulo="Nenhum projeto ainda"
           descricao="Crie seu primeiro sistema para começar."
           acao={
-            <button
-              type="button"
-              onClick={irParaCriacao}
-              className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
-            >
-              Criar projeto
-            </button>
+            usuario.podeCriarSistema ? (
+              <button
+                type="button"
+                onClick={irParaCriacao}
+                className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
+              >
+                Criar projeto
+              </button>
+            ) : undefined
           }
         />
       ) : (

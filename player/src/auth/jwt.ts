@@ -7,6 +7,12 @@ export interface UsuarioAutenticado {
   email?: string;
   /** Iniciais para o avatar; fallback "?". */
   iniciais: string;
+  /**
+   * Verdadeiro se o claim `tipo` do token é "dono" ou "parceiro" (RN10). Usado
+   * só para decidir VISIBILIDADE de CTAs de criação na UI — nunca é a fonte da
+   * autorização real, que permanece inteiramente no Gateway/IAM (RNF06).
+   */
+  podeCriarSistema: boolean;
 }
 
 interface ClaimsJwt {
@@ -14,6 +20,8 @@ interface ClaimsJwt {
   email?: string;
   preferred_username?: string;
   sub?: string;
+  /** dono | parceiro | cliente — ver services/iam/auth/jwt.go. */
+  tipo?: string;
 }
 
 /** Decodifica o payload (2ª parte) de um JWT em base64url. Retorna null se inválido. */
@@ -50,5 +58,6 @@ export function usuarioDe(token: string): UsuarioAutenticado {
   const claims = token ? lerClaims(token) : null;
   const nome = claims?.name ?? claims?.preferred_username;
   const email = claims?.email;
-  return { nome, email, iniciais: iniciaisDe(nome, email) };
+  const podeCriarSistema = claims?.tipo === 'dono' || claims?.tipo === 'parceiro';
+  return { nome, email, iniciais: iniciaisDe(nome, email), podeCriarSistema };
 }
