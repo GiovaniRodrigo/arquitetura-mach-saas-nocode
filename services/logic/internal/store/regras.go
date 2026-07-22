@@ -17,6 +17,34 @@ type Regra struct {
 	ArvoreDecisao []byte
 }
 
+// RegrasDoSistema devolve todas as regras de negócio de um sistema, restritas ao
+// tenant do contexto — a fonte usada por SalvarFormulario para avaliar quais ações
+// disparar após uma submissão válida (RF08).
+func (s *Store) RegrasDoSistema(ctx context.Context, sistemaID string) ([]Regra, error) {
+	var regras []Regra
+	err := s.db.WithTenant(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		rows, e := tx.Query(ctx,
+			`SELECT id, sistema_id, arvore_decisao FROM regras_negocio WHERE sistema_id = $1`, sistemaID)
+		if e != nil {
+			return e
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var r Regra
+			if e := rows.Scan(&r.ID, &r.SistemaID, &r.ArvoreDecisao); e != nil {
+				return e
+			}
+			regras = append(regras, r)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, fmt.Errorf("store: regras do sistema: %w", err)
+	}
+	return regras, nil
+}
+
 // CriarRegra insere uma nova regra e devolve o id gerado.
 func (s *Store) CriarRegra(ctx context.Context, r Regra) (string, error) {
 	tid := tenantctx.TenantID(ctx)

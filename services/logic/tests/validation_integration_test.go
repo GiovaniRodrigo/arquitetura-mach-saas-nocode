@@ -105,7 +105,7 @@ func setup(t *testing.T) (srv logicv1.LogicEngineServiceServer, ctx context.Cont
 	t.Cleanup(pool.Close)
 
 	ctx = tenantctx.NewContext(bg, &commonv1.TenantContext{TenantId: tenantID, Tipo: "dono"})
-	return logicapp.NewServer(pool), ctx, pool, sistemaID
+	return logicapp.NewServer(pool, nil), ctx, pool, sistemaID
 }
 
 // contagemDados conta via conexão superusuário (bypassa a RLS) — o pool da

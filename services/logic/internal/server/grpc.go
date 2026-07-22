@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"errors"
+	"log"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -12,6 +13,7 @@ import (
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
 	"github.com/machv4/platform/pkg/database"
 	"github.com/machv4/platform/pkg/tenantctx"
+	"github.com/machv4/platform/services/logic/internal/events"
 	"github.com/machv4/platform/services/logic/internal/rules"
 	"github.com/machv4/platform/services/logic/internal/store"
 	"github.com/machv4/platform/services/logic/internal/validation"
@@ -21,21 +23,36 @@ import (
 type Persistencia interface {
 	SchemaDe(ctx context.Context, sistemaID string) (map[string]validation.CampoDef, error)
 	InserirDados(ctx context.Context, sistemaID string, valores map[string]string) (string, error)
+	RegrasDoSistema(ctx context.Context, sistemaID string) ([]store.Regra, error)
 	CriarRegra(ctx context.Context, r store.Regra) (string, error)
 	ObterRegra(ctx context.Context, id string) (store.Regra, error)
 	AtualizarRegra(ctx context.Context, r store.Regra) error
 	RemoverRegra(ctx context.Context, id string) error
 }
 
+// Publicador é o subconjunto do events.Publisher usado pelo servidor (facilita testes).
+type Publicador interface {
+	Publicar(ctx context.Context, ev events.Evento) error
+}
+
 // LogicServer implementa logicv1.LogicEngineServiceServer.
 type LogicServer struct {
 	logicv1.UnimplementedLogicEngineServiceServer
-	store Persistencia
+	store      Persistencia
+	publicador Publicador
 }
 
-// New cria o servidor sobre a camada de persistência.
+// New cria o servidor sobre a camada de persistência. O disparo de regras de
+// negócio (RF08) fica inativo até ComPublicador ser chamado.
 func New(store Persistencia) *LogicServer {
 	return &LogicServer{store: store}
+}
+
+// ComPublicador liga um publicador de eventos assíncronos (RabbitMQ) ao servidor,
+// habilitando o disparo de regras de negócio após submissões válidas (RF08).
+func (s *LogicServer) ComPublicador(p Publicador) *LogicServer {
+	s.publicador = p
+	return s
 }
 
 // SalvarFormulario revalida o payload contra o schema salvo (RN08) e só persiste
@@ -66,7 +83,44 @@ func (s *LogicServer) SalvarFormulario(ctx context.Context, req *logicv1.SalvarF
 	if _, err := s.store.InserirDados(ctx, req.GetSistemaId(), req.GetDadosFormulario()); err != nil {
 		return nil, mapErr(err)
 	}
+
+	s.dispararRegras(ctx, req.GetSistemaId(), req.GetDadosFormulario())
+
 	return &logicv1.SalvarFormularioResponse{Sucesso: true, MensagemStatus: "Registo gravado"}, nil
+}
+
+// dispararRegras avalia as regras de negócio do sistema contra os dados recém
+// submetidos e publica um evento assíncrono para cada ação alcançada (RF08,
+// Cenário 1). A submissão já foi persistida com sucesso: uma falha ao listar,
+// avaliar ou publicar aqui é só logada, nunca propagada como erro da resposta.
+func (s *LogicServer) dispararRegras(ctx context.Context, sistemaID string, dados map[string]string) {
+	if s.publicador == nil {
+		return
+	}
+	regras, err := s.store.RegrasDoSistema(ctx, sistemaID)
+	if err != nil {
+		log.Printf("logic: listar regras do sistema %s: %v", sistemaID, err)
+		return
+	}
+	for _, r := range regras {
+		arvore, err := rules.Parse(r.ArvoreDecisao)
+		if err != nil {
+			log.Printf("logic: regra %s com árvore inválida: %v", r.ID, err)
+			continue
+		}
+		acao, err := rules.Avaliar(arvore, dados)
+		if err != nil {
+			log.Printf("logic: avaliar regra %s: %v", r.ID, err)
+			continue
+		}
+		if acao == nil {
+			continue
+		}
+		ev := events.Evento{Tipo: acao.Tipo, Payload: acao.Config}
+		if err := s.publicador.Publicar(ctx, ev); err != nil {
+			log.Printf("logic: publicar evento da regra %s: %v", r.ID, err)
+		}
+	}
 }
 
 // CriarRegra valida a árvore de decisão e persiste uma nova regra.
