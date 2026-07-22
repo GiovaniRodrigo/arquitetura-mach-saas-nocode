@@ -36,9 +36,38 @@ export class ApiClient {
     };
   }
 
+  // Faz JSON.parse tolerante: se o corpo não for JSON (ex.: página de erro 5xx do
+  // proxy, texto puro), devolve null em vez de lançar SyntaxError cru — que antes
+  // vazava mensagens como «Unexpected token 'T', "The server"...» para a UI.
+  private static parseJsonSeguro(texto: string): any | null {
+    if (!texto) return {};
+    try {
+      return JSON.parse(texto);
+    } catch {
+      return null;
+    }
+  }
+
+  // Reduz um corpo não-JSON a uma mensagem curta e legível (1 linha, truncada).
+  private static resumoTexto(texto: string): string {
+    const limpo = texto.trim().replace(/\s+/g, " ");
+    return limpo.length > 140 ? `${limpo.slice(0, 140)}…` : limpo;
+  }
+
   private async parse<T>(resp: Response): Promise<T> {
     const texto = await resp.text();
-    const corpo = texto ? JSON.parse(texto) : {};
+    const corpo = ApiClient.parseJsonSeguro(texto);
+
+    if (corpo === null) {
+      // Corpo não-JSON: transforma em ApiError com mensagem útil, nunca SyntaxError.
+      throw new ApiError(
+        resp.status,
+        resp.ok ? "RESPOSTA_INVALIDA" : "UNKNOWN",
+        resp.ok
+          ? "Resposta inválida do servidor."
+          : ApiClient.resumoTexto(texto) || resp.statusText || "Erro no servidor.",
+      );
+    }
     if (!resp.ok) {
       throw new ApiError(resp.status, corpo.codigo ?? "UNKNOWN", corpo.mensagem ?? resp.statusText);
     }
@@ -113,6 +142,11 @@ export class ApiClient {
 
   private async parseIgnorandoStatus<T>(resp: Response): Promise<T> {
     const texto = await resp.text();
-    return (texto ? JSON.parse(texto) : {}) as T;
+    const corpo = ApiClient.parseJsonSeguro(texto);
+    if (corpo === null) {
+      // 422 sem corpo JSON válido: sinaliza como erro legível em vez de estourar.
+      throw new ApiError(resp.status, "RESPOSTA_INVALIDA", "Resposta inválida do servidor.");
+    }
+    return corpo as T;
   }
 }

@@ -86,7 +86,7 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
           <Route path="settings/perfil" element={<Perfil />} />
         </Route>
         {/* Seleção/criação de sistema (antes era o gate pós-login). */}
-        <Route path="/sistemas" element={<SeletorSistemas client={client} />} />
+        <Route path="/sistemas" element={<SeletorSistemas client={client} usuario={usuario} />} />
         {/* Telas dinâmicas do sistema ativo. */}
         {rotas.map((r) => (
           <Route

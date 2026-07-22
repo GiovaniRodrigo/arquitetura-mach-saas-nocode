@@ -29,10 +29,24 @@ describe('jwt', () => {
 
   it('usuarioDe monta objeto de exibição', () => {
     const u = usuarioDe(fakeJwt({ name: 'Ana Silva', email: 'ana@x.com' }));
-    expect(u).toEqual({ nome: 'Ana Silva', email: 'ana@x.com', iniciais: 'AS' });
+    expect(u).toEqual({ nome: 'Ana Silva', email: 'ana@x.com', iniciais: 'AS', podeCriarSistema: false });
   });
 
   it('usuarioDe degrada com token vazio', () => {
-    expect(usuarioDe('')).toEqual({ nome: undefined, email: undefined, iniciais: '?' });
+    expect(usuarioDe('')).toEqual({
+      nome: undefined,
+      email: undefined,
+      iniciais: '?',
+      podeCriarSistema: false,
+    });
+  });
+
+  it.each([
+    ['dono', true],
+    ['parceiro', true],
+    ['cliente', false],
+  ])('usuarioDe deriva podeCriarSistema=%s a partir do claim tipo=%s', (tipo, esperado) => {
+    const u = usuarioDe(fakeJwt({ name: 'Ana', tipo }));
+    expect(u.podeCriarSistema).toBe(esperado);
   });
 });

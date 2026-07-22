@@ -6,7 +6,7 @@ import { useMetricas } from '../../dashboard/useMetricas';
 import { useNavigate } from 'react-router-dom';
 
 export function Overview() {
-  const { client } = useApp();
+  const { client, usuario } = useApp();
   const { estado } = useMetricas(client);
   const navigate = useNavigate();
 
@@ -29,13 +29,15 @@ export function Overview() {
         <p className="text-primary/80 mb-6 max-w-xl text-sm md:text-base font-medium">
           Start creating projects and designing your business architecture with our intuitive node-based editor.
         </p>
-        <button
-          type="button"
-          onClick={criar}
-          className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
-        >
-          Get Started
-        </button>
+        {usuario.podeCriarSistema && (
+          <button
+            type="button"
+            onClick={criar}
+            className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
+          >
+            Get Started
+          </button>
+        )}
       </TonalCard>
 
       {/* Metrics Section */}
@@ -60,9 +62,11 @@ export function Overview() {
       </div>
 
       {/* FAB */}
-      <FabButton icon="+" onClick={criar} className="md:bottom-8 md:right-8">
-        Create
-      </FabButton>
+      {usuario.podeCriarSistema && (
+        <FabButton icon="+" onClick={criar} className="md:bottom-8 md:right-8">
+          Create
+        </FabButton>
+      )}
     </div>
   );
 }

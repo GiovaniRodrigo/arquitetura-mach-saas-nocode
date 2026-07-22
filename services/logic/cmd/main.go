@@ -7,6 +7,8 @@ import (
 	"net"
 	"os"
 
+	amqp "github.com/rabbitmq/amqp091-go"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -30,6 +32,7 @@ func main() {
 	addr := env("LOGIC_GRPC_ADDR", ":50053")
 	dsn := env("DATABASE_URL", "postgres://mach:mach@localhost:5432/machv4?sslmode=disable")
 	otlp := env("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+	amqpURL := env("RABBITMQ_URL", "amqp://mach:mach@localhost:5672/")
 
 	shutdown, err := telemetry.Init(ctx, telemetry.Config{ServiceName: "logic", OTLPEndpoint: otlp})
 	if err != nil {
@@ -43,7 +46,19 @@ func main() {
 	}
 	defer pool.Close()
 
-	logic := app.NewServer(pool)
+	amqpConn, err := amqp.Dial(amqpURL)
+	if err != nil {
+		log.Fatalf("rabbitmq: %v", err)
+	}
+	defer amqpConn.Close()
+
+	amqpChan, err := amqpConn.Channel()
+	if err != nil {
+		log.Fatalf("canal amqp: %v", err)
+	}
+	defer amqpChan.Close()
+
+	logic := app.NewServer(pool, amqpChan)
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),

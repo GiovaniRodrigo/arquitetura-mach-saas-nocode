@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import { Overview } from './Overview';
-import { renderDashboard, fakeClient } from '../../test/renderDashboard';
+import { renderDashboard, fakeClient, usuarioClienteFake } from '../../test/renderDashboard';
 
 describe('Page: Overview Dashboard', () => {
   it('renderiza o Hero Card (RF03)', () => {
@@ -32,5 +32,11 @@ describe('Page: Overview Dashboard', () => {
   it('renderiza o FAB (RF05)', () => {
     renderDashboard(<Overview />);
     expect(screen.getByText('Create')).toBeTruthy();
+  });
+
+  it('oculta "Get Started" e o FAB "Create" para usuário sem permissão de criação (RN10)', () => {
+    renderDashboard(<Overview />, { usuario: usuarioClienteFake });
+    expect(screen.queryByText('Get Started')).toBeNull();
+    expect(screen.queryByText('Create')).toBeNull();
   });
 });

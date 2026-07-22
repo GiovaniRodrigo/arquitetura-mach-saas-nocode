@@ -12,8 +12,15 @@ import { abrirSistema } from "./abrirSistema";
 import { Skeleton, EmptyState, ErrorState } from "../components/ui/StateViews";
 import { Monitor, Plus, RefreshCcw, LogOut } from "lucide-react";
 import { encerrarSessao } from "../auth/session";
+import type { UsuarioAutenticado } from "../auth/jwt";
 
-export function SeletorSistemas({ client }: { client: ApiClient }) {
+export function SeletorSistemas({
+  client,
+  usuario,
+}: {
+  client: ApiClient;
+  usuario: UsuarioAutenticado;
+}) {
   const { estado, recarregar, criar } = useSistemas(client);
   const [nome, setNome] = useState("");
   const [criando, setCriando] = useState(false);
@@ -85,37 +92,43 @@ export function SeletorSistemas({ client }: { client: ApiClient }) {
           </ul>
         )}
 
-        <form onSubmit={submeter} className="mt-12 pt-8 border-t border-border max-w-md">
-          <label htmlFor="novo-sistema" className="block text-sm font-semibold text-foreground mb-2">
-            Criar novo sistema
-          </label>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              id="novo-sistema"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Nome do sistema"
-              className="flex-1 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            />
-            <button
-              type="submit"
-              disabled={!nome.trim() || criando}
-              className="flex items-center justify-center px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {criando ? (
-                <RefreshCcw className="w-5 h-5 mr-2 animate-spin" />
-              ) : (
-                <Plus className="w-5 h-5 mr-2" />
-              )}
-              Criar
-            </button>
-          </div>
-          {erroCriar && (
-            <p role="alert" className="text-destructive text-sm mt-3">
-              {erroCriar}
-            </p>
-          )}
-        </form>
+        {/* Sem permissão de criação (RN10), o formulário fica oculto — não expõe
+            erro. O tratamento de 403 abaixo permanece como defesa em profundidade
+            (ex.: claim ausente/desatualizado), já que a autorização real é do
+            Gateway/IAM, nunca deste claim. */}
+        {usuario.podeCriarSistema && (
+          <form onSubmit={submeter} className="mt-12 pt-8 border-t border-border max-w-md">
+            <label htmlFor="novo-sistema" className="block text-sm font-semibold text-foreground mb-2">
+              Criar novo sistema
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                id="novo-sistema"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Nome do sistema"
+                className="flex-1 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              />
+              <button
+                type="submit"
+                disabled={!nome.trim() || criando}
+                className="flex items-center justify-center px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {criando ? (
+                  <RefreshCcw className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="w-5 h-5 mr-2" />
+                )}
+                Criar
+              </button>
+            </div>
+            {erroCriar && (
+              <p role="alert" className="text-destructive text-sm mt-3">
+                {erroCriar}
+              </p>
+            )}
+          </form>
+        )}
       </div>
     </main>
   );

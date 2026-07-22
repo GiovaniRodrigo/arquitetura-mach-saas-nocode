@@ -124,6 +124,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: production # escopo dos secrets de produção
     steps:
+      - name: Validar tag semver (RN02/RN03)
+        run: |
+          if [[ ! "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::deploy de produção só é permitido a partir de uma tag vX.Y.Z (ref atual: ${{ github.ref }})"
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
