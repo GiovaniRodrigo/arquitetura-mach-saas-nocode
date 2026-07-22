@@ -8,6 +8,10 @@ function respostaJSON(status: number, corpo: unknown): Response {
   });
 }
 
+function respostaTexto(status: number, texto: string): Response {
+  return new Response(texto, { status, headers: { "Content-Type": "text/plain" } });
+}
+
 describe("ApiClient (RF03/RN08)", () => {
   it("anexa o JWT como Bearer em toda chamada", async () => {
     const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { permissions: {} }));
@@ -81,6 +85,41 @@ describe("ApiClient (RF03/RN08)", () => {
     const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
 
     await expect(client.criarSistema("Demo")).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("corpo não-JSON em erro vira ApiError legível (não SyntaxError)", async () => {
+    // Reproduz o caso real: proxy devolve página de erro em texto puro. Antes
+    // vazava «Unexpected token 'T', "The server"... is not valid JSON».
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaTexto(502, "The server encountered a temporary error and could not complete your request."),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const erro = await client.criarSistema("TEste").catch((e) => e);
+    expect(erro).toBeInstanceOf(ApiError);
+    expect(erro.status).toBe(502);
+    expect(erro.message).toContain("The server");
+    expect(erro.message).not.toContain("is not valid JSON");
+  });
+
+  it("corpo não-JSON em resposta 2xx vira ApiError de resposta inválida", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaTexto(200, "<html>não sou json</html>"));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const erro = await client.listarSistemas().catch((e) => e);
+    expect(erro).toBeInstanceOf(ApiError);
+    expect(erro.codigo).toBe("RESPOSTA_INVALIDA");
+  });
+
+  it("truncamento: mensagem de erro longa não estoura", async () => {
+    const longo = "The server ".repeat(50);
+    const fetchFn = vi.fn().mockResolvedValue(respostaTexto(503, longo));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const erro = await client.versaoAtiva("s1").catch((e) => e);
+    expect(erro).toBeInstanceOf(ApiError);
+    expect(erro.message.length).toBeLessThanOrEqual(141);
+    expect(erro.message.endsWith("…")).toBe(true);
   });
 
   it("com o fetch padrão, invoca o fetch global sem quebrar o binding (this)", async () => {
