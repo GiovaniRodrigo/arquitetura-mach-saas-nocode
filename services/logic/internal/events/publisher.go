@@ -57,7 +57,7 @@ func (p *Publisher) Publicar(ctx context.Context, ev Evento) error {
 	// Injeta o traceparent (W3C) a partir do contexto — trace contínuo até o worker.
 	otel.GetTextMapPropagator().Inject(ctx, eventbus.HeaderCarrier(headers))
 
-	return p.ch.PublishWithContext(ctx, eventbus.Exchange, eventbus.RoutingKey(ev.Tipo, tid), false, false, amqp.Publishing{
+	return p.ch.PublishWithContext(ctx, eventbus.ExchangeDe(ev.Tipo), eventbus.RoutingKey(ev.Tipo, tid), false, false, amqp.Publishing{
 		ContentType:  "application/json",
 		DeliveryMode: amqp.Persistent,
 		Headers:      headers,

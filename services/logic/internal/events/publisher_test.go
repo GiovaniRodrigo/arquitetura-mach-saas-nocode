@@ -55,7 +55,7 @@ func TestPublicar_RoutingKeyEHeaders(t *testing.T) {
 	if !fake.chamado {
 		t.Fatal("deveria ter publicado")
 	}
-	if fake.exchange != eventbus.Exchange {
+	if fake.exchange != eventbus.ExchangeDe(eventbus.TipoWebhook) {
 		t.Fatalf("exchange inesperado: %q", fake.exchange)
 	}
 	if fake.key != "webhook.disparo.t-abc" {

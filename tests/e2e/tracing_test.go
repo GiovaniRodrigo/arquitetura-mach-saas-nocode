@@ -62,7 +62,7 @@ func (s *publisherServer) ValidarToken(ctx context.Context, _ *iamv1.ValidarToke
 	headers := amqp.Table{eventbus.HeaderTenantID: tenant}
 	otel.GetTextMapPropagator().Inject(ctx, eventbus.HeaderCarrier(headers))
 
-	err := s.ch.PublishWithContext(ctx, eventbus.Exchange, eventbus.RoutingKey(eventbus.TipoWebhook, tenant), false, false, amqp.Publishing{
+	err := s.ch.PublishWithContext(ctx, eventbus.ExchangeDe(eventbus.TipoWebhook), eventbus.RoutingKey(eventbus.TipoWebhook, tenant), false, false, amqp.Publishing{
 		ContentType: "application/json",
 		Headers:     headers,
 		Body:        body,
@@ -91,7 +91,9 @@ func TestTraceUnicoAtravessaCadeia(t *testing.T) {
 		t.Fatalf("canal: %v", err)
 	}
 	defer ch.Close()
-	_, _ = ch.QueuePurge(eventbus.FilaWebhooks, false)
+	for _, fila := range eventbus.FilasDe(eventbus.TipoWebhook) {
+		_, _ = ch.QueuePurge(fila, false)
+	}
 
 	// Telemetria global → Jaeger (via OTLP). Um provider basta: o critério é UM trace.
 	shutdown, err := telemetry.Init(ctx, telemetry.Config{ServiceName: "e2e", OTLPEndpoint: otlp})
@@ -134,7 +136,7 @@ func TestTraceUnicoAtravessaCadeia(t *testing.T) {
 	}
 
 	// --- Worker: consome, extrai o traceparent e cria o span filho ---------
-	msg := getComRetry(t, ch, eventbus.FilaWebhooks)
+	msg := getDeAlgumaFila(t, ch, eventbus.FilasDe(eventbus.TipoWebhook))
 	ctxMsg := otel.GetTextMapPropagator().Extract(ctx, eventbus.HeaderCarrier(msg.Headers))
 	_, workerSpan := otel.Tracer("worker").Start(ctxMsg, "worker.process")
 	workerSpan.End()
@@ -203,20 +205,24 @@ func esperarTrace(t *testing.T, jaegerQuery, traceID string) map[string]bool {
 	return nil
 }
 
-func getComRetry(t *testing.T, ch *amqp.Channel, fila string) amqp.Delivery {
+// getDeAlgumaFila poll a lista de filas-shard até achar uma mensagem em alguma
+// delas — o shard exato depende do hash da routing key, decidido pelo broker.
+func getDeAlgumaFila(t *testing.T, ch *amqp.Channel, filas []string) amqp.Delivery {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		msg, ok, err := ch.Get(fila, true)
-		if err != nil {
-			t.Fatalf("get %s: %v", fila, err)
-		}
-		if ok {
-			return msg
+		for _, fila := range filas {
+			msg, ok, err := ch.Get(fila, true)
+			if err != nil {
+				t.Fatalf("get %s: %v", fila, err)
+			}
+			if ok {
+				return msg
+			}
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	t.Fatalf("nenhuma mensagem em %s", fila)
+	t.Fatalf("nenhuma mensagem em %v", filas)
 	return amqp.Delivery{}
 }
 

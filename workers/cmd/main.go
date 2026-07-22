@@ -75,8 +75,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	filas := append(eventbus.FilasDe(eventbus.TipoWebhook), eventbus.FilasDe(eventbus.TipoNotificacao)...)
+
 	var wg sync.WaitGroup
-	for _, fila := range []string{eventbus.FilaWebhooks, eventbus.FilaNotificacoes} {
+	for _, fila := range filas {
 		wg.Add(1)
 		go func(fila string) {
 			defer wg.Done()
@@ -86,7 +88,7 @@ func main() {
 		}(fila)
 	}
 
-	log.Printf("workers consumindo %s e %s", eventbus.FilaWebhooks, eventbus.FilaNotificacoes)
+	log.Printf("workers consumindo %d filas-shard: %v", len(filas), filas)
 	<-ctx.Done()
 	wg.Wait()
 }

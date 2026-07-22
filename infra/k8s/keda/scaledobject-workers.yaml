@@ -77,13 +77,15 @@ spec:
   # Janela de estabilização antes de descer (evita flapping no fim de um pico).
   cooldownPeriod: 120
   pollingInterval: 15
+  # Um trigger por fila-shard: cada tipo de evento é shardeado em 4 filas via
+  # exchange x-consistent-hash (fair queuing por tenant, RN09 — ver
+  # pkg/eventbus). O autoscaling reage exclusivamente ao QueueLength de cada
+  # shard no RabbitMQ (RN10); value = mensagens por réplica alvo.
   triggers:
-    # Um trigger por fila principal: o autoscaling reage exclusivamente ao
-    # QueueLength no RabbitMQ (RN10). value = mensagens por réplica alvo.
     - type: rabbitmq
       metadata:
         protocol: amqp
-        queueName: webhooks.disparo
+        queueName: webhooks.disparo.0
         mode: QueueLength
         value: "100"
       authenticationRef:
@@ -91,7 +93,55 @@ spec:
     - type: rabbitmq
       metadata:
         protocol: amqp
-        queueName: notificacoes.envio
+        queueName: webhooks.disparo.1
+        mode: QueueLength
+        value: "100"
+      authenticationRef:
+        name: rabbitmq-workers-auth
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: webhooks.disparo.2
+        mode: QueueLength
+        value: "100"
+      authenticationRef:
+        name: rabbitmq-workers-auth
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: webhooks.disparo.3
+        mode: QueueLength
+        value: "100"
+      authenticationRef:
+        name: rabbitmq-workers-auth
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: notificacoes.envio.0
+        mode: QueueLength
+        value: "100"
+      authenticationRef:
+        name: rabbitmq-workers-auth
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: notificacoes.envio.1
+        mode: QueueLength
+        value: "100"
+      authenticationRef:
+        name: rabbitmq-workers-auth
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: notificacoes.envio.2
+        mode: QueueLength
+        value: "100"
+      authenticationRef:
+        name: rabbitmq-workers-auth
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: notificacoes.envio.3
         mode: QueueLength
         value: "100"
       authenticationRef:
