@@ -2,7 +2,20 @@
 // Gateway e traduz as rotas REST. A identidade viaja apenas no cabeçalho
 // Authorization; o tenant é derivado do token pelo Gateway (nunca enviado no corpo).
 
-import type { MapaPermissoes, RespostaFormulario, Sistema, VersaoAtiva } from "./types";
+import type {
+  EventoLogin,
+  Feedback,
+  MapaPermissoes,
+  RegraNegocio,
+  ResumoFinanceiro,
+  RespostaFormulario,
+  Sistema,
+  StatusFeedback,
+  Tenant,
+  TipoRegraNegocio,
+  Versao,
+  VersaoAtiva,
+} from "./types";
 
 /** `fetch` injetável para testes. */
 export type FetchFn = typeof fetch;
@@ -85,9 +98,10 @@ export class ApiClient {
     return corpo.permissions;
   }
 
-  /** Lista os sistemas do tenant para o seletor inicial (RN01). */
-  async listarSistemas(): Promise<Sistema[]> {
-    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/sistemas`, {
+  /** Lista os sistemas do tenant; com `tenantId`, filtra por Cliente (RF08). */
+  async listarSistemas(tenantId?: string): Promise<Sistema[]> {
+    const qs = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : "";
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/sistemas${qs}`, {
       headers: this.headers(),
     });
     const corpo = await this.parse<{ sistemas: Sistema[] }>(resp);
@@ -138,6 +152,196 @@ export class ApiClient {
       body: JSON.stringify({ sistema_id: sistemaId }),
     });
     return this.parse(resp);
+  }
+
+  /** Atualiza nome/foto de perfil (RF17). */
+  async atualizarPerfil(dados: { nome: string; foto_url?: string }): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/perfil`, {
+      method: "PATCH",
+      headers: this.headers(),
+      body: JSON.stringify(dados),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Envia link/código ao novo e-mail; não efetiva a troca (RF18, RN08). */
+  async solicitarTrocaEmail(novoEmail: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/email`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ novo_email: novoEmail }),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Confirma a troca de e-mail com o token recebido (RN08). */
+  async confirmarTrocaEmail(token: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/email/confirmar`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ token }),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Atualiza logo/cores/domínio do White Label (RF13). 202 = domínio em validação (RNF03). */
+  async atualizarWhiteLabel(dados: {
+    logo_url?: string;
+    cor_primaria?: string;
+    cor_secundaria?: string;
+    dominio_proprio?: string;
+  }): Promise<{ validandoDominio: boolean }> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/configuracao/white-label`, {
+      method: "PUT",
+      headers: this.headers(),
+      body: JSON.stringify(dados),
+    });
+    await this.parse<unknown>(resp);
+    return { validandoDominio: resp.status === 202 };
+  }
+
+  /** Atualiza a senha da conta (RF14, RNF02 — reautenticação via senha atual). */
+  async atualizarSenha(senhaAtual: string, senhaNova: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/senha`, {
+      method: "PUT",
+      headers: this.headers(),
+      body: JSON.stringify({ senha_atual: senhaAtual, senha_nova: senhaNova }),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Inicia a ativação do MFA TOTP; o segredo/QR code é de exibição única (RF15, RNF01). */
+  async ativarMfa(): Promise<{ segredoOtpAuthUri: string }> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/mfa/ativar`, {
+      method: "POST",
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ segredo_otp_auth_uri: string }>(resp);
+    return { segredoOtpAuthUri: corpo.segredo_otp_auth_uri };
+  }
+
+  /** Confirma o MFA com o código gerado pelo app autenticador (RF15). */
+  async confirmarMfa(codigo: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/mfa/confirmar`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ codigo }),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Desativa o MFA (RF15). */
+  async desativarMfa(): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/mfa`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Exclui a conta; 409 TENANT_ATIVO_VINCULADO se houver tenant ativo (RF16, RN07). */
+  async excluirConta(): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** 10 logins mais recentes agregados dos tenants vinculados (RF04, RN02). */
+  async listarUltimosAcessos(): Promise<EventoLogin[]> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/ultimos-acessos`, {
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ eventos: EventoLogin[] }>(resp);
+    return corpo.eventos ?? [];
+  }
+
+  /** Mensagens de feedback dos tenants vinculados, opcionalmente filtradas por status (RF05, RN03). */
+  async listarFeedback(status?: StatusFeedback): Promise<Feedback[]> {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/feedback${qs}`, {
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ itens: Feedback[] }>(resp);
+    return corpo.itens ?? [];
+  }
+
+  /** Atualiza o status de uma mensagem de feedback (RN03). */
+  async atualizarStatusFeedback(id: string, status: StatusFeedback): Promise<Feedback> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/feedback/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: this.headers(),
+      body: JSON.stringify({ status }),
+    });
+    return this.parse<Feedback>(resp);
+  }
+
+  /** Receita de assinatura/cobrança agregada dos tenants vinculados (RF06, RN04). */
+  async resumoFinanceiro(): Promise<ResumoFinanceiro> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/resumo-financeiro`, {
+      headers: this.headers(),
+    });
+    return this.parse<ResumoFinanceiro>(resp);
+  }
+
+  /** Tenants (clientes/negócios) vinculados ao usuário autenticado (RF07). */
+  async listarTenants(): Promise<Tenant[]> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/tenants`, {
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ tenants: Tenant[] }>(resp);
+    return corpo.tenants ?? [];
+  }
+
+  /** Regras de validação de componente do sistema (RF10/RF11). */
+  async listarRegrasNegocio(sistemaId: string): Promise<RegraNegocio[]> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/regras-negocio`,
+      { headers: this.headers() },
+    );
+    const corpo = await this.parse<{ regras: RegraNegocio[] }>(resp);
+    return corpo.regras ?? [];
+  }
+
+  /** Cria uma regra de validação de um ou mais componentes (RF10/RF11, RN06). */
+  async criarRegraNegocio(
+    sistemaId: string,
+    dados: { blind_indexes: string[]; tipo: TipoRegraNegocio; parametros: Record<string, unknown> },
+  ): Promise<RegraNegocio> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/regras-negocio`,
+      { method: "POST", headers: this.headers(), body: JSON.stringify(dados) },
+    );
+    return this.parse<RegraNegocio>(resp);
+  }
+
+  /** Versões do sistema, mais recente primeiro (RF12). */
+  async listarVersoes(sistemaId: string): Promise<Versao[]> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/versoes`,
+      { headers: this.headers() },
+    );
+    const corpo = await this.parse<{ versoes: Versao[] }>(resp);
+    return corpo.versoes ?? [];
+  }
+
+  /** Publica uma versão como ativa (RF12, RN04 de 001). */
+  async publicarVersao(sistemaId: string, versaoId: string): Promise<void> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/versoes/${encodeURIComponent(versaoId)}/publicar`,
+      { method: "POST", headers: this.headers() },
+    );
+    await this.parse<unknown>(resp);
+  }
+
+  /** Reverte para uma versão anterior (RF12, RN05 de 001). */
+  async reverterVersao(sistemaId: string, versaoId: string): Promise<void> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/versoes/${encodeURIComponent(versaoId)}/reverter`,
+      { method: "POST", headers: this.headers() },
+    );
+    await this.parse<unknown>(resp);
   }
 
   private async parseIgnorandoStatus<T>(resp: Response): Promise<T> {

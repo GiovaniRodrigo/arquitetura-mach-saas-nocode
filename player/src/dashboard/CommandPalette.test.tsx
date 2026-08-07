@@ -27,7 +27,7 @@ describe('CommandPalette (RF10)', () => {
     abrirComAtalho();
 
     expect(await screen.findByRole('dialog')).toBeTruthy();
-    expect(screen.getByText('Ir para Projetos')).toBeTruthy();
+    expect(screen.getByText('Ir para Clientes')).toBeTruthy();
     await waitFor(() => expect(screen.getByText('Abrir ERP Financeiro')).toBeTruthy());
   });
 
@@ -40,7 +40,7 @@ describe('CommandPalette (RF10)', () => {
     fireEvent.change(screen.getByLabelText('Buscar'), { target: { value: 'CRM' } });
     expect(screen.getByText('Abrir CRM de Parceiros')).toBeTruthy();
     expect(screen.queryByText('Abrir ERP Financeiro')).toBeNull();
-    expect(screen.queryByText('Ir para Projetos')).toBeNull();
+    expect(screen.queryByText('Ir para Clientes')).toBeNull();
   });
 
   it('fecha com Esc', async () => {

@@ -42,9 +42,11 @@ describe('Template: DashboardLayout', () => {
               </AppProvider>
             }
           >
-            <Route index element={<div data-testid="outlet-content">Home Content</div>} />
-            <Route path="projects" element={<div data-testid="outlet-content">Projects Content</div>} />
-            <Route path="settings" element={<div data-testid="outlet-content">Settings Content</div>} />
+            <Route index element={<div data-testid="outlet-content">Dashboard Content</div>} />
+            <Route path="clientes" element={<div data-testid="outlet-content">Clientes Content</div>} />
+            <Route path="configuracao" element={<div data-testid="outlet-content">Configuração Content</div>} />
+            <Route path="perfil" element={<div data-testid="outlet-content">Perfil Content</div>} />
+            <Route path="ajuda" element={<div data-testid="outlet-content">Ajuda Content</div>} />
           </Route>
         </Routes>
       </MemoryRouter>,
@@ -53,9 +55,11 @@ describe('Template: DashboardLayout', () => {
   it('renderiza a navegação principal (Sidebar) e os links', () => {
     renderLayout();
     expect(screen.getByText('SaaS NoCode')).toBeInTheDocument();
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Projects')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Clientes')).toBeInTheDocument();
+    expect(screen.getByText('Configuração')).toBeInTheDocument();
+    expect(screen.getByText('Cadastro/Perfil')).toBeInTheDocument();
+    expect(screen.getByText('Ajuda')).toBeInTheDocument();
   });
 
   it('exibe a identidade real do usuário no cabeçalho (RF03)', () => {
@@ -73,9 +77,23 @@ describe('Template: DashboardLayout', () => {
     expect(screen.getByRole('menuitem', { name: /Sair/i })).toBeInTheDocument();
   });
 
+  it('o item "Perfil" do menu do avatar navega para /dashboard/perfil (RF17-RF19)', () => {
+    renderLayout();
+    fireEvent.click(screen.getByRole('button', { name: /menu do usuário/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Perfil/i }));
+    expect(screen.getByTestId('outlet-content')).toHaveTextContent('Perfil Content');
+  });
+
+  it('o item "Configurações" do menu do avatar navega para /dashboard/configuracao (RF13-RF16)', () => {
+    renderLayout();
+    fireEvent.click(screen.getByRole('button', { name: /menu do usuário/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Configurações/i }));
+    expect(screen.getByTestId('outlet-content')).toHaveTextContent('Configuração Content');
+  });
+
   it('renderiza o Outlet corretamente', () => {
-    renderLayout('/dashboard/projects');
-    expect(screen.getByTestId('outlet-content')).toHaveTextContent('Projects Content');
+    renderLayout('/dashboard/clientes');
+    expect(screen.getByTestId('outlet-content')).toHaveTextContent('Clientes Content');
   });
 
   it('alterna a Sidebar ao clicar no Trigger', () => {

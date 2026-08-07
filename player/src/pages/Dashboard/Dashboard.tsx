@@ -3,9 +3,12 @@ import { ElevatedCard } from '../../components/m3/ElevatedCard';
 import { FabButton } from '../../components/m3/FabButton';
 import { useApp } from '../../app/AppContext';
 import { useMetricas } from '../../dashboard/useMetricas';
+import { CardUltimosAcessos } from '../../dashboard/CardUltimosAcessos';
+import { CardFeedback } from '../../dashboard/CardFeedback';
+import { CardResumoFinanceiro } from '../../dashboard/CardResumoFinanceiro';
 import { useNavigate } from 'react-router-dom';
 
-export function Overview() {
+export function Dashboard() {
   const { client, usuario } = useApp();
   const { estado } = useMetricas(client);
   const navigate = useNavigate();
@@ -59,6 +62,13 @@ export function Overview() {
           <h3 className="text-sm font-medium text-muted-foreground mb-1">Rascunhos</h3>
           <p className="text-3xl font-heading font-bold text-muted-foreground/60">—</p>
         </ElevatedCard>
+      </div>
+
+      {/* Resumo consolidado dos tenants vinculados (RF03-RF06, RN01) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <CardUltimosAcessos />
+        <CardFeedback />
+        <CardResumoFinanceiro />
       </div>
 
       {/* FAB */}

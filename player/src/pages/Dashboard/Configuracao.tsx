@@ -1,12 +1,12 @@
 import { TonalCard } from '../../components/m3/TonalCard';
 import { ElevatedCard } from '../../components/m3/ElevatedCard';
 import { useTheme } from '../../theme/ThemeProvider';
-import { useNavigate } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
+import { WhiteLabelForm } from '../../configuracao/WhiteLabelForm';
+import { SegurancaForm } from '../../configuracao/SegurancaForm';
 
-export function Settings() {
+export function Configuracao() {
   const { tema, alternarTema } = useTheme();
-  const navigate = useNavigate();
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
@@ -18,20 +18,6 @@ export function Settings() {
       </TonalCard>
 
       <div className="flex flex-col gap-4">
-        <ElevatedCard>
-          <h3 className="text-md font-heading font-bold mb-2">Perfil do Usuário</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Atualize suas informações pessoais e foto de perfil.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard/settings/perfil')}
-            className="text-sm bg-secondary text-secondary-foreground px-4 py-2 rounded-lg font-medium hover:bg-secondary/80"
-          >
-            Editar Perfil
-          </button>
-        </ElevatedCard>
-
         <ElevatedCard>
           <h3 className="text-md font-heading font-bold mb-2">Aparência</h3>
           <p className="text-sm text-muted-foreground mb-4">
@@ -47,6 +33,19 @@ export function Settings() {
             {tema === 'escuro' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             Alternar Tema
           </button>
+        </ElevatedCard>
+
+        <ElevatedCard>
+          <h3 className="text-md font-heading font-bold mb-2">White Label</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Personalize a marca exibida aos seus clientes.
+          </p>
+          <WhiteLabelForm />
+        </ElevatedCard>
+
+        <ElevatedCard>
+          <h3 className="text-md font-heading font-bold mb-2">Segurança</h3>
+          <SegurancaForm />
         </ElevatedCard>
       </div>
     </div>
