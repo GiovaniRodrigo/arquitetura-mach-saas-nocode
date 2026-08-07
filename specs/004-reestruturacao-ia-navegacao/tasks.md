@@ -8,15 +8,15 @@ com `fetch` mockado nos testes até o backend expor os endpoints reais.
 
 ## Fase 1 — Renomeação da IA existente + Home e Ajuda (sem backend novo)
 
-- [ ] 1. Atualizar `DashboardLayout.test.tsx` para esperar os rótulos/rotas novos (Dashboard `/dashboard`, Clientes `/dashboard/clientes`, Configuração `/dashboard/configuracao`, + itens Cadastro/Perfil `/dashboard/perfil` e Ajuda `/dashboard/ajuda`) (RF03, RF07, RF13, RF17, RF20) (`player/src/layout/DashboardLayout.test.tsx`)
-- [ ] 2. Renomear os itens da sidebar e os dois links do menu do avatar em `DashboardLayout.tsx` para os novos rótulos/rotas, adicionando os itens Cadastro/Perfil e Ajuda (RF03, RF07, RF13, RF17, RF20) (`player/src/layout/DashboardLayout.tsx`)
-- [ ] 3. Renomear `Overview.tsx`/`Overview.test.tsx` para `Dashboard.tsx`/`Dashboard.test.tsx` e `Projects.tsx`/`Projects.test.tsx` para `Clientes.tsx`/`Clientes.test.tsx` (apenas rename + ajuste de imports; comportamento existente preservado) (`player/src/pages/Dashboard/Dashboard.tsx`, `Dashboard.test.tsx`, `Clientes.tsx`, `Clientes.test.tsx`)
-- [ ] 4. Renomear `Settings.tsx`/`Settings.test.tsx` para `Configuracao.tsx`/`Configuracao.test.tsx`, removendo o card "Perfil do Usuário" (migra para a Fase 2) (`player/src/pages/Dashboard/Configuracao.tsx`, `Configuracao.test.tsx`)
-- [ ] 5. Atualizar `App.tsx`: trocar imports/rotas para `Dashboard`/`Clientes`/`Configuracao`, mover `settings/perfil` para rota de topo `perfil`, adicionar rotas vazias `clientes/:tenantId`, `clientes/:tenantId/sistemas/:sistemaId/*`, `configuracao`, `ajuda` (RF07-RF21) (`player/src/App.tsx`)
-- [ ] 6. Escrever teste de `Home.test.tsx` cobrindo renderização pública (sem `AppProvider`) e presença dos CTAs "Entrar"/"Cadastrar" com os `href`/rota corretos (RF01, RF02) (`player/src/pages/Home/Home.test.tsx`)
-- [ ] 7. Implementar `Home.tsx` (landing pública de apresentação do produto, CTAs "Entrar" → login, "Cadastrar/Testar grátis" → fluxo de trial) e registrar a rota pública em `App.tsx` fora do `AppProvider` (RF01, RF02) (`player/src/pages/Home/Home.tsx`, `player/src/App.tsx`)
-- [ ] 8. Escrever teste de `Ajuda.test.tsx` cobrindo listagem de artigos por categoria e filtro por termo de busca (RF20, RF21) (`player/src/pages/Dashboard/Ajuda.test.tsx`)
-- [ ] 9. Implementar `artigos.ts` (conteúdo estático inicial) e `Ajuda.tsx` (busca + lista por categoria, `StateViews` para vazio) (RF20, RF21, RN09) (`player/src/ajuda/artigos.ts`, `player/src/pages/Dashboard/Ajuda.tsx`)
+- [x] 1. Atualizar `DashboardLayout.test.tsx` para esperar os rótulos/rotas novos (Dashboard `/dashboard`, Clientes `/dashboard/clientes`, Configuração `/dashboard/configuracao`, + itens Cadastro/Perfil `/dashboard/perfil` e Ajuda `/dashboard/ajuda`) (RF03, RF07, RF13, RF17, RF20) (`player/src/layout/DashboardLayout.test.tsx`)
+- [x] 2. Renomear os itens da sidebar e os dois links do menu do avatar em `DashboardLayout.tsx` para os novos rótulos/rotas, adicionando os itens Cadastro/Perfil e Ajuda (RF03, RF07, RF13, RF17, RF20) (`player/src/layout/DashboardLayout.tsx`)
+- [x] 3. Renomear `Overview.tsx`/`Overview.test.tsx` para `Dashboard.tsx`/`Dashboard.test.tsx` e `Projects.tsx`/`Projects.test.tsx` para `Clientes.tsx`/`Clientes.test.tsx` (apenas rename + ajuste de imports; comportamento existente preservado) (`player/src/pages/Dashboard/Dashboard.tsx`, `Dashboard.test.tsx`, `Clientes.tsx`, `Clientes.test.tsx`)
+- [x] 4. Renomear `Settings.tsx`/`Settings.test.tsx` para `Configuracao.tsx`/`Configuracao.test.tsx`, removendo o card "Perfil do Usuário" (migra para a Fase 2) (`player/src/pages/Dashboard/Configuracao.tsx`, `Configuracao.test.tsx`)
+- [x] 5. Atualizar `App.tsx`: trocar imports/rotas para `Dashboard`/`Clientes`/`Configuracao`, mover `settings/perfil` para rota de topo `perfil`, adicionar rotas vazias `clientes/:tenantId`, `clientes/:tenantId/sistemas/:sistemaId/*`, `configuracao`, `ajuda` (RF07-RF21) (`player/src/App.tsx`)
+- [x] 6. Escrever teste de `Home.test.tsx` cobrindo renderização pública (sem `AppProvider`) e presença dos CTAs "Entrar"/"Cadastrar" com os `href`/rota corretos (RF01, RF02) (`player/src/pages/Home/Home.test.tsx`)
+- [x] 7. Implementar `Home.tsx` (landing pública de apresentação do produto, CTAs "Entrar" → login, "Cadastrar/Testar grátis" → fluxo de trial) e registrar a rota pública em `App.tsx` fora do `AppProvider` (RF01, RF02) (`player/src/pages/Home/Home.tsx`, `player/src/App.tsx`)
+- [x] 8. Escrever teste de `Ajuda.test.tsx` cobrindo listagem de artigos por categoria e filtro por termo de busca (RF20, RF21) (`player/src/pages/Dashboard/Ajuda.test.tsx`)
+- [x] 9. Implementar `artigos.ts` (conteúdo estático inicial) e `Ajuda.tsx` (busca + lista por categoria, `StateViews` para vazio) (RF20, RF21, RN09) (`player/src/ajuda/artigos.ts`, `player/src/pages/Dashboard/Ajuda.tsx`)
 
 ## Fase 2 — Cadastro/Perfil (edição de nome/foto + troca de e-mail com confirmação)
 

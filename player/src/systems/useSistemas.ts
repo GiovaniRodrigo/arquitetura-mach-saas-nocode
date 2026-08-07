@@ -1,5 +1,5 @@
 // Fonte única de listagem/criação de sistemas do tenant, consumida pelo seletor
-// (SeletorSistemas) e pelas telas do dashboard (Projects/Overview). Encapsula a
+// (SeletorSistemas) e pelas telas do dashboard (Clientes/Dashboard). Encapsula a
 // máquina de estados carregando | pronto | vazio | erro e a ação de recarregar,
 // eliminando a duplicação que antes vivia em SeletorSistemas (RF02, RF06, RNF05).
 

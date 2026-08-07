@@ -5,7 +5,7 @@ import { useApp } from '../../app/AppContext';
 import { useMetricas } from '../../dashboard/useMetricas';
 import { useNavigate } from 'react-router-dom';
 
-export function Overview() {
+export function Dashboard() {
   const { client, usuario } = useApp();
   const { estado } = useMetricas(client);
   const navigate = useNavigate();

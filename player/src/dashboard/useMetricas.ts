@@ -1,4 +1,4 @@
-// Métricas do Overview derivadas da listagem de sistemas do tenant (RF01).
+// Métricas do Dashboard derivadas da listagem de sistemas do tenant (RF01).
 // Enquanto não existir um endpoint dedicado de métricas agregadas, o total de
 // sistemas é garantido; contadores por status dependem do payload enriquecido de
 // Sistema (Fase 2) e permanecem indefinidos até lá.

@@ -1,17 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
 import { screen } from '@testing-library/react';
-import { Overview } from './Overview';
+import { Dashboard } from './Dashboard';
 import { renderDashboard, fakeClient, usuarioClienteFake } from '../../test/renderDashboard';
 
-describe('Page: Overview Dashboard', () => {
+describe('Page: Dashboard Dashboard', () => {
   it('renderiza o Hero Card (RF03)', () => {
-    renderDashboard(<Overview />);
+    renderDashboard(<Dashboard />);
     expect(screen.getByText('Build your Next Flow')).toBeTruthy();
     expect(screen.getByText('Get Started')).toBeTruthy();
   });
 
   it('renderiza os cards de métricas (RF04)', () => {
-    renderDashboard(<Overview />);
+    renderDashboard(<Dashboard />);
     expect(screen.getByText('Sistemas')).toBeTruthy();
     expect(screen.getByText('Publicados')).toBeTruthy();
     expect(screen.getByText('Rascunhos')).toBeTruthy();
@@ -25,17 +25,17 @@ describe('Page: Overview Dashboard', () => {
         { id: 'c', nome: 'Gama' },
       ]),
     });
-    renderDashboard(<Overview />, { client });
+    renderDashboard(<Dashboard />, { client });
     expect(await screen.findByText('3')).toBeTruthy();
   });
 
   it('renderiza o FAB (RF05)', () => {
-    renderDashboard(<Overview />);
+    renderDashboard(<Dashboard />);
     expect(screen.getByText('Create')).toBeTruthy();
   });
 
   it('oculta "Get Started" e o FAB "Create" para usuário sem permissão de criação (RN10)', () => {
-    renderDashboard(<Overview />, { usuario: usuarioClienteFake });
+    renderDashboard(<Dashboard />, { usuario: usuarioClienteFake });
     expect(screen.queryByText('Get Started')).toBeNull();
     expect(screen.queryByText('Create')).toBeNull();
   });

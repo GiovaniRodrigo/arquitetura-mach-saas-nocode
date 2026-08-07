@@ -14,10 +14,10 @@ export function Perfil() {
     <div className="flex flex-col gap-6 max-w-2xl mx-auto pb-8">
       <button
         type="button"
-        onClick={() => navigate('/dashboard/settings')}
+        onClick={() => navigate('/dashboard')}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground w-fit"
       >
-        <ArrowLeft className="w-4 h-4" /> Voltar às configurações
+        <ArrowLeft className="w-4 h-4" /> Voltar ao Dashboard
       </button>
 
       <TonalCard className="bg-secondary text-secondary-foreground border-none">

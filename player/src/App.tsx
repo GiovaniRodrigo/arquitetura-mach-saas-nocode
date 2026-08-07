@@ -12,10 +12,11 @@ import { rotasDe } from "./router/dynamicRoutes";
 import { SeletorSistemas } from "./systems/SeletorSistemas";
 import { validar } from "./validation/blindIndexValidator";
 import { DashboardLayout } from "./layout/DashboardLayout";
-import { Overview } from "./pages/Dashboard/Overview";
-import { Projects } from "./pages/Dashboard/Projects";
-import { Settings } from "./pages/Dashboard/Settings";
+import { Dashboard } from "./pages/Dashboard/Dashboard";
+import { Clientes } from "./pages/Dashboard/Clientes";
+import { Configuracao } from "./pages/Dashboard/Configuracao";
 import { Perfil } from "./pages/Dashboard/Perfil";
+import { Ajuda } from "./pages/Dashboard/Ajuda";
 import { AppProvider } from "./app/AppContext";
 import { usuarioDe } from "./auth/jwt";
 
@@ -80,10 +81,11 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
             </AppProvider>
           }
         >
-          <Route index element={<Overview />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="settings/perfil" element={<Perfil />} />
+          <Route index element={<Dashboard />} />
+          <Route path="clientes" element={<Clientes />} />
+          <Route path="configuracao" element={<Configuracao />} />
+          <Route path="perfil" element={<Perfil />} />
+          <Route path="ajuda" element={<Ajuda />} />
         </Route>
         {/* Seleção/criação de sistema (antes era o gate pós-login). */}
         <Route path="/sistemas" element={<SeletorSistemas client={client} usuario={usuario} />} />

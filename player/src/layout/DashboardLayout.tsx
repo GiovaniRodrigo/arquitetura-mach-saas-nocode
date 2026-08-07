@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Folder, Settings, LogOut, User, Search } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut, User, Search, HelpCircle } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { encerrarSessao } from '@/auth/session';
 import { useApp } from '@/app/AppContext';
@@ -56,20 +56,32 @@ export function DashboardLayout() {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton render={<Link to="/dashboard" />} isActive={location.pathname === '/dashboard'}>
-                      <Home />
-                      <span>Home</span>
+                      <LayoutDashboard />
+                      <span>Dashboard</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton render={<Link to="/dashboard/projects" />} isActive={location.pathname.startsWith('/dashboard/projects')}>
-                      <Folder />
-                      <span>Projects</span>
+                    <SidebarMenuButton render={<Link to="/dashboard/clientes" />} isActive={location.pathname.startsWith('/dashboard/clientes')}>
+                      <Users />
+                      <span>Clientes</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton render={<Link to="/dashboard/settings" />} isActive={location.pathname.startsWith('/dashboard/settings')}>
+                    <SidebarMenuButton render={<Link to="/dashboard/configuracao" />} isActive={location.pathname.startsWith('/dashboard/configuracao')}>
                       <Settings />
-                      <span>Settings</span>
+                      <span>Configuração</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton render={<Link to="/dashboard/perfil" />} isActive={location.pathname.startsWith('/dashboard/perfil')}>
+                      <User />
+                      <span>Cadastro/Perfil</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton render={<Link to="/dashboard/ajuda" />} isActive={location.pathname.startsWith('/dashboard/ajuda')}>
+                      <HelpCircle />
+                      <span>Ajuda</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
@@ -138,7 +150,7 @@ export function DashboardLayout() {
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={() => { setMenuAberto(false); navigate('/dashboard/settings'); }}
+                      onClick={() => { setMenuAberto(false); navigate('/dashboard/perfil'); }}
                       className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-secondary transition-colors"
                     >
                       <User className="w-4 h-4" /> Perfil
@@ -146,7 +158,7 @@ export function DashboardLayout() {
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={() => { setMenuAberto(false); navigate('/dashboard/settings'); }}
+                      onClick={() => { setMenuAberto(false); navigate('/dashboard/configuracao'); }}
                       className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-secondary transition-colors"
                     >
                       <Settings className="w-4 h-4" /> Configurações

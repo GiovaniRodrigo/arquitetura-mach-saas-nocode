@@ -6,7 +6,7 @@ import { useSistemas } from '../../systems/useSistemas';
 import { abrirSistema } from '../../systems/abrirSistema';
 import { useNavigate } from 'react-router-dom';
 
-export function Projects() {
+export function Clientes() {
   const { client, usuario } = useApp();
   const { estado, recarregar } = useSistemas(client);
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ export function Projects() {
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
       <TonalCard className="bg-primary/10 text-primary border-none">
-        <h2 className="text-2xl font-heading font-bold mb-2">Projects</h2>
+        <h2 className="text-2xl font-heading font-bold mb-2">Clientes</h2>
         <p className="text-primary/80 text-sm font-medium">
           Gerencie seus projetos, arquiteturas e deploys em um só lugar.
         </p>

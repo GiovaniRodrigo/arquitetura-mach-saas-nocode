@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Home, Folder, Settings as SettingsIcon, Plus, Monitor } from 'lucide-react';
+import { Search, LayoutDashboard, Users, Settings as SettingsIcon, Plus, Monitor } from 'lucide-react';
 import { useApp } from '../app/AppContext';
 import { useSistemas } from '../systems/useSistemas';
 import { abrirSistema } from '../systems/abrirSistema';
@@ -52,9 +52,9 @@ export function CommandPalette() {
 
   const acoesNav: Acao[] = useMemo(
     () => [
-      { id: 'nav-home', rotulo: 'Ir para Início', icone: <Home className="w-4 h-4" />, executar: () => navigate('/dashboard') },
-      { id: 'nav-projects', rotulo: 'Ir para Projetos', icone: <Folder className="w-4 h-4" />, executar: () => navigate('/dashboard/projects') },
-      { id: 'nav-settings', rotulo: 'Ir para Configurações', icone: <SettingsIcon className="w-4 h-4" />, executar: () => navigate('/dashboard/settings') },
+      { id: 'nav-home', rotulo: 'Ir para Início', icone: <LayoutDashboard className="w-4 h-4" />, executar: () => navigate('/dashboard') },
+      { id: 'nav-clientes', rotulo: 'Ir para Clientes', icone: <Users className="w-4 h-4" />, executar: () => navigate('/dashboard/clientes') },
+      { id: 'nav-settings', rotulo: 'Ir para Configurações', icone: <SettingsIcon className="w-4 h-4" />, executar: () => navigate('/dashboard/configuracao') },
       { id: 'novo', rotulo: 'Criar novo sistema', icone: <Plus className="w-4 h-4" />, executar: () => navigate('/sistemas') },
     ],
     [navigate],
