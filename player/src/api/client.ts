@@ -294,6 +294,16 @@ export class ApiClient {
     return corpo.tenants ?? [];
   }
 
+  /** Cria um novo cliente/negócio (tenant); 403 (cliente final) vira ApiError (RF07). */
+  async criarTenant(nome: string): Promise<Tenant> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/tenants`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ nome }),
+    });
+    return this.parse<Tenant>(resp);
+  }
+
   /** Regras de validação de componente do sistema (RF10/RF11). */
   async listarRegrasNegocio(sistemaId: string): Promise<RegraNegocio[]> {
     const resp = await this.fetchFn(

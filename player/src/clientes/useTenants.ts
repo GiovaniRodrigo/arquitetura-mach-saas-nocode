@@ -14,6 +14,8 @@ export type EstadoTenants =
 export interface UseTenants {
   estado: EstadoTenants;
   recarregar: () => void;
+  /** Cria um cliente/negócio; repropaga ApiError (ex.: 403 → tratado na UI). */
+  criar: (nome: string) => Promise<Tenant>;
 }
 
 export function useTenants(client: ApiClient): UseTenants {
@@ -38,6 +40,7 @@ export function useTenants(client: ApiClient): UseTenants {
   }, [client, tentativa]);
 
   const recarregar = useCallback(() => setTentativa((t) => t + 1), []);
+  const criar = useCallback((nome: string) => client.criarTenant(nome), [client]);
 
-  return { estado, recarregar };
+  return { estado, recarregar, criar };
 }

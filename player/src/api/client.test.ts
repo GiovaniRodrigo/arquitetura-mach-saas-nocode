@@ -296,6 +296,25 @@ describe("ApiClient (RF03/RN08)", () => {
     expect(tenants).toEqual([{ id: "t1", nome: "Acme" }]);
   });
 
+  it("criarTenant faz POST com o nome e devolve o tenant (RF07)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(201, { id: "t-1", nome: "Acme" }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const novo = await client.criarTenant("Acme");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/tenants");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ nome: "Acme" });
+    expect(novo.id).toBe("t-1");
+  });
+
+  it("criarTenant propaga 403 como ApiError (cliente final)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(403, { codigo: "FORBIDDEN", mensagem: "sem permissão" }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await expect(client.criarTenant("Acme")).rejects.toBeInstanceOf(ApiError);
+  });
+
   it("listarSistemas aceita filtro opcional de tenant_id (RF08)", async () => {
     const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { sistemas: [] }));
     const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);

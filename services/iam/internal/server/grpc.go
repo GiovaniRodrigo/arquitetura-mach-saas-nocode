@@ -3,6 +3,7 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -11,12 +12,16 @@ import (
 	"github.com/machv4/platform/pkg/tenantctx"
 	"github.com/machv4/platform/services/iam/auth"
 	"github.com/machv4/platform/services/iam/internal/permissions"
+	"github.com/machv4/platform/services/iam/internal/store"
 )
 
-// Store carrega permissões e materializa identidades (satisfeito por store.Store).
+// Store carrega permissões e materializa identidades e tenants (satisfeito por
+// store.Store).
 type Store interface {
 	PermissoesDe(ctx context.Context, blindIndexes []string) ([]permissions.Permissao, error)
 	UpsertUsuarioThirdParty(ctx context.Context, provedor, externalID, email, nome string) (userID, tenantID, tipo string, err error)
+	ListarFilhos(ctx context.Context, parentID string) ([]store.Tenant, error)
+	CriarTenant(ctx context.Context, nome, tipo string, parentID *string, chaveBlindIndex []byte) (store.Tenant, error)
 }
 
 // IAMServer implementa iamv1.IAMServiceServer.
@@ -96,4 +101,49 @@ func (s *IAMServer) AvaliarPermissoes(ctx context.Context, req *iamv1.AvaliarPer
 		out[bi] = &iamv1.PermissaoComponente{View: d.View, Click: d.Click}
 	}
 	return &iamv1.AvaliarPermissoesResponse{Permissions: out}, nil
+}
+
+// ListarTenants devolve os tenants filhos diretos do tenant do contexto — os
+// clientes/negócios que o Dono/Parceiro autenticado gerencia (spec 004, RF07,
+// RN05: a hierarquia é sempre Tenant → filhos, nunca lateral).
+func (s *IAMServer) ListarTenants(ctx context.Context, _ *iamv1.ListarTenantsRequest) (*iamv1.ListarTenantsResponse, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	filhos, err := s.store.ListarFilhos(ctx, tc.GetTenantId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao listar tenants")
+	}
+	out := make([]*iamv1.Tenant, 0, len(filhos))
+	for _, t := range filhos {
+		out = append(out, &iamv1.Tenant{Id: t.ID, Nome: t.Nome, Tipo: t.Tipo})
+	}
+	return &iamv1.ListarTenantsResponse{Tenants: out}, nil
+}
+
+// CriarTenant cria um novo tenant "cliente" sob o tenant do contexto (spec 004,
+// RF07). Restrito a dono/parceiro, mesma regra de CriarSistema (001, RN01) —
+// um cliente final não gerencia outros tenants.
+func (s *IAMServer) CriarTenant(ctx context.Context, req *iamv1.CriarTenantRequest) (*iamv1.Tenant, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	if tc.GetTipo() != "dono" && tc.GetTipo() != "parceiro" {
+		return nil, status.Error(codes.PermissionDenied, "apenas dono ou parceiro podem criar clientes")
+	}
+	if req.GetNome() == "" {
+		return nil, status.Error(codes.InvalidArgument, "nome obrigatório")
+	}
+	chave := make([]byte, 32)
+	if _, err := rand.Read(chave); err != nil {
+		return nil, status.Error(codes.Internal, "falha ao gerar chave do tenant")
+	}
+	parentID := tc.GetTenantId()
+	t, err := s.store.CriarTenant(ctx, req.GetNome(), "cliente", &parentID, chave)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao criar tenant")
+	}
+	return &iamv1.Tenant{Id: t.ID, Nome: t.Nome, Tipo: t.Tipo}, nil
 }

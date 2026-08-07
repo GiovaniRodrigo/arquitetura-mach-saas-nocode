@@ -54,8 +54,32 @@ message AutenticarThirdPartyResponse {
   string tipo = 4;
 }
 
+// Tenants (clientes/negócios) do Player autenticado (spec 004, RF07/RF08).
+// ListarTenants devolve os filhos diretos do tenant do contexto (RN05: um
+// Dono/Parceiro navega para os tenants que ele mesmo criou como clientes);
+// CriarTenant insere um novo filho do tipo "cliente" sob o tenant do contexto,
+// restrito a dono/parceiro (mesma regra de CriarSistema em 001, RN01).
+message Tenant {
+  string id = 1;
+  string nome = 2;
+  // dono | parceiro | cliente
+  string tipo = 3;
+}
+
+message ListarTenantsRequest {}
+
+message ListarTenantsResponse {
+  repeated Tenant tenants = 1;
+}
+
+message CriarTenantRequest {
+  string nome = 1;
+}
+
 service IAMService {
   rpc ValidarToken(ValidarTokenRequest) returns (ValidarTokenResponse);
   rpc AvaliarPermissoes(AvaliarPermissoesRequest) returns (AvaliarPermissoesResponse);
   rpc AutenticarThirdParty(AutenticarThirdPartyRequest) returns (AutenticarThirdPartyResponse);
+  rpc ListarTenants(ListarTenantsRequest) returns (ListarTenantsResponse);
+  rpc CriarTenant(CriarTenantRequest) returns (Tenant);
 }
