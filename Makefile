@@ -28,6 +28,14 @@ up: ## Sobe a infraestrutura local (Postgres, Redis, RabbitMQ, Jaeger, MinIO)
 down: ## Derruba a infraestrutura local
 	docker compose down
 
+.PHONY: dev
+dev: ## Startup guiado: sobe infra + proto + services + gateway + collab + player (build/dev-up.sh)
+	./build/dev-up.sh
+
+.PHONY: dev-no-player
+dev-no-player: ## Como 'dev', mas sem subir o player (útil se ele já roda à parte)
+	./build/dev-up.sh --no-player
+
 .PHONY: migrate
 migrate: ## Aplica as migrações SQL no Postgres local
 	docker compose run --rm migrate

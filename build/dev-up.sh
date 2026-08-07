@@ -13,6 +13,15 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# Carrega overrides locais (ex.: MINIO_HOST_PORT quando outro projeto já
+# ocupa 9000/9001) do mesmo .env que o Docker Compose usa, para as duas
+# ferramentas concordarem na mesma porta.
+if [ -f .env ]; then
+  set -a; source .env; set +a
+fi
+MINIO_HOST_PORT="${MINIO_HOST_PORT:-9000}"
+MINIO_CONSOLE_HOST_PORT="${MINIO_CONSOLE_HOST_PORT:-9001}"
+
 WITH_PLAYER=1
 ASSUME_YES=0
 for arg in "$@"; do
@@ -66,7 +75,13 @@ cleanup() {
     step "Encerrando processos iniciados por este script"
     for i in "${!PIDS[@]}"; do
       local_pid="${PIDS[$i]}"
-      kill "$local_pid" 2>/dev/null && ok "${NAMES[$i]} (pid $local_pid)" || true
+      # -$pid mira o process group inteiro (criado via setsid em run_bg): matar
+      # só o "go run" deixa o binário compilado filho órfão segurando a porta.
+      kill -TERM -- "-$local_pid" 2>/dev/null && ok "${NAMES[$i]} (pid $local_pid)" || true
+    done
+    sleep 1
+    for i in "${!PIDS[@]}"; do
+      kill -0 -- "-${PIDS[$i]}" 2>/dev/null && kill -KILL -- "-${PIDS[$i]}" 2>/dev/null
     done
     wait 2>/dev/null || true
   fi
@@ -75,7 +90,7 @@ trap cleanup EXIT INT TERM
 
 run_bg() {
   local name="$1"; shift
-  ("$@") >"$LOG_DIR/$name.log" 2>&1 &
+  setsid "$@" >"$LOG_DIR/$name.log" 2>&1 &
   local pid=$!
   PIDS+=("$pid")
   NAMES+=("$name")
@@ -159,9 +174,9 @@ fi
 # =============================================================================
 step "1/7  Infraestrutura (Docker Compose)"
 
-for p in 5432 6379 5672 15672 4317 4318 9000 9001 16686; do
+for p in 5432 6379 5672 15672 4317 4318 "$MINIO_HOST_PORT" "$MINIO_CONSOLE_HOST_PORT" 16686; do
   if port_in_use "$p"; then
-    warn "porta $p já está em uso no host — pode ser outro projeto (ex.: MinIO em 9000)"
+    warn "porta $p já está em uso no host — pode ser outro projeto (ex.: outro MinIO). Ajuste MINIO_HOST_PORT/MINIO_CONSOLE_HOST_PORT em .env se for o caso"
     confirm "Continuar mesmo assim (o docker compose pode falhar ao subir esse serviço)?" || \
       abort "libere a porta $p ou ajuste docker-compose.yml e rode de novo."
   fi
@@ -180,7 +195,7 @@ fi
 
 wait_for_port localhost 5432 postgres || abort "postgres não subiu"
 wait_for_port localhost 5672 rabbitmq || abort "rabbitmq não subiu"
-wait_for_port localhost 9000 minio || abort "minio não subiu"
+wait_for_port localhost "$MINIO_HOST_PORT" minio || abort "minio não subiu"
 ok "Infra no ar (postgres, redis, rabbitmq, jaeger, otel-collector, minio)"
 
 # =============================================================================
@@ -197,7 +212,7 @@ run_bg iam    go run ./services/iam/cmd
 run_bg design go run ./services/design/cmd
 run_bg logic  go run ./services/logic/cmd
 run_bg deploy go run ./services/deploy/cmd
-run_bg export go run ./services/export/cmd
+run_bg export env "S3_ENDPOINT=localhost:$MINIO_HOST_PORT" go run ./services/export/cmd
 
 wait_for_port localhost 50051 iam    || abort "iam não subiu"
 wait_for_port localhost 50052 design || abort "design não subiu"
@@ -243,7 +258,7 @@ cat <<EOF
   ${C_BOLD}Collab${C_RESET}    http://localhost:4000
   ${C_BOLD}Jaeger${C_RESET}    http://localhost:16686
   ${C_BOLD}RabbitMQ${C_RESET}  http://localhost:15672  (mach/mach)
-  ${C_BOLD}MinIO${C_RESET}     http://localhost:9001   (mach/machsecret)
+  ${C_BOLD}MinIO${C_RESET}     http://localhost:$MINIO_CONSOLE_HOST_PORT   (mach/machsecret)
 
   Logs dos processos em background: ${C_DIM}$LOG_DIR/*.log${C_RESET}
 EOF

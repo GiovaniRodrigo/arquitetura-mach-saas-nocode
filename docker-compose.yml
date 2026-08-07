@@ -3,6 +3,7 @@ name: machv4
 services:
   postgres:
     image: postgres:16
+    container_name: machv4-postgres
     environment:
       POSTGRES_USER: mach
       POSTGRES_PASSWORD: mach
@@ -19,6 +20,7 @@ services:
 
   redis:
     image: redis:7
+    container_name: machv4-redis
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
@@ -32,6 +34,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.13-management
+    container_name: machv4-rabbitmq
     # Utilizador `mach` e toda a topologia (exchanges/filas/DLQs) vêm das
     # definitions.json carregadas via rabbitmq.conf (RN09).
     ports:
@@ -50,6 +53,7 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.60
+    container_name: machv4-jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
@@ -60,6 +64,7 @@ services:
   # Collector: recebe OTLP de todos os serviços e reencaminha ao Jaeger (RNF04).
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.109.0
+    container_name: machv4-otel-collector
     command: ["--config=/etc/otel/collector-config.yaml"]
     volumes:
       - ./infra/otel/collector-config.yaml:/etc/otel/collector-config.yaml:ro
@@ -71,13 +76,16 @@ services:
 
   minio:
     image: minio/minio:latest
+    container_name: machv4-minio
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: mach
       MINIO_ROOT_PASSWORD: machsecret
     ports:
-      - "9000:9000"  # S3 API
-      - "9001:9001"  # Console
+      # Portas do host configuráveis via MINIO_HOST_PORT/MINIO_CONSOLE_HOST_PORT
+      # (defaults 9000/9001) — útil quando outro projeto local já ocupa 9000/9001.
+      - "${MINIO_HOST_PORT:-9000}:9000"  # S3 API
+      - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"  # Console
     volumes:
       - minio_data:/data
     healthcheck:
@@ -89,6 +97,7 @@ services:
   # Aplicação idempotente das migrações versionadas (make migrate).
   migrate:
     image: postgres:16
+    container_name: machv4-migrate
     depends_on:
       postgres:
         condition: service_healthy
