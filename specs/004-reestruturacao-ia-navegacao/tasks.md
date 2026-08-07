@@ -27,13 +27,13 @@ com `fetch` mockado nos testes até o backend expor os endpoints reais.
 
 ## Fase 3 — Configuração: White Label e Segurança
 
-- [ ] 14. Escrever teste de `client.test.ts` para `atualizarWhiteLabel`, `atualizarSenha`, `ativarMfa`, `confirmarMfa`, `desativarMfa`, `excluirConta` — incluindo o caso `409 TENANT_ATIVO_VINCULADO` (RF13-RF16, RN07) (`player/src/api/client.test.ts`)
-- [ ] 15. Implementar os métodos acima em `ApiClient` (RF13-RF16) (`player/src/api/client.ts`, `player/src/api/types.ts`)
-- [ ] 16. Escrever teste de `WhiteLabelForm.test.tsx` (salvar logo/cores/domínio; exibir estado "validando domínio" quando a API responde 202) (RF13, RNF03) (`player/src/configuracao/WhiteLabelForm.test.tsx`)
-- [ ] 17. Implementar `WhiteLabelForm.tsx` (RF13, RNF03) (`player/src/configuracao/WhiteLabelForm.tsx`)
-- [ ] 18. Escrever teste de `SegurancaForm.test.tsx` cobrindo os 3 fluxos: troca de senha; ativação de MFA em duas etapas (QR code exibido uma única vez, depois some do DOM); exclusão de conta bloqueada quando a API retorna `TENANT_ATIVO_VINCULADO` (RF14-RF16, RN07, RNF01, RNF02) (`player/src/configuracao/SegurancaForm.test.tsx`)
-- [ ] 19. Implementar `SegurancaForm.tsx` (RF14-RF16, RN07, RNF01, RNF02) (`player/src/configuracao/SegurancaForm.tsx`)
-- [ ] 20. Compor `Configuracao.tsx` com as seções Aparência (existente) + White Label + Segurança, com âncora `#seguranca` (RF13-RF16) (`player/src/pages/Dashboard/Configuracao.tsx`)
+- [x] 14. Escrever teste de `client.test.ts` para `atualizarWhiteLabel`, `atualizarSenha`, `ativarMfa`, `confirmarMfa`, `desativarMfa`, `excluirConta` — incluindo o caso `409 TENANT_ATIVO_VINCULADO` (RF13-RF16, RN07) (`player/src/api/client.test.ts`)
+- [x] 15. Implementar os métodos acima em `ApiClient` (RF13-RF16) (`player/src/api/client.ts`, `player/src/api/types.ts`)
+- [x] 16. Escrever teste de `WhiteLabelForm.test.tsx` (salvar logo/cores/domínio; exibir estado "validando domínio" quando a API responde 202) (RF13, RNF03) (`player/src/configuracao/WhiteLabelForm.test.tsx`)
+- [x] 17. Implementar `WhiteLabelForm.tsx` (RF13, RNF03) (`player/src/configuracao/WhiteLabelForm.tsx`)
+- [x] 18. Escrever teste de `SegurancaForm.test.tsx` cobrindo os 3 fluxos: troca de senha; ativação de MFA em duas etapas (QR code exibido uma única vez, depois some do DOM); exclusão de conta bloqueada quando a API retorna `TENANT_ATIVO_VINCULADO` (RF14-RF16, RN07, RNF01, RNF02) (`player/src/configuracao/SegurancaForm.test.tsx`)
+- [x] 19. Implementar `SegurancaForm.tsx` (RF14-RF16, RN07, RNF01, RNF02) (`player/src/configuracao/SegurancaForm.tsx`)
+- [x] 20. Compor `Configuracao.tsx` com as seções Aparência (existente) + White Label + Segurança, com âncora `#seguranca` (RF13-RF16) (`player/src/pages/Dashboard/Configuracao.tsx`)
 
 ## Fase 4 — Dashboard: cards Últimos Acessos, Feedback e Resumo Financeiro
 

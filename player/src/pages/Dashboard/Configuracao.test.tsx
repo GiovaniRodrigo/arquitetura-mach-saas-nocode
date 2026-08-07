@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { Configuracao } from './Configuracao';
 import { renderDashboard } from '../../test/renderDashboard';
 import { CHAVE_TEMA } from '../../theme/initTheme';
@@ -31,5 +32,12 @@ describe('Page: Configuracao Dashboard', () => {
     renderDashboard(<Configuracao />);
     expect(screen.queryByText('Perfil do Usuário')).toBeNull();
     expect(screen.queryByRole('button', { name: /Editar Perfil/i })).toBeNull();
+  });
+
+  it('inclui as seções White Label e Segurança, com âncora #seguranca (RF13-RF16)', () => {
+    renderDashboard(<Configuracao />);
+    expect(screen.getByRole('heading', { name: /white label/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^segurança$/i })).toBeInTheDocument();
+    expect(document.getElementById('seguranca')).toBeInTheDocument();
   });
 });

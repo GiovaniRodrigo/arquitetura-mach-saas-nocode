@@ -2,6 +2,8 @@ import { TonalCard } from '../../components/m3/TonalCard';
 import { ElevatedCard } from '../../components/m3/ElevatedCard';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Moon, Sun } from 'lucide-react';
+import { WhiteLabelForm } from '../../configuracao/WhiteLabelForm';
+import { SegurancaForm } from '../../configuracao/SegurancaForm';
 
 export function Configuracao() {
   const { tema, alternarTema } = useTheme();
@@ -31,6 +33,19 @@ export function Configuracao() {
             {tema === 'escuro' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             Alternar Tema
           </button>
+        </ElevatedCard>
+
+        <ElevatedCard>
+          <h3 className="text-md font-heading font-bold mb-2">White Label</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Personalize a marca exibida aos seus clientes.
+          </p>
+          <WhiteLabelForm />
+        </ElevatedCard>
+
+        <ElevatedCard>
+          <h3 className="text-md font-heading font-bold mb-2">Segurança</h3>
+          <SegurancaForm />
         </ElevatedCard>
       </div>
     </div>

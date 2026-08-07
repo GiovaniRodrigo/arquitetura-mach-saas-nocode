@@ -170,6 +170,70 @@ export class ApiClient {
     await this.parse<unknown>(resp);
   }
 
+  /** Atualiza logo/cores/domínio do White Label (RF13). 202 = domínio em validação (RNF03). */
+  async atualizarWhiteLabel(dados: {
+    logo_url?: string;
+    cor_primaria?: string;
+    cor_secundaria?: string;
+    dominio_proprio?: string;
+  }): Promise<{ validandoDominio: boolean }> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/configuracao/white-label`, {
+      method: "PUT",
+      headers: this.headers(),
+      body: JSON.stringify(dados),
+    });
+    await this.parse<unknown>(resp);
+    return { validandoDominio: resp.status === 202 };
+  }
+
+  /** Atualiza a senha da conta (RF14, RNF02 — reautenticação via senha atual). */
+  async atualizarSenha(senhaAtual: string, senhaNova: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/senha`, {
+      method: "PUT",
+      headers: this.headers(),
+      body: JSON.stringify({ senha_atual: senhaAtual, senha_nova: senhaNova }),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Inicia a ativação do MFA TOTP; o segredo/QR code é de exibição única (RF15, RNF01). */
+  async ativarMfa(): Promise<{ segredoOtpAuthUri: string }> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/mfa/ativar`, {
+      method: "POST",
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ segredo_otp_auth_uri: string }>(resp);
+    return { segredoOtpAuthUri: corpo.segredo_otp_auth_uri };
+  }
+
+  /** Confirma o MFA com o código gerado pelo app autenticador (RF15). */
+  async confirmarMfa(codigo: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/mfa/confirmar`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ codigo }),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Desativa o MFA (RF15). */
+  async desativarMfa(): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/mfa`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Exclui a conta; 409 TENANT_ATIVO_VINCULADO se houver tenant ativo (RF16, RN07). */
+  async excluirConta(): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    await this.parse<unknown>(resp);
+  }
+
   private async parseIgnorandoStatus<T>(resp: Response): Promise<T> {
     const texto = await resp.text();
     const corpo = ApiClient.parseJsonSeguro(texto);

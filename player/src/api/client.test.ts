@@ -154,6 +154,84 @@ describe("ApiClient (RF03/RN08)", () => {
     expect(JSON.parse(init.body as string)).toEqual({ token: "tok-conf-1" });
   });
 
+  it("atualizarWhiteLabel faz PUT e sinaliza validação de domínio pendente em 202 (RF13/RNF03)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(202, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const resultado = await client.atualizarWhiteLabel({
+      logo_url: "http://x/l.png",
+      cor_primaria: "#111111",
+      cor_secundaria: "#222222",
+      dominio_proprio: "app.parceiro.com",
+    });
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/configuracao/white-label");
+    expect(init.method).toBe("PUT");
+    expect(resultado.validandoDominio).toBe(true);
+  });
+
+  it("atualizarSenha faz PUT com senha atual e nova (RF14)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.atualizarSenha("atual123", "nova123");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/conta/senha");
+    expect(JSON.parse(init.body as string)).toEqual({ senha_atual: "atual123", senha_nova: "nova123" });
+  });
+
+  it("ativarMfa devolve o URI do QR code TOTP (RF15/RNF01)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(200, { segredo_otp_auth_uri: "otpauth://totp/x" }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const { segredoOtpAuthUri } = await client.ativarMfa();
+    expect(segredoOtpAuthUri).toBe("otpauth://totp/x");
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/conta/mfa/ativar");
+  });
+
+  it("confirmarMfa envia o código digitado (RF15)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.confirmarMfa("123456");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/conta/mfa/confirmar");
+    expect(JSON.parse(init.body as string)).toEqual({ codigo: "123456" });
+  });
+
+  it("desativarMfa faz DELETE (RF15)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.desativarMfa();
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/conta/mfa");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("excluirConta propaga 409 TENANT_ATIVO_VINCULADO como ApiError (RF16/RN07)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(409, { codigo: "TENANT_ATIVO_VINCULADO", mensagem: "Existem tenants ativos vinculados a esta conta." }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const erro = await client.excluirConta().catch((e) => e);
+    expect(erro).toBeInstanceOf(ApiError);
+    expect(erro.codigo).toBe("TENANT_ATIVO_VINCULADO");
+  });
+
+  it("excluirConta faz DELETE em /conta quando não há bloqueio (RF16)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.excluirConta();
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/conta");
+    expect(init.method).toBe("DELETE");
+  });
+
   it("com o fetch padrão, invoca o fetch global sem quebrar o binding (this)", async () => {
     // Reproduz o "Illegal invocation": o fetch nativo exige this global. Sem
     // fetchFn injetado, o client deve chamá-lo como função livre (this global).
