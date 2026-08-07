@@ -12,7 +12,7 @@ export function SistemaAbas() {
     }`;
 
   return (
-    <div className="flex flex-col gap-6 pb-8">
+    <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
       <nav className="flex gap-2 border-b border-border pb-2">
         <NavLink to={`${base}/telas`} className={abaClasse}>
           Telas
