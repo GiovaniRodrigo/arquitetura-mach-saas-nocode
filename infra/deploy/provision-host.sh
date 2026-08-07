@@ -193,6 +193,6 @@ $(log "provisionamento concluído")
 Próximos passos:
   1. Edite os $ENV_DIR/*.env com DSN, SECRET_KEY_BASE, OTLP, etc.
   2. Se não passou --pubkey, adicione a chave pública do CI a $AUTH_KEYS.
-  3. Rode o primeiro deploy pelo CI (ou scripts/deploy.sh) para criar $BASE/current.
+  3. Rode o primeiro deploy pelo CI (ou build/deploy.sh) para criar $BASE/current.
   4. Inicie os serviços: systemctl start 'machv4-*'
 EOF

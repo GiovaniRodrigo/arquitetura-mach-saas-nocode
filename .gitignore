@@ -35,3 +35,6 @@ node_modules/
 # Claude Code — configurações locais da máquina
 .claude/settings.local.json
 .claude/*.tmp.*
+
+# Logs do scripts/dev-up.sh
+/.dev-logs/

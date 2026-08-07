@@ -17,19 +17,19 @@ Guia para compilar os artefatos localmente, simular a entrega e verificar o resu
 ```bash
 # 1. Compilar todos os artefatos (gera gen/, binários Go, release OTP, dist do player)
 #    Saída: dist/artifacts/<unidade>-<sha>.tar.gz (somente executáveis)
-SHA=$(git rev-parse --short HEAD) scripts/build-artifacts.sh
+SHA=$(git rev-parse --short HEAD) build/build-artifacts.sh
 
 # 2. Inspecionar um artefato — não deve conter fonte, .git, node_modules nem deps
 tar -tzf dist/artifacts/gateway-"$SHA".tar.gz | head
 
 # 3. (Ensaio) Entregar ao host de staging: rsync -> releases/<sha> + symlink + restart
-scripts/deploy.sh --env staging --host "$STAGING_HOST" --user deploy --sha "$SHA"
+build/deploy.sh --env staging --host "$STAGING_HOST" --user deploy --sha "$SHA"
 
 # 4. Smoke test pós-deploy (healthchecks dos serviços)
-scripts/smoke-test.sh --host "$STAGING_HOST"
+build/smoke-test.sh --host "$STAGING_HOST"
 
 # 5. (Se necessário) Rollback para o release anterior, sem recompilar
-scripts/rollback.sh --env staging --host "$STAGING_HOST"
+build/rollback.sh --env staging --host "$STAGING_HOST"
 ```
 
 No CI, o mesmo caminho é executado por `.github/workflows/cd.yml`: push em `main` entrega a staging automaticamente; uma tag `vX.Y.Z` compila/publica os artefatos, e a produção é promovida por disparo manual (`gh workflow run cd.yml --ref vX.Y.Z`).

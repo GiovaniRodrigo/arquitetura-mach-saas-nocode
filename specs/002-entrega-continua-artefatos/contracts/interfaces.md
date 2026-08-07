@@ -53,20 +53,20 @@ Nome: `machv4-<unidade>.service` para `gateway, iam, design, logic, deploy, expo
 
 ```bash
 # Compila e empacota todos os artefatos a partir de dist/ (nunca da raiz do repo)
-scripts/build-artifacts.sh
+build/build-artifacts.sh
 #   entrada:  SHA (env, default: git rev-parse --short HEAD)
 #   saída:    dist/artifacts/<unidade>-<SHA>.tar.gz ; exit 0 = sucesso
 
 # Entrega os artefatos a um ambiente e ativa o release
-scripts/deploy.sh --env <staging|production> --host <host> --user <user> --sha <sha>
+build/deploy.sh --env <staging|production> --host <host> --user <user> --sha <sha>
 #   efeito:   rsync -> releases/<sha> ; ln -sfn atômico ; systemctl restart 'machv4-*'
 
 # Verifica a saúde dos serviços após a ativação
-scripts/smoke-test.sh --host <host>
+build/smoke-test.sh --host <host>
 #   contrato: exit 0 = todos saudáveis ; exit ≠ 0 = falha (dispara rollback, RN08)
 
 # Reverte para o release anterior (ou um sha informado), sem recompilar
-scripts/rollback.sh --env <staging|production> --host <host> [--sha <sha>]
+build/rollback.sh --env <staging|production> --host <host> [--sha <sha>]
 ```
 
 ---

@@ -3,8 +3,8 @@
 # release anterior (ou a um sha informado) e reinicia os serviços — SEM novo build
 # (RF09, RN07, RN08).
 #
-# Uso (remoto): scripts/rollback.sh --env production --host H --user U [--sha SHA]
-# Uso (local):  scripts/rollback.sh --dest /caminho/opt/machv4 [--sha SHA]  # ensaio
+# Uso (remoto): build/rollback.sh --env production --host H --user U [--sha SHA]
+# Uso (local):  build/rollback.sh --dest /caminho/opt/machv4 [--sha SHA]  # ensaio
 set -euo pipefail
 
 ENVNAME="" HOST="" USER="" SHA="" DEST=""

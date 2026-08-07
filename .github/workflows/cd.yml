@@ -76,7 +76,7 @@ jobs:
         run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Compilar e empacotar artefatos
-        run: SHA="${{ steps.meta.outputs.sha }}" scripts/build-artifacts.sh
+        run: SHA="${{ steps.meta.outputs.sha }}" build/build-artifacts.sh
 
       - name: Publicar artefatos
         uses: actions/upload-artifact@v4
@@ -106,12 +106,12 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           eval "$(ssh-agent -s)"; ssh-add ~/.ssh/id_ed25519
       - name: Deploy
-        run: scripts/deploy.sh --env staging --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}" --sha "${{ needs.build.outputs.sha }}"
+        run: build/deploy.sh --env staging --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}" --sha "${{ needs.build.outputs.sha }}"
       - name: Smoke test (rollback automático em falha)
         run: |
-          if ! scripts/smoke-test.sh --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"; then
+          if ! build/smoke-test.sh --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"; then
             echo "::error::smoke test falhou — revertendo"
-            scripts/rollback.sh --env staging --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"
+            build/rollback.sh --env staging --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"
             exit 1
           fi
 
@@ -143,11 +143,11 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           eval "$(ssh-agent -s)"; ssh-add ~/.ssh/id_ed25519
       - name: Deploy
-        run: scripts/deploy.sh --env production --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}" --sha "${{ needs.build.outputs.sha }}"
+        run: build/deploy.sh --env production --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}" --sha "${{ needs.build.outputs.sha }}"
       - name: Smoke test (rollback automático em falha)
         run: |
-          if ! scripts/smoke-test.sh --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"; then
+          if ! build/smoke-test.sh --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"; then
             echo "::error::smoke test falhou — revertendo"
-            scripts/rollback.sh --env production --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"
+            build/rollback.sh --env production --host "${{ secrets.SSH_HOST }}" --user "${{ secrets.SSH_USER }}"
             exit 1
           fi

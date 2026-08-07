@@ -5,8 +5,8 @@
 # releases/<sha>, troca o symlink `current` atomicamente e reinicia os serviços
 # (RF07, RF08, RN01, RN04). Nenhum código-fonte é enviado.
 #
-# Uso (remoto):  scripts/deploy.sh --env staging --host H --user U --sha SHA
-# Uso (local):   scripts/deploy.sh --sha SHA --dest /caminho/opt/machv4   # ensaio
+# Uso (remoto):  build/deploy.sh --env staging --host H --user U --sha SHA
+# Uso (local):   build/deploy.sh --sha SHA --dest /caminho/opt/machv4   # ensaio
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

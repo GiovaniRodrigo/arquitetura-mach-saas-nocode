@@ -6,7 +6,7 @@
 # tarball contendo APENAS conteúdo executável (RN01, RN05, RN06).
 #
 # Saída: dist/artifacts/<unidade>-<sha>.tar.gz
-# Uso:   SHA=$(git rev-parse --short HEAD) scripts/build-artifacts.sh
+# Uso:   SHA=$(git rev-parse --short HEAD) build/build-artifacts.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

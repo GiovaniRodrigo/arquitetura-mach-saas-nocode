@@ -3,7 +3,7 @@
 # ativação de um release. Exit 0 = todos saudáveis; exit != 0 dispara o rollback
 # automático no cd.yml (RF11, RN08).
 #
-# Uso: scripts/smoke-test.sh --host H [--user U]   # --user habilita checagem do worker
+# Uso: build/smoke-test.sh --host H [--user U]   # --user habilita checagem do worker
 set -euo pipefail
 
 HOST="" USER="" FAIL=0

@@ -108,8 +108,8 @@ recebe os tarballs.
 
 ```bash
 # Deploy de um sha específico (normalmente feito pelo cd.yml)
-scripts/deploy.sh --env staging --host "$SSH_HOST" --user deploy --sha <sha>
+build/deploy.sh --env staging --host "$SSH_HOST" --user deploy --sha <sha>
 
 # Rollback para o release anterior
-scripts/rollback.sh --env production --host "$SSH_HOST" --user deploy
+build/rollback.sh --env production --host "$SSH_HOST" --user deploy
 ```

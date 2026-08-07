@@ -1,6 +1,6 @@
 # Plano de Implementação: Pipeline CI/CD por Entrega de Artefatos Compilados
 
-A estratégia reaproveita o pipeline de validação da Fase 11 (`.github/workflows/ci.yml`) como *gate* e adiciona um pipeline de release (`cd.yml`) que compila os artefatos no runner, empacota apenas o conteúdo executável e entrega ao host via rsync/SSH com ativação atômica por symlink. A produção passa a executar os serviços sob `systemd` (binários Go e release OTP do `collab`) e o player sob Nginx, a partir de diretórios de release versionados pelo git sha. Toda a lógica de compilação e entrega vive em scripts idempotentes (`scripts/`) chamados tanto pelo CI quanto localmente, garantindo paridade.
+A estratégia reaproveita o pipeline de validação da Fase 11 (`.github/workflows/ci.yml`) como *gate* e adiciona um pipeline de release (`cd.yml`) que compila os artefatos no runner, empacota apenas o conteúdo executável e entrega ao host via rsync/SSH com ativação atômica por symlink. A produção passa a executar os serviços sob `systemd` (binários Go e release OTP do `collab`) e o player sob Nginx, a partir de diretórios de release versionados pelo git sha. Toda a lógica de compilação e entrega vive em scripts idempotentes (`build/`) chamados tanto pelo CI quanto localmente, garantindo paridade.
 
 ---
 
@@ -13,15 +13,15 @@ A estratégia reaproveita o pipeline de validação da Fase 11 (`.github/workflo
 
 ### 1.2. Compilação de artefatos
 
-* **`scripts/build-artifacts.sh`** *(criar)*: gera `gen/` (`buf generate`), compila os 7 binários Go (`CGO_ENABLED=0 go build`), o release OTP (`mix release`) e o `player/dist` (`vite build`); empacota cada um em `dist/artifacts/<unidade>-<sha>.tar.gz` contendo só o executável. [RF02, RF03, RN01, RN05, RN06]
+* **`build/build-artifacts.sh`** *(criar)*: gera `gen/` (`buf generate`), compila os 7 binários Go (`CGO_ENABLED=0 go build`), o release OTP (`mix release`) e o `player/dist` (`vite build`); empacota cada um em `dist/artifacts/<unidade>-<sha>.tar.gz` contendo só o executável. [RF02, RF03, RN01, RN05, RN06]
 * **`collab/mix.exs`** *(editar)*: adicionar a configuração `releases:` (nome `collab`, `include_executables_for: [:unix]`) para `mix release` produzir um pacote OTP autocontido com ERTS. [RF02]
 * **`collab/rel/env.sh.eex`** *(criar)*: variáveis de ambiente do release em runtime (porta, endpoint do OTel, Redis, DSN gRPC). [RF02]
 
 ### 1.3. Entrega (CD)
 
-* **`scripts/deploy.sh`** *(criar)*: recebe host/usuário/ambiente e o diretório de artefatos; faz `rsync -a --delete` para `releases/<sha>`, extrai os tarballs, troca o symlink `current` atomicamente (`ln -sfn`), reinicia as unidades `systemd` e serve o player. Idempotente. [RF07, RF08, RN01, RN04]
-* **`scripts/smoke-test.sh`** *(criar)*: consulta os healthchecks de cada serviço após a ativação; código de saída ≠ 0 sinaliza falha. [RF11]
-* **`scripts/rollback.sh`** *(criar)*: repointa `current` ao release imediatamente anterior (ou a um sha informado) e reinicia os serviços, sem recompilar. [RF09, RN07, RN08]
+* **`build/deploy.sh`** *(criar)*: recebe host/usuário/ambiente e o diretório de artefatos; faz `rsync -a --delete` para `releases/<sha>`, extrai os tarballs, troca o symlink `current` atomicamente (`ln -sfn`), reinicia as unidades `systemd` e serve o player. Idempotente. [RF07, RF08, RN01, RN04]
+* **`build/smoke-test.sh`** *(criar)*: consulta os healthchecks de cada serviço após a ativação; código de saída ≠ 0 sinaliza falha. [RF11]
+* **`build/rollback.sh`** *(criar)*: repointa `current` ao release imediatamente anterior (ou a um sha informado) e reinicia os serviços, sem recompilar. [RF09, RN07, RN08]
 
 ### 1.4. Runtime de produção
 
