@@ -20,10 +20,10 @@ com `fetch` mockado nos testes até o backend expor os endpoints reais.
 
 ## Fase 2 — Cadastro/Perfil (edição de nome/foto + troca de e-mail com confirmação)
 
-- [ ] 10. Escrever teste de `client.test.ts` para `atualizarPerfil`, `solicitarTrocaEmail`, `confirmarTrocaEmail` (payload, headers, tratamento de `ApiError`) (RF17, RF18) (`player/src/api/client.test.ts`)
-- [ ] 11. Implementar `atualizarPerfil`, `solicitarTrocaEmail`, `confirmarTrocaEmail` em `ApiClient` (RF17, RF18) (`player/src/api/client.ts`, `player/src/api/types.ts`)
-- [ ] 12. Escrever teste de `Perfil.test.tsx` cobrindo: edição de nome/foto salva direto; alteração de e-mail dispara `solicitarTrocaEmail` e mostra aviso "confirme no novo e-mail" sem trocar o e-mail exibido; link "Alterar senha" navega para `/dashboard/configuracao#seguranca` (RF17-RF19, RN08) (`player/src/pages/Dashboard/Perfil.test.tsx`)
-- [ ] 13. Atualizar `Perfil.tsx` (mover para rota de topo, campos nome/foto/e-mail, fluxo de confirmação, link de atalho para Segurança) (RF17-RF19, RN08) (`player/src/pages/Dashboard/Perfil.tsx`)
+- [x] 10. Escrever teste de `client.test.ts` para `atualizarPerfil`, `solicitarTrocaEmail`, `confirmarTrocaEmail` (payload, headers, tratamento de `ApiError`) (RF17, RF18) (`player/src/api/client.test.ts`)
+- [x] 11. Implementar `atualizarPerfil`, `solicitarTrocaEmail`, `confirmarTrocaEmail` em `ApiClient` (RF17, RF18) (`player/src/api/client.ts`, `player/src/api/types.ts`)
+- [x] 12. Escrever teste de `Perfil.test.tsx` cobrindo: edição de nome/foto salva direto; alteração de e-mail dispara `solicitarTrocaEmail` e mostra aviso "confirme no novo e-mail" sem trocar o e-mail exibido; link "Alterar senha" navega para `/dashboard/configuracao#seguranca` (RF17-RF19, RN08) (`player/src/pages/Dashboard/Perfil.test.tsx`)
+- [x] 13. Atualizar `Perfil.tsx` (mover para rota de topo, campos nome/foto/e-mail, fluxo de confirmação, link de atalho para Segurança) (RF17-RF19, RN08) (`player/src/pages/Dashboard/Perfil.tsx`)
 
 ## Fase 3 — Configuração: White Label e Segurança
 

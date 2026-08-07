@@ -122,6 +122,38 @@ describe("ApiClient (RF03/RN08)", () => {
     expect(erro.message.endsWith("…")).toBe(true);
   });
 
+  it("atualizarPerfil faz PATCH com nome e foto_url (RF17)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.atualizarPerfil({ nome: "Ana Silva", foto_url: "http://x/a.png" });
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/conta/perfil");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({ nome: "Ana Silva", foto_url: "http://x/a.png" });
+  });
+
+  it("solicitarTrocaEmail faz POST sem efetivar o e-mail (RF18/RN08)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(202, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.solicitarTrocaEmail("novo@x.com");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/conta/email");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ novo_email: "novo@x.com" });
+  });
+
+  it("confirmarTrocaEmail envia o token recebido por e-mail (RN08)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.confirmarTrocaEmail("tok-conf-1");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/conta/email/confirmar");
+    expect(JSON.parse(init.body as string)).toEqual({ token: "tok-conf-1" });
+  });
+
   it("com o fetch padrão, invoca o fetch global sem quebrar o binding (this)", async () => {
     // Reproduz o "Illegal invocation": o fetch nativo exige this global. Sem
     // fetchFn injetado, o client deve chamá-lo como função livre (this global).

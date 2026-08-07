@@ -140,6 +140,36 @@ export class ApiClient {
     return this.parse(resp);
   }
 
+  /** Atualiza nome/foto de perfil (RF17). */
+  async atualizarPerfil(dados: { nome: string; foto_url?: string }): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/perfil`, {
+      method: "PATCH",
+      headers: this.headers(),
+      body: JSON.stringify(dados),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Envia link/código ao novo e-mail; não efetiva a troca (RF18, RN08). */
+  async solicitarTrocaEmail(novoEmail: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/email`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ novo_email: novoEmail }),
+    });
+    await this.parse<unknown>(resp);
+  }
+
+  /** Confirma a troca de e-mail com o token recebido (RN08). */
+  async confirmarTrocaEmail(token: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/email/confirmar`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ token }),
+    });
+    await this.parse<unknown>(resp);
+  }
+
   private async parseIgnorandoStatus<T>(resp: Response): Promise<T> {
     const texto = await resp.text();
     const corpo = ApiClient.parseJsonSeguro(texto);
