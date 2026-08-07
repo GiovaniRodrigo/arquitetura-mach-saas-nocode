@@ -37,13 +37,13 @@ com `fetch` mockado nos testes até o backend expor os endpoints reais.
 
 ## Fase 4 — Dashboard: cards Últimos Acessos, Feedback e Resumo Financeiro
 
-- [ ] 21. Escrever teste de `client.test.ts` para `listarUltimosAcessos`, `listarFeedback` (com filtro de status), `atualizarStatusFeedback`, `resumoFinanceiro` (RF04-RF06) (`player/src/api/client.test.ts`)
-- [ ] 22. Implementar os métodos acima em `ApiClient` (RF04-RF06) (`player/src/api/client.ts`, `player/src/api/types.ts`)
-- [ ] 23. Escrever teste de `useUltimosAcessos.test.ts`, `useFeedback.test.ts`, `useResumoFinanceiro.test.ts` cobrindo os 4 estados (carregando/pronto/vazio/erro) com `fetch` mockado, no mesmo molde de `useSistemas.test.ts` (RF04-RF06, RNF05) (`player/src/dashboard/useUltimosAcessos.test.ts`, `useFeedback.test.ts`, `useResumoFinanceiro.test.ts`)
-- [ ] 24. Implementar `useUltimosAcessos.ts`, `useFeedback.ts`, `useResumoFinanceiro.ts` (RF04-RF06, RN02-RN04) (`player/src/dashboard/useUltimosAcessos.ts`, `useFeedback.ts`, `useResumoFinanceiro.ts`)
-- [ ] 25. Escrever teste de `CardUltimosAcessos.test.tsx`, `CardFeedback.test.tsx` (incluindo ação de marcar como respondido), `CardResumoFinanceiro.test.tsx` usando `StateViews` (RF04-RF06, RNF05) (`player/src/dashboard/CardUltimosAcessos.test.tsx`, `CardFeedback.test.tsx`, `CardResumoFinanceiro.test.tsx`)
-- [ ] 26. Implementar os 3 componentes de card acima (RF04-RF06) (`player/src/dashboard/CardUltimosAcessos.tsx`, `CardFeedback.tsx`, `CardResumoFinanceiro.tsx`)
-- [ ] 27. Compor `Dashboard.tsx` com os 3 cards novos junto às métricas existentes (RF03-RF06, RN01) (`player/src/pages/Dashboard/Dashboard.tsx`)
+- [x] 21. Escrever teste de `client.test.ts` para `listarUltimosAcessos`, `listarFeedback` (com filtro de status), `atualizarStatusFeedback`, `resumoFinanceiro` (RF04-RF06) (`player/src/api/client.test.ts`)
+- [x] 22. Implementar os métodos acima em `ApiClient` (RF04-RF06) (`player/src/api/client.ts`, `player/src/api/types.ts`)
+- [x] 23. Escrever teste de `useUltimosAcessos.test.ts`, `useFeedback.test.ts`, `useResumoFinanceiro.test.ts` cobrindo os 4 estados (carregando/pronto/vazio/erro) com `fetch` mockado, no mesmo molde de `useSistemas.test.ts` (RF04-RF06, RNF05) (`player/src/dashboard/useUltimosAcessos.test.ts`, `useFeedback.test.ts`, `useResumoFinanceiro.test.ts`)
+- [x] 24. Implementar `useUltimosAcessos.ts`, `useFeedback.ts`, `useResumoFinanceiro.ts` (RF04-RF06, RN02-RN04) (`player/src/dashboard/useUltimosAcessos.ts`, `useFeedback.ts`, `useResumoFinanceiro.ts`)
+- [x] 25. Escrever teste de `CardUltimosAcessos.test.tsx`, `CardFeedback.test.tsx` (incluindo ação de marcar como respondido), `CardResumoFinanceiro.test.tsx` usando `StateViews` (RF04-RF06, RNF05) (`player/src/dashboard/CardUltimosAcessos.test.tsx`, `CardFeedback.test.tsx`, `CardResumoFinanceiro.test.tsx`)
+- [x] 26. Implementar os 3 componentes de card acima (RF04-RF06) (`player/src/dashboard/CardUltimosAcessos.tsx`, `CardFeedback.tsx`, `CardResumoFinanceiro.tsx`)
+- [x] 27. Compor `Dashboard.tsx` com os 3 cards novos junto às métricas existentes (RF03-RF06, RN01) (`player/src/pages/Dashboard/Dashboard.tsx`)
 
 ## Fase 5 — Clientes: navegação Tenant → Sistema → abas
 

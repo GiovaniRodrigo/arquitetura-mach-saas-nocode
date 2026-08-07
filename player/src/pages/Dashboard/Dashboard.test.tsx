@@ -39,4 +39,11 @@ describe('Page: Dashboard Dashboard', () => {
     expect(screen.queryByText('Get Started')).toBeNull();
     expect(screen.queryByText('Create')).toBeNull();
   });
+
+  it('renderiza os cards de resumo consolidado (RF03-RF06)', () => {
+    renderDashboard(<Dashboard />);
+    expect(screen.getByText('Últimos Acessos')).toBeTruthy();
+    expect(screen.getByText('Reclamações/Feedback')).toBeTruthy();
+    expect(screen.getByText('Resumo Financeiro')).toBeTruthy();
+  });
 });

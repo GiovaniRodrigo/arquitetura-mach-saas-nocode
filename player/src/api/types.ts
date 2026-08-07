@@ -58,3 +58,35 @@ export interface Sistema {
   id: string;
   nome: string;
 }
+
+/** Tenant (cliente/negócio) vinculado ao usuário autenticado (RF07). */
+export interface Tenant {
+  id: string;
+  nome: string;
+}
+
+/** Evento de login agregado dos tenants vinculados (RF04, RN02). */
+export interface EventoLogin {
+  usuario_nome: string;
+  tenant_nome: string;
+  criado_em: string;
+}
+
+/** Status possíveis de uma mensagem de feedback (RN03). */
+export type StatusFeedback = "pendente" | "respondido";
+
+/** Mensagem de feedback/reclamação de um tenant vinculado (RF05). */
+export interface Feedback {
+  id: string;
+  tenant_nome: string;
+  mensagem: string;
+  status: StatusFeedback;
+  criado_em: string;
+}
+
+/** Receita de assinatura/cobrança agregada dos tenants vinculados (RF06, RN04). */
+export interface ResumoFinanceiro {
+  receita_total_centavos: number;
+  moeda: string;
+  competencia: string;
+}

@@ -232,6 +232,61 @@ describe("ApiClient (RF03/RN08)", () => {
     expect(init.method).toBe("DELETE");
   });
 
+  it("listarUltimosAcessos desembrulha o campo eventos (RF04/RN02)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(200, {
+        eventos: [{ usuario_nome: "Ana", tenant_nome: "Acme", criado_em: "2026-08-06T12:00:00Z" }],
+      }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const eventos = await client.listarUltimosAcessos();
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/dashboard/ultimos-acessos");
+    expect(eventos).toHaveLength(1);
+    expect(eventos[0].usuario_nome).toBe("Ana");
+  });
+
+  it("listarFeedback aplica o filtro de status na query (RF05/RN03)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { itens: [] }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.listarFeedback("pendente");
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/dashboard/feedback?status=pendente");
+  });
+
+  it("listarFeedback sem filtro não envia query (RF05)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { itens: [] }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.listarFeedback();
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/dashboard/feedback");
+  });
+
+  it("atualizarStatusFeedback faz PATCH para respondido (RN03)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(200, { id: "f1", tenant_nome: "Acme", mensagem: "x", status: "respondido", criado_em: "2026-08-06T12:00:00Z" }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const atualizado = await client.atualizarStatusFeedback("f1", "respondido");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/dashboard/feedback/f1");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({ status: "respondido" });
+    expect(atualizado.status).toBe("respondido");
+  });
+
+  it("resumoFinanceiro devolve a receita agregada (RF06/RN04)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(200, { receita_total_centavos: 150000, moeda: "BRL", competencia: "2026-08" }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const resumo = await client.resumoFinanceiro();
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/dashboard/resumo-financeiro");
+    expect(resumo.receita_total_centavos).toBe(150000);
+  });
+
   it("com o fetch padrão, invoca o fetch global sem quebrar o binding (this)", async () => {
     // Reproduz o "Illegal invocation": o fetch nativo exige this global. Sem
     // fetchFn injetado, o client deve chamá-lo como função livre (this global).

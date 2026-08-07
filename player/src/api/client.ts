@@ -2,7 +2,16 @@
 // Gateway e traduz as rotas REST. A identidade viaja apenas no cabeçalho
 // Authorization; o tenant é derivado do token pelo Gateway (nunca enviado no corpo).
 
-import type { MapaPermissoes, RespostaFormulario, Sistema, VersaoAtiva } from "./types";
+import type {
+  EventoLogin,
+  Feedback,
+  MapaPermissoes,
+  ResumoFinanceiro,
+  RespostaFormulario,
+  Sistema,
+  StatusFeedback,
+  VersaoAtiva,
+} from "./types";
 
 /** `fetch` injetável para testes. */
 export type FetchFn = typeof fetch;
@@ -232,6 +241,43 @@ export class ApiClient {
       headers: this.headers(),
     });
     await this.parse<unknown>(resp);
+  }
+
+  /** 10 logins mais recentes agregados dos tenants vinculados (RF04, RN02). */
+  async listarUltimosAcessos(): Promise<EventoLogin[]> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/ultimos-acessos`, {
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ eventos: EventoLogin[] }>(resp);
+    return corpo.eventos ?? [];
+  }
+
+  /** Mensagens de feedback dos tenants vinculados, opcionalmente filtradas por status (RF05, RN03). */
+  async listarFeedback(status?: StatusFeedback): Promise<Feedback[]> {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/feedback${qs}`, {
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ itens: Feedback[] }>(resp);
+    return corpo.itens ?? [];
+  }
+
+  /** Atualiza o status de uma mensagem de feedback (RN03). */
+  async atualizarStatusFeedback(id: string, status: StatusFeedback): Promise<Feedback> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/feedback/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: this.headers(),
+      body: JSON.stringify({ status }),
+    });
+    return this.parse<Feedback>(resp);
+  }
+
+  /** Receita de assinatura/cobrança agregada dos tenants vinculados (RF06, RN04). */
+  async resumoFinanceiro(): Promise<ResumoFinanceiro> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/resumo-financeiro`, {
+      headers: this.headers(),
+    });
+    return this.parse<ResumoFinanceiro>(resp);
   }
 
   private async parseIgnorandoStatus<T>(resp: Response): Promise<T> {

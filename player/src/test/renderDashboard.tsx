@@ -32,7 +32,14 @@ export function renderDashboard(
   ui: ReactElement,
   opts: { client?: ApiClient; usuario?: UsuarioAutenticado; rota?: string } = {},
 ) {
-  const client = opts.client ?? fakeClient({ listarSistemas: async () => [] });
+  const client =
+    opts.client ??
+    fakeClient({
+      listarSistemas: async () => [],
+      listarUltimosAcessos: async () => [],
+      listarFeedback: async () => [],
+      resumoFinanceiro: async () => ({ receita_total_centavos: 0, moeda: 'BRL', competencia: '' }),
+    });
   const usuario = opts.usuario ?? usuarioFake;
   return render(
     <MemoryRouter initialEntries={[opts.rota ?? '/dashboard']}>
