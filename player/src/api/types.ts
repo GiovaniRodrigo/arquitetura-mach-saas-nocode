@@ -90,3 +90,22 @@ export interface ResumoFinanceiro {
   moeda: string;
   competencia: string;
 }
+
+/** Tipos de validação suportados para uma regra de negócio de componente (RF10). */
+export type TipoRegraNegocio = "regex" | "tamanho" | "obrigatorio";
+
+/** Regra de validação de estado de um ou mais componentes (RF10/RF11, RN06). */
+export interface RegraNegocio {
+  id: string;
+  blind_indexes: string[];
+  tipo: TipoRegraNegocio;
+  parametros: Record<string, unknown>;
+}
+
+/** Versão de um sistema, listada na aba Versão (RF12). */
+export interface Versao {
+  id: string;
+  numero: number;
+  ativa: boolean;
+  criado_em: string;
+}

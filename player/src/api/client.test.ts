@@ -287,6 +287,78 @@ describe("ApiClient (RF03/RN08)", () => {
     expect(resumo.receita_total_centavos).toBe(150000);
   });
 
+  it("listarTenants desembrulha o campo tenants (RF07)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { tenants: [{ id: "t1", nome: "Acme" }] }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const tenants = await client.listarTenants();
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/tenants");
+    expect(tenants).toEqual([{ id: "t1", nome: "Acme" }]);
+  });
+
+  it("listarSistemas aceita filtro opcional de tenant_id (RF08)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { sistemas: [] }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.listarSistemas("t1");
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/sistemas?tenant_id=t1");
+  });
+
+  it("listarRegrasNegocio desembrulha as regras do sistema (RF10)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(200, { regras: [{ id: "r1", blind_indexes: ["bi-cpf"], tipo: "tamanho", parametros: { max: 11 } }] }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const regras = await client.listarRegrasNegocio("s1");
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/sistemas/s1/regras-negocio");
+    expect(regras).toHaveLength(1);
+  });
+
+  it("criarRegraNegocio faz POST com blind_indexes/tipo/parametros (RF10/RN06)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(201, { id: "r1", blind_indexes: ["bi-cpf"], tipo: "tamanho", parametros: { max: 11 } }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const nova = await client.criarRegraNegocio("s1", { blind_indexes: ["bi-cpf"], tipo: "tamanho", parametros: { max: 11 } });
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/sistemas/s1/regras-negocio");
+    expect(init.method).toBe("POST");
+    expect(nova.id).toBe("r1");
+  });
+
+  it("listarVersoes desembrulha as versões do sistema (RF12)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(200, { versoes: [{ id: "v1", numero: 1, ativa: true, criado_em: "2026-08-06T12:00:00Z" }] }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const versoes = await client.listarVersoes("s1");
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/sistemas/s1/versoes");
+    expect(versoes[0].ativa).toBe(true);
+  });
+
+  it("publicarVersao faz POST no endpoint de publicação (RF12)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.publicarVersao("s1", "v1");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/sistemas/s1/versoes/v1/publicar");
+    expect(init.method).toBe("POST");
+  });
+
+  it("reverterVersao faz POST no endpoint de reversão (RF12)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.reverterVersao("s1", "v0");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/sistemas/s1/versoes/v0/reverter");
+    expect(init.method).toBe("POST");
+  });
+
   it("com o fetch padrão, invoca o fetch global sem quebrar o binding (this)", async () => {
     // Reproduz o "Illegal invocation": o fetch nativo exige this global. Sem
     // fetchFn injetado, o client deve chamá-lo como função livre (this global).

@@ -47,21 +47,21 @@ com `fetch` mockado nos testes até o backend expor os endpoints reais.
 
 ## Fase 5 — Clientes: navegação Tenant → Sistema → abas
 
-- [ ] 28. Escrever teste de `client.test.ts` para `listarTenants`, `listarSistemas` com filtro `tenant_id`, `listarRegrasNegocio`/`criarRegraNegocio`, `listarVersoes`/`publicarVersao`/`reverterVersao` (RF07, RF08, RF10, RF12) (`player/src/api/client.test.ts`)
-- [ ] 29. Implementar os métodos acima em `ApiClient` (RF07, RF08, RF10, RF12) (`player/src/api/client.ts`, `player/src/api/types.ts`)
-- [ ] 30. Escrever teste de `useTenants.test.ts` (4 estados, molde de `useSistemas.test.ts`) (RF07) (`player/src/clientes/useTenants.test.ts`)
-- [ ] 31. Implementar `useTenants.ts` e reescrever `Clientes.tsx` para listar tenants via `useTenants` + `StateViews`, "Abrir cliente" navegando para `clientes/:tenantId` (RF07, RN01) (`player/src/clientes/useTenants.ts`, `player/src/pages/Dashboard/Clientes.tsx`)
-- [ ] 32. Escrever teste de `ClienteSistemas.test.tsx` (lista sistemas do tenant via `useSistemas` filtrado; "Abrir sistema" navega para as abas) (RF08, RN05) (`player/src/pages/Dashboard/ClienteSistemas.test.tsx`)
-- [ ] 33. Implementar `ClienteSistemas.tsx` (RF08, RN05) (`player/src/pages/Dashboard/ClienteSistemas.tsx`)
-- [ ] 34. Escrever teste de `SistemaAbas.test.tsx` (navegação entre as 3 abas via `<Outlet/>`, aba ativa destacada) (RF09-RF12) (`player/src/pages/Dashboard/SistemaAbas.test.tsx`)
-- [ ] 35. Implementar `SistemaAbas.tsx` e as rotas aninhadas `telas`/`regras`/`versao` em `App.tsx` (RF09-RF12) (`player/src/pages/Dashboard/SistemaAbas.tsx`, `player/src/App.tsx`)
-- [ ] 36. Escrever teste de `AbaVersao.test.tsx` (lista versões, publica, reverte, reaproveitando o padrão de `abrirSistema.ts`) (RF12) (`player/src/pages/Dashboard/abas/AbaVersao.test.tsx`)
-- [ ] 37. Implementar `AbaVersao.tsx` (RF12) (`player/src/pages/Dashboard/abas/AbaVersao.tsx`)
-- [ ] 38. Escrever teste de `AbaRegrasNegocio.test.tsx` cobrindo criação de regra de componente único (CPF numérico/11 caracteres como exemplo) e estado vazio/placeholder para regra multi-componente (RF10, RN06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.test.tsx`)
-- [ ] 39. Implementar `AbaRegrasNegocio.tsx` — CRUD de regra de componente único; RF11 (multi-componente) como placeholder explícito ("em breve"), não como funcionalidade real (RF10, RN06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx`)
-- [ ] 40. Escrever teste de `AbaTelas.test.tsx` cobrindo apenas a casca (layout de 3 colunas renderiza, estado vazio "nenhuma tela criada ainda") — sem simular drag-and-drop, que não existe nesta fase (RF09) (`player/src/pages/Dashboard/abas/AbaTelas.test.tsx`)
-- [ ] 41. Implementar `AbaTelas.tsx` como casca de navegação (sidebar de telas vazia, área central com placeholder de canvas, painel de propriedades vazio) — o editor funcional fica para spec própria (ver `plan.md §2.3`/Riscos) (RF09) (`player/src/pages/Dashboard/abas/AbaTelas.tsx`)
+- [x] 28. Escrever teste de `client.test.ts` para `listarTenants`, `listarSistemas` com filtro `tenant_id`, `listarRegrasNegocio`/`criarRegraNegocio`, `listarVersoes`/`publicarVersao`/`reverterVersao` (RF07, RF08, RF10, RF12) (`player/src/api/client.test.ts`)
+- [x] 29. Implementar os métodos acima em `ApiClient` (RF07, RF08, RF10, RF12) (`player/src/api/client.ts`, `player/src/api/types.ts`)
+- [x] 30. Escrever teste de `useTenants.test.ts` (4 estados, molde de `useSistemas.test.ts`) (RF07) (`player/src/clientes/useTenants.test.ts`)
+- [x] 31. Implementar `useTenants.ts` e reescrever `Clientes.tsx` para listar tenants via `useTenants` + `StateViews`, "Abrir cliente" navegando para `clientes/:tenantId` (RF07, RN01) (`player/src/clientes/useTenants.ts`, `player/src/pages/Dashboard/Clientes.tsx`)
+- [x] 32. Escrever teste de `ClienteSistemas.test.tsx` (lista sistemas do tenant via `useSistemas` filtrado; "Abrir sistema" navega para as abas) (RF08, RN05) (`player/src/pages/Dashboard/ClienteSistemas.test.tsx`)
+- [x] 33. Implementar `ClienteSistemas.tsx` (RF08, RN05) (`player/src/pages/Dashboard/ClienteSistemas.tsx`)
+- [x] 34. Escrever teste de `SistemaAbas.test.tsx` (navegação entre as 3 abas via `<Outlet/>`, aba ativa destacada) (RF09-RF12) (`player/src/pages/Dashboard/SistemaAbas.test.tsx`)
+- [x] 35. Implementar `SistemaAbas.tsx` e as rotas aninhadas `telas`/`regras`/`versao` em `App.tsx` (RF09-RF12) (`player/src/pages/Dashboard/SistemaAbas.tsx`, `player/src/App.tsx`)
+- [x] 36. Escrever teste de `AbaVersao.test.tsx` (lista versões, publica, reverte, reaproveitando o padrão de `abrirSistema.ts`) (RF12) (`player/src/pages/Dashboard/abas/AbaVersao.test.tsx`)
+- [x] 37. Implementar `AbaVersao.tsx` (RF12) (`player/src/pages/Dashboard/abas/AbaVersao.tsx`)
+- [x] 38. Escrever teste de `AbaRegrasNegocio.test.tsx` cobrindo criação de regra de componente único (CPF numérico/11 caracteres como exemplo) e estado vazio/placeholder para regra multi-componente (RF10, RN06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.test.tsx`)
+- [x] 39. Implementar `AbaRegrasNegocio.tsx` — CRUD de regra de componente único; RF11 (multi-componente) como placeholder explícito ("em breve"), não como funcionalidade real (RF10, RN06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx`)
+- [x] 40. Escrever teste de `AbaTelas.test.tsx` cobrindo apenas a casca (layout de 3 colunas renderiza, estado vazio "nenhuma tela criada ainda") — sem simular drag-and-drop, que não existe nesta fase (RF09) (`player/src/pages/Dashboard/abas/AbaTelas.test.tsx`)
+- [x] 41. Implementar `AbaTelas.tsx` como casca de navegação (sidebar de telas vazia, área central com placeholder de canvas, painel de propriedades vazio) — o editor funcional fica para spec própria (ver `plan.md §2.3`/Riscos) (RF09) (`player/src/pages/Dashboard/abas/AbaTelas.tsx`)
 
 ## Encerramento
 
-- [ ] 42. Rodar a suíte completa e o build: `npm run test`, `npm run typecheck` e `npm run build` devem passar sem erros (`player/`)
+- [x] 42. Rodar a suíte completa e o build: `npm run test`, `npm run typecheck` e `npm run build` devem passar sem erros (`player/`)

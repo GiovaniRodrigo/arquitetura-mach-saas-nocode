@@ -3,7 +3,7 @@
 
 import type { ReactElement } from 'react';
 import { render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ApiClient } from '../api/client';
 import type { UsuarioAutenticado } from '../auth/jwt';
 import { AppProvider } from '../app/AppContext';
@@ -30,7 +30,7 @@ export const usuarioClienteFake: UsuarioAutenticado = {
 
 export function renderDashboard(
   ui: ReactElement,
-  opts: { client?: ApiClient; usuario?: UsuarioAutenticado; rota?: string } = {},
+  opts: { client?: ApiClient; usuario?: UsuarioAutenticado; rota?: string; path?: string } = {},
 ) {
   const client =
     opts.client ??
@@ -41,11 +41,14 @@ export function renderDashboard(
       resumoFinanceiro: async () => ({ receita_total_centavos: 0, moeda: 'BRL', competencia: '' }),
     });
   const usuario = opts.usuario ?? usuarioFake;
+  const rota = opts.rota ?? '/dashboard';
+  // `path` habilita rotas com parâmetros (:tenantId, :sistemaId) via useParams();
+  // sem ele, a tela é montada direto na `rota` (comportamento pré-existente).
   return render(
-    <MemoryRouter initialEntries={[opts.rota ?? '/dashboard']}>
+    <MemoryRouter initialEntries={[rota]}>
       <ThemeProvider>
         <AppProvider client={client} usuario={usuario}>
-          {ui}
+          {opts.path ? <Routes><Route path={opts.path} element={ui} /></Routes> : ui}
         </AppProvider>
       </ThemeProvider>
     </MemoryRouter>,

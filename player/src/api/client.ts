@@ -6,10 +6,14 @@ import type {
   EventoLogin,
   Feedback,
   MapaPermissoes,
+  RegraNegocio,
   ResumoFinanceiro,
   RespostaFormulario,
   Sistema,
   StatusFeedback,
+  Tenant,
+  TipoRegraNegocio,
+  Versao,
   VersaoAtiva,
 } from "./types";
 
@@ -94,9 +98,10 @@ export class ApiClient {
     return corpo.permissions;
   }
 
-  /** Lista os sistemas do tenant para o seletor inicial (RN01). */
-  async listarSistemas(): Promise<Sistema[]> {
-    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/sistemas`, {
+  /** Lista os sistemas do tenant; com `tenantId`, filtra por Cliente (RF08). */
+  async listarSistemas(tenantId?: string): Promise<Sistema[]> {
+    const qs = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : "";
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/sistemas${qs}`, {
       headers: this.headers(),
     });
     const corpo = await this.parse<{ sistemas: Sistema[] }>(resp);
@@ -278,6 +283,65 @@ export class ApiClient {
       headers: this.headers(),
     });
     return this.parse<ResumoFinanceiro>(resp);
+  }
+
+  /** Tenants (clientes/negócios) vinculados ao usuário autenticado (RF07). */
+  async listarTenants(): Promise<Tenant[]> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/tenants`, {
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ tenants: Tenant[] }>(resp);
+    return corpo.tenants ?? [];
+  }
+
+  /** Regras de validação de componente do sistema (RF10/RF11). */
+  async listarRegrasNegocio(sistemaId: string): Promise<RegraNegocio[]> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/regras-negocio`,
+      { headers: this.headers() },
+    );
+    const corpo = await this.parse<{ regras: RegraNegocio[] }>(resp);
+    return corpo.regras ?? [];
+  }
+
+  /** Cria uma regra de validação de um ou mais componentes (RF10/RF11, RN06). */
+  async criarRegraNegocio(
+    sistemaId: string,
+    dados: { blind_indexes: string[]; tipo: TipoRegraNegocio; parametros: Record<string, unknown> },
+  ): Promise<RegraNegocio> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/regras-negocio`,
+      { method: "POST", headers: this.headers(), body: JSON.stringify(dados) },
+    );
+    return this.parse<RegraNegocio>(resp);
+  }
+
+  /** Versões do sistema, mais recente primeiro (RF12). */
+  async listarVersoes(sistemaId: string): Promise<Versao[]> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/versoes`,
+      { headers: this.headers() },
+    );
+    const corpo = await this.parse<{ versoes: Versao[] }>(resp);
+    return corpo.versoes ?? [];
+  }
+
+  /** Publica uma versão como ativa (RF12, RN04 de 001). */
+  async publicarVersao(sistemaId: string, versaoId: string): Promise<void> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/versoes/${encodeURIComponent(versaoId)}/publicar`,
+      { method: "POST", headers: this.headers() },
+    );
+    await this.parse<unknown>(resp);
+  }
+
+  /** Reverte para uma versão anterior (RF12, RN05 de 001). */
+  async reverterVersao(sistemaId: string, versaoId: string): Promise<void> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/versoes/${encodeURIComponent(versaoId)}/reverter`,
+      { method: "POST", headers: this.headers() },
+    );
+    await this.parse<unknown>(resp);
   }
 
   private async parseIgnorandoStatus<T>(resp: Response): Promise<T> {

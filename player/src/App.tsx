@@ -14,6 +14,11 @@ import { validar } from "./validation/blindIndexValidator";
 import { DashboardLayout } from "./layout/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard/Dashboard";
 import { Clientes } from "./pages/Dashboard/Clientes";
+import { ClienteSistemas } from "./pages/Dashboard/ClienteSistemas";
+import { SistemaAbas } from "./pages/Dashboard/SistemaAbas";
+import { AbaTelas } from "./pages/Dashboard/abas/AbaTelas";
+import { AbaRegrasNegocio } from "./pages/Dashboard/abas/AbaRegrasNegocio";
+import { AbaVersao } from "./pages/Dashboard/abas/AbaVersao";
 import { Configuracao } from "./pages/Dashboard/Configuracao";
 import { Perfil } from "./pages/Dashboard/Perfil";
 import { Ajuda } from "./pages/Dashboard/Ajuda";
@@ -83,6 +88,13 @@ export function App({ config, client: injetado }: { config: PlayerConfig; client
         >
           <Route index element={<Dashboard />} />
           <Route path="clientes" element={<Clientes />} />
+          <Route path="clientes/:tenantId" element={<ClienteSistemas />} />
+          <Route path="clientes/:tenantId/sistemas/:sistemaId" element={<SistemaAbas />}>
+            <Route index element={<Navigate to="telas" replace />} />
+            <Route path="telas" element={<AbaTelas />} />
+            <Route path="regras" element={<AbaRegrasNegocio />} />
+            <Route path="versao" element={<AbaVersao />} />
+          </Route>
           <Route path="configuracao" element={<Configuracao />} />
           <Route path="perfil" element={<Perfil />} />
           <Route path="ajuda" element={<Ajuda />} />

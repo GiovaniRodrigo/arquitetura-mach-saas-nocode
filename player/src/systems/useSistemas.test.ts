@@ -45,6 +45,15 @@ describe('useSistemas', () => {
     expect(listar).toHaveBeenCalledTimes(2);
   });
 
+  it('com tenantId, filtra a listagem por cliente (RF08)', async () => {
+    const listarSistemas = vi.fn().mockResolvedValue([{ id: 'a', nome: 'Alfa' }]);
+    const client = fakeClient({ listarSistemas });
+
+    const { result } = renderHook(() => useSistemas(client, 't1'));
+    await waitFor(() => expect(result.current.estado.fase).toBe('pronto'));
+    expect(listarSistemas).toHaveBeenCalledWith('t1');
+  });
+
   it('criar delega para client.criarSistema', async () => {
     const novo: Sistema = { id: 'z', nome: 'Zeta' };
     const criarSistema = vi.fn().mockResolvedValue(novo);

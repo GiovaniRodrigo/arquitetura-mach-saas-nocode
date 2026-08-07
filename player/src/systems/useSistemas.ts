@@ -22,7 +22,7 @@ export interface UseSistemas {
   criar: (nome: string) => Promise<Sistema>;
 }
 
-export function useSistemas(client: ApiClient): UseSistemas {
+export function useSistemas(client: ApiClient, tenantId?: string): UseSistemas {
   const [estado, setEstado] = useState<EstadoSistemas>({ fase: 'carregando' });
   const [tentativa, setTentativa] = useState(0);
 
@@ -31,7 +31,7 @@ export function useSistemas(client: ApiClient): UseSistemas {
     setEstado({ fase: 'carregando' });
     (async () => {
       try {
-        const lista = await client.listarSistemas();
+        const lista = await client.listarSistemas(tenantId);
         if (!vivo) return;
         setEstado(lista.length === 0 ? { fase: 'vazio' } : { fase: 'pronto', sistemas: lista });
       } catch (e) {
@@ -41,7 +41,7 @@ export function useSistemas(client: ApiClient): UseSistemas {
     return () => {
       vivo = false;
     };
-  }, [client, tentativa]);
+  }, [client, tenantId, tentativa]);
 
   const recarregar = useCallback(() => setTentativa((t) => t + 1), []);
   const criar = useCallback((nome: string) => client.criarSistema(nome), [client]);
