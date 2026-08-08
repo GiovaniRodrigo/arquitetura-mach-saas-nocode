@@ -70,6 +70,9 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 		r.Post("/api/v1/sistemas/{sistema_id}/rollback", routes.Rollback(deploy))
 		r.Get("/api/v1/sistemas/{sistema_id}/versao-ativa", routes.VersaoAtiva(deploy))
 
+		r.Get("/api/v1/sistemas/{sistema_id}/regras-negocio", routes.ListarRegrasNegocio(logic))
+		r.Post("/api/v1/sistemas/{sistema_id}/regras-negocio", routes.CriarRegraNegocio(logic))
+
 		r.Post("/api/v1/exportacoes", routes.CriarExportacao(export))
 		r.Get("/api/v1/exportacoes/{job_id}", routes.ObterExportacao(export))
 	})

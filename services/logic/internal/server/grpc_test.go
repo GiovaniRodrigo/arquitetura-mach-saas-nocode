@@ -24,6 +24,10 @@ type fakeStore struct {
 	criarID    string
 	regras     []store.Regra
 	regrasErr  error
+
+	regrasValidacao      []store.RegraValidacao
+	regrasValidacaoErr   error
+	regraValidacaoCriada store.RegraValidacao
 }
 
 func (f *fakeStore) SchemaDe(context.Context, string) (map[string]validation.CampoDef, error) {
@@ -42,6 +46,14 @@ func (f *fakeStore) ObterRegra(context.Context, string) (store.Regra, error) {
 }
 func (f *fakeStore) AtualizarRegra(context.Context, store.Regra) error { return nil }
 func (f *fakeStore) RemoverRegra(context.Context, string) error        { return nil }
+
+func (f *fakeStore) ListarRegrasValidacao(context.Context, string) ([]store.RegraValidacao, error) {
+	return f.regrasValidacao, f.regrasValidacaoErr
+}
+func (f *fakeStore) CriarRegraValidacao(_ context.Context, r store.RegraValidacao) (store.RegraValidacao, error) {
+	r.ID = f.regraValidacaoCriada.ID
+	return r, nil
+}
 
 // fakePublicador grava os eventos publicados durante o disparo de regras (RF08).
 type fakePublicador struct {
@@ -215,5 +227,87 @@ func TestObterRegra_NaoEncontrada_NotFound(t *testing.T) {
 	_, err := s.ObterRegra(comTenant(), &logicv1.ObterRegraRequest{Id: "x"})
 	if code(err) != codes.NotFound {
 		t.Fatalf("esperava NotFound; got %v", err)
+	}
+}
+
+func TestCriarRegraValidacao_SemTenant_Unauthenticated(t *testing.T) {
+	s := New(&fakeStore{})
+	_, err := s.CriarRegraValidacao(context.Background(), &logicv1.RegraValidacao{
+		SistemaId: "s1", BlindIndexes: []string{"bi-1"}, Tipo: "regex",
+	})
+	if code(err) != codes.Unauthenticated {
+		t.Fatalf("esperava Unauthenticated; got %v", err)
+	}
+}
+
+func TestCriarRegraValidacao_SemSistemaId_InvalidArgument(t *testing.T) {
+	s := New(&fakeStore{})
+	_, err := s.CriarRegraValidacao(comTenant(), &logicv1.RegraValidacao{
+		BlindIndexes: []string{"bi-1"}, Tipo: "regex",
+	})
+	if code(err) != codes.InvalidArgument {
+		t.Fatalf("esperava InvalidArgument; got %v", err)
+	}
+}
+
+func TestCriarRegraValidacao_BlindIndexesVazio_InvalidArgument(t *testing.T) {
+	s := New(&fakeStore{})
+	_, err := s.CriarRegraValidacao(comTenant(), &logicv1.RegraValidacao{
+		SistemaId: "s1", BlindIndexes: []string{}, Tipo: "regex",
+	})
+	if code(err) != codes.InvalidArgument {
+		t.Fatalf("esperava InvalidArgument; got %v", err)
+	}
+}
+
+func TestCriarRegraValidacao_TipoInvalido_InvalidArgument(t *testing.T) {
+	s := New(&fakeStore{})
+	_, err := s.CriarRegraValidacao(comTenant(), &logicv1.RegraValidacao{
+		SistemaId: "s1", BlindIndexes: []string{"bi-1"}, Tipo: "cor-favorita",
+	})
+	if code(err) != codes.InvalidArgument {
+		t.Fatalf("esperava InvalidArgument; got %v", err)
+	}
+}
+
+func TestCriarRegraValidacao_OK(t *testing.T) {
+	fs := &fakeStore{regraValidacaoCriada: store.RegraValidacao{ID: "rv-1"}}
+	s := New(fs)
+	out, err := s.CriarRegraValidacao(comTenant(), &logicv1.RegraValidacao{
+		SistemaId:    "s1",
+		BlindIndexes: []string{"bi-1", "bi-2"},
+		Tipo:         "tamanho",
+		Parametros:   []byte(`{"min":1,"max":10}`),
+	})
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if out.GetId() != "rv-1" || out.GetSistemaId() != "s1" || out.GetTipo() != "tamanho" {
+		t.Fatalf("resultado inesperado: %+v", out)
+	}
+	if len(out.GetBlindIndexes()) != 2 {
+		t.Fatalf("blind_indexes inesperado: %+v", out.GetBlindIndexes())
+	}
+}
+
+func TestListarRegrasValidacao_SemSistemaId_InvalidArgument(t *testing.T) {
+	s := New(&fakeStore{})
+	_, err := s.ListarRegrasValidacao(comTenant(), &logicv1.ListarRegrasValidacaoRequest{})
+	if code(err) != codes.InvalidArgument {
+		t.Fatalf("esperava InvalidArgument; got %v", err)
+	}
+}
+
+func TestListarRegrasValidacao_OK(t *testing.T) {
+	fs := &fakeStore{regrasValidacao: []store.RegraValidacao{
+		{ID: "rv-1", SistemaID: "s1", BlindIndexes: []string{"bi-1"}, Tipo: "obrigatorio", Parametros: []byte(`{}`)},
+	}}
+	s := New(fs)
+	out, err := s.ListarRegrasValidacao(comTenant(), &logicv1.ListarRegrasValidacaoRequest{SistemaId: "s1"})
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if len(out.GetRegras()) != 1 || out.GetRegras()[0].GetId() != "rv-1" {
+		t.Fatalf("resultado inesperado: %+v", out.GetRegras())
 	}
 }

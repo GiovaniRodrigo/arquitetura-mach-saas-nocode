@@ -28,6 +28,8 @@ type Persistencia interface {
 	ObterRegra(ctx context.Context, id string) (store.Regra, error)
 	AtualizarRegra(ctx context.Context, r store.Regra) error
 	RemoverRegra(ctx context.Context, id string) error
+	ListarRegrasValidacao(ctx context.Context, sistemaID string) ([]store.RegraValidacao, error)
+	CriarRegraValidacao(ctx context.Context, r store.RegraValidacao) (store.RegraValidacao, error)
 }
 
 // Publicador é o subconjunto do events.Publisher usado pelo servidor (facilita testes).
@@ -185,6 +187,72 @@ func (s *LogicServer) RemoverRegra(ctx context.Context, req *logicv1.ObterRegraR
 		return nil, mapErr(err)
 	}
 	return &logicv1.RemoverResponse{Sucesso: true}, nil
+}
+
+// tiposRegraValidacaoValidos é o enum fechado de RF10/RF11: o servidor nunca
+// confia no client, então tanto ListarRegrasValidacao (implícito, via store)
+// quanto CriarRegraValidacao revalidam aqui.
+var tiposRegraValidacaoValidos = map[string]bool{
+	"regex":       true,
+	"tamanho":     true,
+	"obrigatorio": true,
+}
+
+// ListarRegrasValidacao devolve as regras de validação de estado de
+// componente de um sistema, restritas ao tenant do contexto (RF10/RF11).
+func (s *LogicServer) ListarRegrasValidacao(ctx context.Context, req *logicv1.ListarRegrasValidacaoRequest) (*logicv1.ListarRegrasValidacaoResponse, error) {
+	if err := exigirTenant(ctx); err != nil {
+		return nil, err
+	}
+	if req.GetSistemaId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "sistema_id obrigatório")
+	}
+	regras, err := s.store.ListarRegrasValidacao(ctx, req.GetSistemaId())
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	out := make([]*logicv1.RegraValidacao, 0, len(regras))
+	for _, r := range regras {
+		out = append(out, regraValidacaoParaProto(r))
+	}
+	return &logicv1.ListarRegrasValidacaoResponse{Regras: out}, nil
+}
+
+// CriarRegraValidacao valida blind_indexes/tipo e persiste uma nova regra de
+// validação de estado de componente (RF10/RF11, RN06).
+func (s *LogicServer) CriarRegraValidacao(ctx context.Context, req *logicv1.RegraValidacao) (*logicv1.RegraValidacao, error) {
+	if err := exigirTenant(ctx); err != nil {
+		return nil, err
+	}
+	if req.GetSistemaId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "sistema_id obrigatório")
+	}
+	if len(req.GetBlindIndexes()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "blind_indexes obrigatório")
+	}
+	if !tiposRegraValidacaoValidos[req.GetTipo()] {
+		return nil, status.Error(codes.InvalidArgument, "tipo inválido: use regex, tamanho ou obrigatorio")
+	}
+	r, err := s.store.CriarRegraValidacao(ctx, store.RegraValidacao{
+		SistemaID:    req.GetSistemaId(),
+		BlindIndexes: req.GetBlindIndexes(),
+		Tipo:         req.GetTipo(),
+		Parametros:   req.GetParametros(),
+	})
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	return regraValidacaoParaProto(r), nil
+}
+
+func regraValidacaoParaProto(r store.RegraValidacao) *logicv1.RegraValidacao {
+	return &logicv1.RegraValidacao{
+		Id:           r.ID,
+		SistemaId:    r.SistemaID,
+		BlindIndexes: r.BlindIndexes,
+		Tipo:         r.Tipo,
+		Parametros:   r.Parametros,
+	}
 }
 
 // validarArvore garante que a árvore de decisão é bem formada antes de persistir.
