@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Dashboard } from './Dashboard';
-import { renderDashboard, fakeClient, usuarioClienteFake } from '../../test/renderDashboard';
+import { renderDashboard, fakeClient, usuarioClienteFake, usuarioFake } from '../../test/renderDashboard';
+import { AppProvider } from '../../app/AppContext';
+import { ThemeProvider } from '../../theme/ThemeProvider';
 
 describe('Page: Dashboard Dashboard', () => {
   it('renderiza o Hero Card (RF03)', () => {
@@ -45,5 +48,30 @@ describe('Page: Dashboard Dashboard', () => {
     expect(screen.getByText('Últimos Acessos')).toBeTruthy();
     expect(screen.getByText('Reclamações/Feedback')).toBeTruthy();
     expect(screen.getByText('Resumo Financeiro')).toBeTruthy();
+  });
+
+  it('clicar no card "Sistemas" navega para a tela de seleção de sistemas', () => {
+    const client = fakeClient({
+      listarSistemas: async () => [],
+      listarUltimosAcessos: async () => [],
+      listarFeedback: async () => [],
+      resumoFinanceiro: async () => ({ receita_total_centavos: 0, moeda: 'BRL', competencia: '' }),
+    });
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <ThemeProvider>
+          <AppProvider client={client} usuario={usuarioFake}>
+            <Routes>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/sistemas" element={<div>Seus sistemas</div>} />
+            </Routes>
+          </AppProvider>
+        </ThemeProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText('Sistemas'));
+
+    expect(screen.getByText('Seus sistemas')).toBeTruthy();
   });
 });

@@ -6,9 +6,9 @@
 // A listagem/estados vêm do hook compartilhado useSistemas (RNF05).
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ApiClient, ApiError } from "../api/client";
 import { useSistemas } from "./useSistemas";
-import { abrirSistema } from "./abrirSistema";
 import { Skeleton, EmptyState, ErrorState } from "../components/ui/StateViews";
 import { Monitor, Plus, RefreshCcw, LogOut } from "lucide-react";
 import { encerrarSessao } from "../auth/session";
@@ -22,9 +22,16 @@ export function SeletorSistemas({
   usuario: UsuarioAutenticado;
 }) {
   const { estado, recarregar, criar } = useSistemas(client);
+  const navigate = useNavigate();
   const [nome, setNome] = useState("");
   const [criando, setCriando] = useState(false);
   const [erroCriar, setErroCriar] = useState<string | null>(null);
+
+  // Abre o construtor do sistema (abas Telas/Regras de Negócio/Versão) no
+  // tenant do usuário autenticado — não mais o runtime do sistema (abrirSistema).
+  function abrirConstrutor(sistemaId: string) {
+    navigate(`/dashboard/clientes/${usuario.tenantId}/sistemas/${sistemaId}/telas`);
+  }
 
   async function submeter(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +40,7 @@ export function SeletorSistemas({
     setErroCriar(null);
     try {
       const novo = await criar(nome.trim());
-      abrirSistema(novo.id);
+      abrirConstrutor(novo.id);
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setErroCriar("Você não tem permissão para criar sistemas.");
@@ -74,7 +81,7 @@ export function SeletorSistemas({
               <li key={s.id}>
                 <button
                   type="button"
-                  onClick={() => abrirSistema(s.id)}
+                  onClick={() => abrirConstrutor(s.id)}
                   className="w-full h-full text-left p-6 bg-card border border-border hover:border-primary/50 hover:bg-secondary/80 rounded-2xl transition-all group flex flex-col gap-4"
                 >
                   <div className="w-12 h-12 bg-secondary group-hover:bg-primary/20 rounded-xl flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">

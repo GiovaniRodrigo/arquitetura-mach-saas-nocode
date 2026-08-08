@@ -13,6 +13,10 @@ export interface UsuarioAutenticado {
    * autorização real, que permanece inteiramente no Gateway/IAM (RNF06).
    */
   podeCriarSistema: boolean;
+  /** tenant_id do token — usado para montar rotas do próprio tenant (ex.:
+   * abrir a aba de um sistema em /dashboard/clientes/{tenantId}/sistemas/{id}),
+   * nunca para decisão de acesso (RNF06). */
+  tenantId?: string;
 }
 
 interface ClaimsJwt {
@@ -22,6 +26,7 @@ interface ClaimsJwt {
   sub?: string;
   /** dono | parceiro | cliente — ver services/iam/auth/jwt.go. */
   tipo?: string;
+  tenant_id?: string;
 }
 
 /** Decodifica o payload (2ª parte) de um JWT em base64url. Retorna null se inválido. */
@@ -59,5 +64,5 @@ export function usuarioDe(token: string): UsuarioAutenticado {
   const nome = claims?.name ?? claims?.preferred_username;
   const email = claims?.email;
   const podeCriarSistema = claims?.tipo === 'dono' || claims?.tipo === 'parceiro';
-  return { nome, email, iniciais: iniciaisDe(nome, email), podeCriarSistema };
+  return { nome, email, iniciais: iniciaisDe(nome, email), podeCriarSistema, tenantId: claims?.tenant_id };
 }

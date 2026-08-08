@@ -45,7 +45,18 @@ export function Dashboard() {
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ElevatedCard>
+        <ElevatedCard
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/sistemas')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              navigate('/sistemas');
+            }
+          }}
+          className="cursor-pointer"
+        >
           <h3 className="text-sm font-medium text-muted-foreground mb-1">Sistemas</h3>
           <p
             className="text-3xl font-heading font-bold text-foreground"
