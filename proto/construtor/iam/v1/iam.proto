@@ -91,6 +91,42 @@ message ExcluirTenantRequest {
 
 message ExcluirTenantResponse {}
 
+// Auto cadastro (self sign-up, spec 006): visitante cria seu próprio tenant
+// (tipo dono) e uma conta autenticada por e-mail/senha — via paralela ao login
+// social (AutenticarThirdParty), convergindo no mesmo emissor de JWT MACH.
+message RegistrarUsuarioRequest {
+  string nome = 1;
+  string email = 2;
+  string senha = 3;
+  // Nome do negócio/tenant a ser criado (RN06).
+  string nome_tenant = 4;
+}
+
+message RegistrarUsuarioResponse {
+  string jwt = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  // sempre "dono" — quem se cadastra é o dono do próprio tenant (RN01).
+  string tipo = 4;
+}
+
+// Login por e-mail/senha (spec 006, RF06) de uma conta criada via
+// RegistrarUsuario. Falha (e-mail inexistente OU senha incorreta) devolve
+// sempre o mesmo erro genérico (RN04) — não distinguir no proto para não
+// vazar essa distinção nas mensagens de erro do Gateway.
+message AutenticarSenhaRequest {
+  string email = 1;
+  string senha = 2;
+}
+
+message AutenticarSenhaResponse {
+  string jwt = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  // dono | parceiro | cliente
+  string tipo = 4;
+}
+
 service IAMService {
   rpc ValidarToken(ValidarTokenRequest) returns (ValidarTokenResponse);
   rpc AvaliarPermissoes(AvaliarPermissoesRequest) returns (AvaliarPermissoesResponse);
@@ -100,4 +136,6 @@ service IAMService {
   rpc ObterTenant(ObterTenantRequest) returns (Tenant);
   rpc AtualizarTenant(AtualizarTenantRequest) returns (Tenant);
   rpc ExcluirTenant(ExcluirTenantRequest) returns (ExcluirTenantResponse);
+  rpc RegistrarUsuario(RegistrarUsuarioRequest) returns (RegistrarUsuarioResponse);
+  rpc AutenticarSenha(AutenticarSenhaRequest) returns (AutenticarSenhaResponse);
 }

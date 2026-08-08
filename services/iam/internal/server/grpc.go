@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"strings"
 
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -15,6 +17,14 @@ import (
 	"github.com/machv4/platform/services/iam/internal/permissions"
 	"github.com/machv4/platform/services/iam/internal/store"
 )
+
+// bcryptCost isolado numa constante (RNF01): fácil de subir depois sem
+// migração de dados, já que o custo fica embutido no próprio hash.
+const bcryptCost = 12
+
+// erroCredenciaisInvalidas é devolvido tanto para e-mail inexistente quanto
+// para senha incorreta (RN04) — nunca revela qual dos dois falhou.
+var erroCredenciaisInvalidas = status.Error(codes.Unauthenticated, "credenciais inválidas")
 
 // Store carrega permissões e materializa identidades e tenants (satisfeito por
 // store.Store).
@@ -26,6 +36,8 @@ type Store interface {
 	ObterTenant(ctx context.Context, id string) (store.Tenant, error)
 	AtualizarTenant(ctx context.Context, id, nome string) (store.Tenant, error)
 	ExcluirTenant(ctx context.Context, id string) error
+	CriarTenantEUsuarioComSenha(ctx context.Context, nomeUsuario, email, senhaHash, nomeTenant string) (userID, tenantID string, err error)
+	ObterUsuarioPorEmailSenha(ctx context.Context, email string) (userID, tenantID, tipo, senhaHash string, err error)
 }
 
 // IAMServer implementa iamv1.IAMServiceServer.
@@ -231,4 +243,65 @@ func (s *IAMServer) ExcluirTenant(ctx context.Context, req *iamv1.ExcluirTenantR
 		return nil, status.Error(codes.Internal, "falha ao excluir tenant")
 	}
 	return &iamv1.ExcluirTenantResponse{}, nil
+}
+
+// RegistrarUsuario materializa o auto cadastro (spec 006, RF04): cria um
+// tenant próprio (tipo dono) e a conta de senha do usuário registrante,
+// devolvendo o JWT MACH já autenticado — mesmo formato de token emitido por
+// AutenticarThirdParty (RN05).
+func (s *IAMServer) RegistrarUsuario(ctx context.Context, req *iamv1.RegistrarUsuarioRequest) (*iamv1.RegistrarUsuarioResponse, error) {
+	if req.GetNome() == "" || req.GetEmail() == "" || req.GetSenha() == "" || req.GetNomeTenant() == "" {
+		return nil, status.Error(codes.InvalidArgument, "nome, email, senha e nome_tenant são obrigatórios")
+	}
+	if !strings.Contains(req.GetEmail(), "@") {
+		return nil, status.Error(codes.InvalidArgument, "email inválido")
+	}
+	if len(req.GetSenha()) < 8 {
+		return nil, status.Error(codes.InvalidArgument, "senha deve ter no mínimo 8 caracteres")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.GetSenha()), bcryptCost)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao processar senha")
+	}
+
+	userID, tenantID, err := s.store.CriarTenantEUsuarioComSenha(ctx, req.GetNome(), req.GetEmail(), string(hash), req.GetNomeTenant())
+	if errors.Is(err, store.ErrEmailJaCadastrado) {
+		return nil, status.Error(codes.AlreadyExists, "e-mail já cadastrado")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao registrar usuário")
+	}
+
+	token, err := s.issuer.Issue(userID, tenantID, "dono")
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao emitir token")
+	}
+	return &iamv1.RegistrarUsuarioResponse{Jwt: token, UserId: userID, TenantId: tenantID, Tipo: "dono"}, nil
+}
+
+// AutenticarSenha materializa o login por e-mail/senha (spec 006, RF06) de uma
+// conta criada via RegistrarUsuario. E-mail inexistente e senha incorreta
+// devolvem exatamente o mesmo erro (RN04) — nunca revelam qual dos dois falhou.
+func (s *IAMServer) AutenticarSenha(ctx context.Context, req *iamv1.AutenticarSenhaRequest) (*iamv1.AutenticarSenhaResponse, error) {
+	if req.GetEmail() == "" || req.GetSenha() == "" {
+		return nil, status.Error(codes.InvalidArgument, "email e senha são obrigatórios")
+	}
+
+	userID, tenantID, tipo, hash, err := s.store.ObterUsuarioPorEmailSenha(ctx, req.GetEmail())
+	if errors.Is(err, store.ErrNaoEncontrado) {
+		return nil, erroCredenciaisInvalidas
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao autenticar")
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.GetSenha())) != nil {
+		return nil, erroCredenciaisInvalidas
+	}
+
+	token, err := s.issuer.Issue(userID, tenantID, tipo)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao emitir token")
+	}
+	return &iamv1.AutenticarSenhaResponse{Jwt: token, UserId: userID, TenantId: tenantID, Tipo: tipo}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -39,6 +40,15 @@ type fakeStore struct {
 	nomeAtualizado  string
 	excluirErr      error
 	idExcluido      string
+	// cadastro por senha (CriarTenantEUsuarioComSenha)
+	registrarUserID, registrarTenantID                        string
+	registrarErr                                              error
+	nomeRegistrado, emailRegistrado, senhaHashRegistrada       string
+	nomeTenantRegistrado                                       string
+	// login por senha (ObterUsuarioPorEmailSenha)
+	obterSenhaUserID, obterSenhaTenantID, obterSenhaTipo, obterSenhaHash string
+	obterSenhaErr                                                       error
+	emailConsultado                                                     string
 }
 
 func (f *fakeStore) PermissoesDe(context.Context, []string) ([]permissions.Permissao, error) {
@@ -70,6 +80,16 @@ func (f *fakeStore) AtualizarTenant(_ context.Context, id, nome string) (store.T
 func (f *fakeStore) ExcluirTenant(_ context.Context, id string) error {
 	f.idExcluido = id
 	return f.excluirErr
+}
+
+func (f *fakeStore) CriarTenantEUsuarioComSenha(_ context.Context, nomeUsuario, email, senhaHash, nomeTenant string) (string, string, error) {
+	f.nomeRegistrado, f.emailRegistrado, f.senhaHashRegistrada, f.nomeTenantRegistrado = nomeUsuario, email, senhaHash, nomeTenant
+	return f.registrarUserID, f.registrarTenantID, f.registrarErr
+}
+
+func (f *fakeStore) ObterUsuarioPorEmailSenha(_ context.Context, email string) (string, string, string, string, error) {
+	f.emailConsultado = email
+	return f.obterSenhaUserID, f.obterSenhaTenantID, f.obterSenhaTipo, f.obterSenhaHash, f.obterSenhaErr
 }
 
 func newServer(t *testing.T, store Store) (*IAMServer, *auth.Issuer) {
@@ -331,5 +351,113 @@ func TestExcluirTenant_FilhoDoContexto_OK(t *testing.T) {
 	}
 	if fs.idExcluido != "t1" {
 		t.Fatalf("store chamado com id inesperado: %q", fs.idExcluido)
+	}
+}
+
+func TestRegistrarUsuario_Sucesso(t *testing.T) {
+	fs := &fakeStore{registrarUserID: "user-1", registrarTenantID: "tenant-1"}
+	srv, _ := newServer(t, fs)
+
+	resp, err := srv.RegistrarUsuario(context.Background(), &iamv1.RegistrarUsuarioRequest{
+		Nome: "Ana", Email: "ana@example.com", Senha: "12345678", NomeTenant: "Ana LTDA",
+	})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if resp.GetUserId() != "user-1" || resp.GetTenantId() != "tenant-1" || resp.GetTipo() != "dono" {
+		t.Fatalf("identidade inesperada: %+v", resp)
+	}
+	val, _ := srv.ValidarToken(context.Background(), &iamv1.ValidarTokenRequest{Jwt: resp.GetJwt()})
+	if !val.GetValido() || val.GetTenantId() != "tenant-1" || val.GetTipo() != "dono" {
+		t.Fatalf("token emitido não validou: %+v", val)
+	}
+
+	if fs.nomeRegistrado != "Ana" || fs.emailRegistrado != "ana@example.com" || fs.nomeTenantRegistrado != "Ana LTDA" {
+		t.Fatalf("store chamado com args inesperados: nome=%q email=%q tenant=%q", fs.nomeRegistrado, fs.emailRegistrado, fs.nomeTenantRegistrado)
+	}
+	// A senha nunca deve ser persistida em texto claro (RN03, RNF01).
+	if fs.senhaHashRegistrada == "12345678" {
+		t.Fatal("senha não deveria ir em texto claro ao store")
+	}
+	if bcrypt.CompareHashAndPassword([]byte(fs.senhaHashRegistrada), []byte("12345678")) != nil {
+		t.Fatalf("hash gerado não corresponde à senha original: %q", fs.senhaHashRegistrada)
+	}
+}
+
+func TestRegistrarUsuario_CamposObrigatorios(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	casos := []*iamv1.RegistrarUsuarioRequest{
+		{Email: "a@b.com", Senha: "12345678", NomeTenant: "T"},           // sem nome
+		{Nome: "Ana", Senha: "12345678", NomeTenant: "T"},                // sem email
+		{Nome: "Ana", Email: "a@b.com", NomeTenant: "T"},                 // sem senha
+		{Nome: "Ana", Email: "a@b.com", Senha: "12345678"},               // sem nome_tenant
+	}
+	for _, c := range casos {
+		if _, err := srv.RegistrarUsuario(context.Background(), c); status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("esperava InvalidArgument para %+v; got=%v", c, err)
+		}
+	}
+}
+
+func TestRegistrarUsuario_SenhaCurta(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	_, err := srv.RegistrarUsuario(context.Background(), &iamv1.RegistrarUsuarioRequest{
+		Nome: "Ana", Email: "a@b.com", Senha: "1234567", NomeTenant: "T",
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("senha com menos de 8 caracteres deveria falhar; got=%v", err)
+	}
+}
+
+func TestRegistrarUsuario_EmailDuplicado(t *testing.T) {
+	fs := &fakeStore{registrarErr: store.ErrEmailJaCadastrado}
+	srv, _ := newServer(t, fs)
+	_, err := srv.RegistrarUsuario(context.Background(), &iamv1.RegistrarUsuarioRequest{
+		Nome: "Ana", Email: "a@b.com", Senha: "12345678", NomeTenant: "T",
+	})
+	if status.Code(err) != codes.AlreadyExists {
+		t.Fatalf("e-mail duplicado deveria ser AlreadyExists; got=%v", err)
+	}
+}
+
+func TestAutenticarSenha_Sucesso(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("12345678"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fs := &fakeStore{obterSenhaUserID: "user-1", obterSenhaTenantID: "tenant-1", obterSenhaTipo: "dono", obterSenhaHash: string(hash)}
+	srv, _ := newServer(t, fs)
+
+	resp, err := srv.AutenticarSenha(context.Background(), &iamv1.AutenticarSenhaRequest{Email: "ana@example.com", Senha: "12345678"})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if resp.GetUserId() != "user-1" || resp.GetTenantId() != "tenant-1" || resp.GetTipo() != "dono" {
+		t.Fatalf("identidade inesperada: %+v", resp)
+	}
+	if fs.emailConsultado != "ana@example.com" {
+		t.Fatalf("store consultado com e-mail inesperado: %q", fs.emailConsultado)
+	}
+}
+
+// RN04: e-mail inexistente e senha incorreta devem devolver exatamente o mesmo
+// erro, para não permitir enumeração de e-mails cadastrados.
+func TestAutenticarSenha_EmailInexistenteESenhaIncorreta_MesmoErro(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("senha-correta"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srvInexistente, _ := newServer(t, &fakeStore{obterSenhaErr: store.ErrNaoEncontrado})
+	_, errInexistente := srvInexistente.AutenticarSenha(context.Background(), &iamv1.AutenticarSenhaRequest{Email: "fantasma@example.com", Senha: "qualquer"})
+
+	srvSenhaErrada, _ := newServer(t, &fakeStore{obterSenhaUserID: "user-1", obterSenhaTenantID: "tenant-1", obterSenhaTipo: "dono", obterSenhaHash: string(hash)})
+	_, errSenhaErrada := srvSenhaErrada.AutenticarSenha(context.Background(), &iamv1.AutenticarSenhaRequest{Email: "ana@example.com", Senha: "senha-errada"})
+
+	if status.Code(errInexistente) != codes.Unauthenticated || status.Code(errSenhaErrada) != codes.Unauthenticated {
+		t.Fatalf("ambos deveriam ser Unauthenticated; inexistente=%v senhaErrada=%v", errInexistente, errSenhaErrada)
+	}
+	if errInexistente.Error() != errSenhaErrada.Error() {
+		t.Fatalf("mensagens deveriam ser idênticas (RN04); inexistente=%q senhaErrada=%q", errInexistente.Error(), errSenhaErrada.Error())
 	}
 }

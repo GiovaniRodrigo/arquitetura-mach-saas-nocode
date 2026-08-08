@@ -1,6 +1,6 @@
 // Landing pública de apresentação do produto (RF01): acessível sem sessão,
-// montada fora do AppProvider/DashboardLayout. Os CTAs (RF02) levam ao login
-// social existente (/login); não há fluxo de trial dedicado nesta demanda.
+// montada fora do AppProvider/DashboardLayout. "Entrar" leva ao login (RF02);
+// "Testar grátis" leva ao auto cadastro (/register, spec 006 RF07).
 
 import { Link } from 'react-router-dom';
 
@@ -27,7 +27,7 @@ export function Home() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 mt-10">
           <Link
-            to="/login"
+            to="/register"
             className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
           >
             Testar grátis

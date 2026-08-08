@@ -34,6 +34,11 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 		oauth.Registrar(r)
 	}
 
+	// Auto cadastro e login por e-mail/senha (spec 006) — públicas, coexistem
+	// com o login social acima sem alterá-lo (RN05).
+	r.Post("/api/v1/auth/registro", routes.RegistrarUsuario(iam))
+	r.Post("/api/v1/auth/login", routes.Login(iam))
+
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(iam))
 		r.Use(rl.Handler)

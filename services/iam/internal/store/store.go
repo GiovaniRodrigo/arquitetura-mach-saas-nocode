@@ -9,6 +9,7 @@ package store
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 
@@ -25,6 +26,10 @@ var ErrNaoEncontrado = errors.New("store: tenant não encontrado")
 // ErrSemTenant indica ausência de tenant no contexto ao consultar dados isolados.
 var ErrSemTenant = errors.New("store: contexto sem tenant (RN01)")
 
+// ErrEmailJaCadastrado indica e-mail já usado por outra conta de senha (RN02,
+// índice único parcial da migração 0014).
+var ErrEmailJaCadastrado = errors.New("store: e-mail já cadastrado")
+
 // TenantPadraoID é o tenant fixo onde entram os usuários autenticados via
 // provedor third-party (migração 0013). Todo login OAuth vira 'cliente' aqui.
 const TenantPadraoID = "00000000-0000-0000-0000-000000000001"
@@ -37,11 +42,13 @@ type Tenant struct {
 	Tipo     string
 }
 
-// DB é o subconjunto de pgxpool.Pool usado pelo store (facilita testes).
+// DB é o subconjunto de pgxpool.Pool usado pelo store (facilita testes). Begin
+// é usado só por CriarTenantEUsuarioComSenha (RNF03 — atomicidade tenant+usuário).
 type DB interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 // Store agrega o acesso a tenants e permissões.
@@ -152,6 +159,71 @@ func (s *Store) UpsertUsuarioThirdParty(ctx context.Context, provedor, externalI
 		return "", "", "", fmt.Errorf("store: upsert usuário third-party: %w", err)
 	}
 	return userID, tenantID, tipo, nil
+}
+
+// CriarTenantEUsuarioComSenha materializa o auto cadastro (spec 006, RF04): cria
+// um tenant raiz (tipo 'dono') e, na mesma transação, o usuário registrante
+// (provedor='senha', tipo 'dono') com a senha já em hash. Atômico por RNF03 — se
+// o e-mail já existir para uma conta de senha (índice único parcial da migração
+// 0014), a transação é revertida e nenhum tenant órfão sobra.
+func (s *Store) CriarTenantEUsuarioComSenha(ctx context.Context, nomeUsuario, email, senhaHash, nomeTenant string) (userID, tenantID string, err error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return "", "", fmt.Errorf("store: iniciar transação: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op após commit bem-sucedido
+
+	chave := make([]byte, 32)
+	if _, err := rand.Read(chave); err != nil {
+		return "", "", fmt.Errorf("store: gerar chave do tenant: %w", err)
+	}
+
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO tenants (parent_id, nome, tipo, chave_blind_index)
+		 VALUES (NULL, $1, 'dono', $2) RETURNING id`,
+		nomeTenant, chave,
+	).Scan(&tenantID); err != nil {
+		return "", "", fmt.Errorf("store: criar tenant do cadastro: %w", err)
+	}
+
+	err = tx.QueryRow(ctx,
+		`INSERT INTO users (provedor, external_id, email, nome, senha_hash, tenant_id, tipo)
+		 VALUES ('senha', $1, $1, $2, $3, $4, 'dono')
+		 RETURNING id`,
+		email, nomeUsuario, senhaHash, tenantID,
+	).Scan(&userID)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return "", "", ErrEmailJaCadastrado
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("store: criar usuário do cadastro: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", "", fmt.Errorf("store: commit do cadastro: %w", err)
+	}
+	return userID, tenantID, nil
+}
+
+// ObterUsuarioPorEmailSenha busca uma conta de senha (provedor='senha') pelo
+// e-mail, para o fluxo de login (spec 006, RF06). ErrNaoEncontrado cobre e-mail
+// inexistente — o chamador (grpc.go) devolve a mesma mensagem genérica de erro
+// para isso e para senha incorreta (RN04).
+func (s *Store) ObterUsuarioPorEmailSenha(ctx context.Context, email string) (userID, tenantID, tipo, senhaHash string, err error) {
+	err = s.db.QueryRow(ctx,
+		`SELECT id, tenant_id, tipo::text, coalesce(senha_hash, '')
+		   FROM users
+		  WHERE provedor = 'senha' AND email = $1`,
+		email,
+	).Scan(&userID, &tenantID, &tipo, &senhaHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", "", "", ErrNaoEncontrado
+	}
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("store: obter usuário por e-mail/senha: %w", err)
+	}
+	return userID, tenantID, tipo, senhaHash, nil
 }
 
 // PermissoesDe carrega as permissões do tenant corrente para os componentes

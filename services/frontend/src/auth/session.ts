@@ -23,6 +23,11 @@ export function obterToken(): string {
   return localStorage.getItem(CHAVE) ?? "";
 }
 
+/** Persiste o token emitido pelo cadastro/login por senha (spec 006, RF04/RF06). */
+export function salvarToken(token: string): void {
+  localStorage.setItem(CHAVE, token);
+}
+
 export function encerrarSessao(): void {
   localStorage.removeItem(CHAVE);
 }

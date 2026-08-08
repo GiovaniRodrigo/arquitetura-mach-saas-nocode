@@ -7,6 +7,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./index.css";
 import { App, type FrontendConfig } from "./App";
 import { Login } from "./auth/Login";
+import { Register } from "./auth/Register";
 import { Home } from "./pages/Home/Home";
 import { capturarTokenDaURL, obterToken } from "./auth/session";
 import { ThemeProvider } from "./theme/ThemeProvider";
@@ -39,6 +40,7 @@ if (!token && !isBypass) {
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </BrowserRouter>

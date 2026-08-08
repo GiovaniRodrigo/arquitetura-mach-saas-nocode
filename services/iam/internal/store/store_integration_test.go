@@ -138,3 +138,90 @@ func TestPermissoesDe_SemTenant(t *testing.T) {
 		t.Fatalf("esperava ErrSemTenant; got=%v", err)
 	}
 }
+
+func TestCriarTenantEUsuarioComSenha(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+
+	email := "itg-cadastro@example.com"
+	t.Cleanup(func() {
+		_, _ = p.Exec(context.Background(), `DELETE FROM users WHERE email=$1`, email)
+	})
+
+	userID, tenantID, err := s.CriarTenantEUsuarioComSenha(ctx, "Ana", email, "hash-bcrypt-fake", "Ana LTDA")
+	if err != nil {
+		t.Fatalf("criar tenant e usuário: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, tenantID) })
+
+	if userID == "" || tenantID == "" {
+		t.Fatalf("esperava ids não vazios; got user=%q tenant=%q", userID, tenantID)
+	}
+
+	tenant, err := s.ObterTenant(ctx, tenantID)
+	if err != nil {
+		t.Fatalf("obter tenant criado: %v", err)
+	}
+	if tenant.Tipo != "dono" {
+		t.Fatalf("tenant do cadastro deveria ser 'dono'; got=%q", tenant.Tipo)
+	}
+	if tenant.ParentID != nil {
+		t.Fatalf("tenant do cadastro deveria ser raiz (parent_id nil); got=%v", tenant.ParentID)
+	}
+
+	uid, tid, tipo, hash, err := s.ObterUsuarioPorEmailSenha(ctx, email)
+	if err != nil {
+		t.Fatalf("obter usuário por e-mail/senha: %v", err)
+	}
+	if uid != userID || tid != tenantID {
+		t.Fatalf("ids inconsistentes: cadastro(user=%s,tenant=%s) obtido(user=%s,tenant=%s)", userID, tenantID, uid, tid)
+	}
+	if tipo != "dono" {
+		t.Fatalf("tipo do usuário do cadastro deveria ser 'dono'; got=%q", tipo)
+	}
+	if hash != "hash-bcrypt-fake" {
+		t.Fatalf("senha_hash não persistido corretamente; got=%q", hash)
+	}
+}
+
+func TestCriarTenantEUsuarioComSenha_EmailDuplicadoNaoDeixaTenantOrfao(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+
+	email := "itg-duplicado@example.com"
+	t.Cleanup(func() {
+		_, _ = p.Exec(context.Background(), `DELETE FROM users WHERE email=$1`, email)
+	})
+
+	_, tenantID1, err := s.CriarTenantEUsuarioComSenha(ctx, "Ana", email, "hash1", "Ana LTDA")
+	if err != nil {
+		t.Fatalf("primeiro cadastro: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, tenantID1) })
+
+	var antes int
+	if err := p.QueryRow(ctx, `SELECT count(*) FROM tenants`).Scan(&antes); err != nil {
+		t.Fatalf("contar tenants antes: %v", err)
+	}
+
+	_, _, err = s.CriarTenantEUsuarioComSenha(ctx, "Ana Duplicada", email, "hash2", "Outra Empresa")
+	if err != ErrEmailJaCadastrado {
+		t.Fatalf("esperava ErrEmailJaCadastrado; got=%v", err)
+	}
+
+	var depois int
+	if err := p.QueryRow(ctx, `SELECT count(*) FROM tenants`).Scan(&depois); err != nil {
+		t.Fatalf("contar tenants depois: %v", err)
+	}
+	if depois != antes {
+		t.Fatalf("cadastro com e-mail duplicado deixou tenant órfão: antes=%d depois=%d", antes, depois)
+	}
+}
+
+func TestObterUsuarioPorEmailSenha_NaoEncontrado(t *testing.T) {
+	if _, _, _, _, err := New(pool(t)).ObterUsuarioPorEmailSenha(context.Background(), "inexistente@example.com"); err != ErrNaoEncontrado {
+		t.Fatalf("esperava ErrNaoEncontrado; got=%v", err)
+	}
+}

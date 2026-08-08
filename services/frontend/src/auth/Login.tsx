@@ -1,9 +1,54 @@
-// Tela de login exibida quando não há sessão. Encaminha ao fluxo OAuth do
-// Gateway (Google/GitHub); o token volta no fragmento e é capturado em session.ts.
+// Tela de login exibida quando não há sessão. Oferece o fluxo OAuth do Gateway
+// (Google/GitHub) — token volta no fragmento e é capturado em session.ts — e,
+// desde a spec 006 (RF06), um formulário de e-mail/senha equivalente, para
+// contas criadas via /register. As duas vias coexistem sem se alterar (RN05).
 
-import { urlLogin } from "./session";
+import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { urlLogin, salvarToken } from "./session";
 
-export function Login() {
+export type FetchFn = typeof fetch;
+
+interface LoginProps {
+  fetchFn?: FetchFn;
+  /** Injetável para testes; em produção navega o browser (recarrega o app já autenticado). */
+  redirecionarPara?: (url: string) => void;
+}
+
+export function Login({
+  fetchFn = fetch,
+  redirecionarPara = (url) => {
+    window.location.href = url;
+  },
+}: LoginProps) {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    setEnviando(true);
+    try {
+      const resp = await fetchFn("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha }),
+      });
+      if (!resp.ok) {
+        const corpo = await resp.json().catch(() => null);
+        setErro(corpo?.mensagem ?? "Não foi possível entrar.");
+        return;
+      }
+      const { jwt } = await resp.json();
+      salvarToken(jwt);
+      redirecionarPara(import.meta.env.BASE_URL);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
     <main className="min-h-screen w-full flex flex-col md:flex-row bg-background text-foreground font-sans">
       <div className="md:w-1/2 bg-zinc-900 flex flex-col justify-center items-center p-12 text-zinc-50 border-r border-zinc-800">
@@ -22,7 +67,59 @@ export function Login() {
             <h2 className="font-heading text-3xl font-bold tracking-tight">Bem-vindo de volta</h2>
             <p className="text-muted-foreground mt-2">Entre para acessar seus sistemas.</p>
           </div>
-          
+
+          <form className="space-y-4" onSubmit={onSubmit}>
+            <div>
+              <label htmlFor="login-email" className="block text-sm font-medium mb-1">
+                E-mail
+              </label>
+              <input
+                id="login-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border border-input bg-background"
+              />
+            </div>
+            <div>
+              <label htmlFor="login-senha" className="block text-sm font-medium mb-1">
+                Senha
+              </label>
+              <input
+                id="login-senha"
+                type="password"
+                required
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border border-input bg-background"
+              />
+            </div>
+
+            {erro && (
+              <p role="alert" className="text-sm text-destructive">
+                {erro}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={enviando}
+              className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-60"
+            >
+              {enviando ? "Entrando…" : "Entrar"}
+            </button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-zinc-700" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">ou</span>
+            </div>
+          </div>
+
           <div className="space-y-4">
             <a href={urlLogin("google")} className="flex items-center justify-center w-full px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full font-medium transition-colors border border-zinc-700">
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
@@ -33,6 +130,13 @@ export function Login() {
               Entrar com GitHub
             </a>
           </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Ainda não tem conta?{" "}
+            <Link to="/register" className="font-medium text-foreground hover:underline">
+              Cadastre-se
+            </Link>
+          </p>
         </div>
       </div>
     </main>

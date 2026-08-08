@@ -25,13 +25,13 @@ describe('Page: Home (RF01/RF02)', () => {
     for (const link of entrar) expect(link).toHaveAttribute('href', '/login');
   });
 
-  it('oferece o CTA de cadastro/trial apontando para o login', () => {
+  it('oferece o CTA de cadastro/trial apontando para o cadastro (spec 006, RF07)', () => {
     render(
       <MemoryRouter>
         <Home />
       </MemoryRouter>,
     );
     const cadastrar = screen.getByRole('link', { name: /testar grátis|cadastr/i });
-    expect(cadastrar).toHaveAttribute('href', '/login');
+    expect(cadastrar).toHaveAttribute('href', '/register');
   });
 });
