@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"log"
@@ -58,7 +59,9 @@ func main() {
 		log.Fatalf("JWT_TTL inválido: %v", err)
 	}
 
-	iam := app.NewServer(priv, ttl, pool)
+	mfaKey := loadMfaKey()
+
+	iam := app.NewServerComMfa(priv, ttl, pool, mfaKey)
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
@@ -105,4 +108,31 @@ func loadPrivateKey(path string) (*rsa.PrivateKey, error) {
 		return nil, errors.New("chave não é RSA")
 	}
 	return rsaPriv, nil
+}
+
+// loadMfaKey carrega a chave AES-256-GCM (32 bytes, base64) usada para cifrar
+// os segredos TOTP do MFA (spec 004, RF15) em repouso. Diferente de
+// loadPrivateKey (chave JWT, que TEM fallback efêmero de dev): aqui NÃO há
+// fallback silencioso — a variável é obrigatória e o processo derruba o boot
+// (log.Fatalf) se estiver ausente ou não decodificar para exatos 32 bytes.
+// Um segredo TOTP "efêmero" recriado a cada restart do processo invalidaria
+// os apps autenticadores de todos os usuários com MFA ativo — muito pior do
+// que simplesmente travar a subida do serviço.
+//
+// Gerar um valor válido: openssl rand -base64 32
+func loadMfaKey() [32]byte {
+	raw := env("IAM_MFA_ENCRYPTION_KEY", "")
+	if raw == "" {
+		log.Fatalf("IAM_MFA_ENCRYPTION_KEY ausente: obrigatória, sem fallback efêmero (um segredo TOTP recriado a cada restart invalidaria o MFA de todos os usuários). Gere um valor com: openssl rand -base64 32")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		log.Fatalf("IAM_MFA_ENCRYPTION_KEY inválida: não é base64 válido: %v", err)
+	}
+	if len(decoded) != 32 {
+		log.Fatalf("IAM_MFA_ENCRYPTION_KEY inválida: precisa decodificar para exatos 32 bytes (AES-256); got=%d bytes", len(decoded))
+	}
+	var chave [32]byte
+	copy(chave[:], decoded)
+	return chave
 }

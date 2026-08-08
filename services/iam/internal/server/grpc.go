@@ -4,15 +4,19 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	commonv1 "github.com/machv4/platform/gen/go/construtor/common/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	"github.com/machv4/platform/pkg/tenantctx"
 	"github.com/machv4/platform/services/iam/auth"
@@ -45,6 +49,19 @@ type Store interface {
 	ListarFeedback(ctx context.Context, tenantID string, status *string) ([]store.Feedback, error)
 	AtualizarStatusFeedback(ctx context.Context, id, novoStatus string) (store.Feedback, error)
 	ResumoFinanceiro(ctx context.Context, tenantID string) (store.ResumoFinanceiro, error)
+
+	// Área "Conta/Configuração" (spec 004, RF14-RF18).
+	AtualizarPerfil(ctx context.Context, userID, nome, fotoURL string) error
+	ObterEmailUsuario(ctx context.Context, userID string) (string, error)
+	ObterHashSenha(ctx context.Context, userID string) (string, error)
+	AtualizarSenha(ctx context.Context, userID, novoHash string) error
+	IniciarMfa(ctx context.Context, userID string, segredoCifrado []byte) error
+	ObterSegredoMfaPendente(ctx context.Context, userID string) (segredoCifrado []byte, ultimoCodigo string, ultimoCodigoEm *time.Time, err error)
+	ConfirmarMfa(ctx context.Context, userID, codigoUsado string, usadoEm time.Time) error
+	DesativarMfa(ctx context.Context, userID string) error
+	ExcluirConta(ctx context.Context, userID, tenantID string) error
+	SolicitarTrocaEmail(ctx context.Context, userID, novoEmail, tokenHash string, expiraEm time.Time) error
+	ConfirmarTrocaEmail(ctx context.Context, tokenHash string) error
 }
 
 // IAMServer implementa iamv1.IAMServiceServer.
@@ -54,6 +71,10 @@ type IAMServer struct {
 	issuer    *auth.Issuer
 	store     Store
 	eval      permissions.Evaluator
+	// mfaKey cifra/decifra segredos TOTP em repouso (services/iam/auth/mfa.go).
+	// Zero-value só é aceitável fora de produção (main.go recusa subir sem
+	// IAM_MFA_ENCRYPTION_KEY) — ver ComChaveMfa.
+	mfaKey [32]byte
 }
 
 // New cria o servidor com o validador/emissor de JWT e o store de identidades e
@@ -417,4 +438,275 @@ func (s *IAMServer) ResumoFinanceiro(ctx context.Context, _ *iamv1.ResumoFinance
 		Moeda:                r.Moeda,
 		Competencia:          r.Competencia,
 	}, nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Área "Conta/Configuração" (spec 004-reestruturacao-ia-navegacao, RF14-RF18).
+//
+// Pré-requisito investigado antes de implementar qualquer uma destas rotas:
+// user_id do chamador já trafega no TenantContext (pkg/tenantctx, proto
+// common/v1/tenant.proto) — o Gateway o preenche em middleware.Auth a partir
+// de ValidarTokenResponse.UserId (que vem de claims.Subject, o "sub" do JWT
+// emitido por Issuer.Issue). Não foi necessário mudar TenantContext/Claims;
+// basta usar tc.GetUserId() depois de tenantctx.Require (ver requireUsuario).
+// ─────────────────────────────────────────────────────────────────────────
+
+// erroReautenticacaoNecessaria cobre RNF02: senha_atual ausente ou incorreta
+// numa rota que exige reconfirmar a senha (troca de senha, desativar MFA,
+// excluir conta). Distinto de erroCredenciaisInvalidas (login) na mensagem —
+// o Gateway usa essa distinção para mapear 401 REAUTENTICACAO_NECESSARIA vs
+// 401 UNAUTHORIZED genérico (ver writeContaError em routes/conta.go).
+var erroReautenticacaoNecessaria = status.Error(codes.Unauthenticated, "reautenticação necessária")
+
+// requireUsuario é o tenantctx.Require desta área: além do tenant, exige que
+// o TenantContext carregue user_id — toda rota de Conta/Configuração opera
+// sobre "o usuário autenticado", nunca sobre um id recebido no corpo.
+func (s *IAMServer) requireUsuario(ctx context.Context) (*commonv1.TenantContext, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil || tc.GetUserId() == "" {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	return tc, nil
+}
+
+// reautenticar confere senhaAtual contra o hash persistido do usuário (RNF02).
+// Contas third-party (senha_hash vazio) nunca reautenticam com sucesso aqui —
+// mesmo comportamento de "credenciais inválidas" sem distinguir o motivo.
+func (s *IAMServer) reautenticar(ctx context.Context, userID, senhaAtual string) error {
+	if senhaAtual == "" {
+		return erroReautenticacaoNecessaria
+	}
+	hash, err := s.store.ObterHashSenha(ctx, userID)
+	if err != nil {
+		return status.Error(codes.Internal, "falha ao reautenticar")
+	}
+	if hash == "" || bcrypt.CompareHashAndPassword([]byte(hash), []byte(senhaAtual)) != nil {
+		return erroReautenticacaoNecessaria
+	}
+	return nil
+}
+
+// AtualizarPerfil atualiza nome e foto_url do usuário autenticado (RF17).
+func (s *IAMServer) AtualizarPerfil(ctx context.Context, req *iamv1.AtualizarPerfilRequest) (*iamv1.AtualizarPerfilResponse, error) {
+	tc, err := s.requireUsuario(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.GetNome() == "" {
+		return nil, status.Error(codes.InvalidArgument, "nome obrigatório")
+	}
+	if err := s.store.AtualizarPerfil(ctx, tc.GetUserId(), req.GetNome(), req.GetFotoUrl()); err != nil {
+		return nil, status.Error(codes.Internal, "falha ao atualizar perfil")
+	}
+	return &iamv1.AtualizarPerfilResponse{}, nil
+}
+
+// AtualizarSenha troca a senha da conta (RF14). RNF02: senha_atual reautentica
+// antes de qualquer escrita — nunca troca a senha sem confirmar a atual.
+func (s *IAMServer) AtualizarSenha(ctx context.Context, req *iamv1.AtualizarSenhaRequest) (*iamv1.AtualizarSenhaResponse, error) {
+	tc, err := s.requireUsuario(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(req.GetSenhaNova()) < 8 {
+		return nil, status.Error(codes.InvalidArgument, "senha deve ter no mínimo 8 caracteres")
+	}
+	if err := s.reautenticar(ctx, tc.GetUserId(), req.GetSenhaAtual()); err != nil {
+		return nil, err
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.GetSenhaNova()), bcryptCost)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao processar senha")
+	}
+	if err := s.store.AtualizarSenha(ctx, tc.GetUserId(), string(hash)); err != nil {
+		return nil, status.Error(codes.Internal, "falha ao atualizar senha")
+	}
+	return &iamv1.AtualizarSenhaResponse{}, nil
+}
+
+// AtivarMfa gera um novo segredo TOTP, cifra e persiste (sem ligar o MFA
+// ainda — só ConfirmarMfa liga) e devolve a otpauth:// URI de exibição única
+// (RF15, RNF01): não existe endpoint de releitura, se o usuário perder esta
+// resposta precisa reiniciar o fluxo chamando /mfa/ativar de novo.
+func (s *IAMServer) AtivarMfa(ctx context.Context, _ *iamv1.AtivarMfaRequest) (*iamv1.AtivarMfaResponse, error) {
+	tc, err := s.requireUsuario(ctx)
+	if err != nil {
+		return nil, err
+	}
+	email, err := s.store.ObterEmailUsuario(ctx, tc.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao carregar usuário")
+	}
+	chave, err := totp.Generate(totp.GenerateOpts{Issuer: "MACH V4", AccountName: email})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao gerar segredo mfa")
+	}
+	cifrado, err := auth.CifrarSegredo(s.mfaKey, chave.Secret())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao cifrar segredo mfa")
+	}
+	if err := s.store.IniciarMfa(ctx, tc.GetUserId(), cifrado); err != nil {
+		if errors.Is(err, store.ErrMfaJaAtivo) {
+			return nil, status.Error(codes.FailedPrecondition, "mfa já está ativo nesta conta")
+		}
+		return nil, status.Error(codes.Internal, "falha ao iniciar mfa")
+	}
+	return &iamv1.AtivarMfaResponse{SegredoOtpAuthUri: chave.URL()}, nil
+}
+
+// ConfirmarMfa valida o código TOTP contra o segredo pendente e, se válido,
+// liga o MFA (RF15). Anti-replay: o mesmo código nunca é aceito duas vezes
+// seguidas (mfa_ultimo_codigo_usado). totp.Validate já cobre a janela padrão
+// de ±1 período de 30s — não reimplementamos essa lógica.
+func (s *IAMServer) ConfirmarMfa(ctx context.Context, req *iamv1.ConfirmarMfaRequest) (*iamv1.ConfirmarMfaResponse, error) {
+	tc, err := s.requireUsuario(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.GetCodigo() == "" {
+		return nil, status.Error(codes.InvalidArgument, "código obrigatório")
+	}
+	segredoCifrado, ultimoCodigo, _, err := s.store.ObterSegredoMfaPendente(ctx, tc.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao carregar mfa")
+	}
+	if len(segredoCifrado) == 0 {
+		return nil, status.Error(codes.FailedPrecondition, "nenhuma ativação de mfa pendente — chame /conta/mfa/ativar primeiro")
+	}
+	if ultimoCodigo != "" && req.GetCodigo() == ultimoCodigo {
+		return nil, status.Error(codes.Unauthenticated, "código mfa já utilizado")
+	}
+	segredoClaro, err := auth.DecifrarSegredo(s.mfaKey, segredoCifrado)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao decifrar segredo mfa")
+	}
+	if !totp.Validate(req.GetCodigo(), segredoClaro) {
+		return nil, status.Error(codes.Unauthenticated, "código mfa inválido")
+	}
+	if err := s.store.ConfirmarMfa(ctx, tc.GetUserId(), req.GetCodigo(), time.Now()); err != nil {
+		return nil, status.Error(codes.Internal, "falha ao confirmar mfa")
+	}
+	return &iamv1.ConfirmarMfaResponse{}, nil
+}
+
+// DesativarMfa desliga o MFA (RF15). Decisão de segurança que diverge do
+// contrato assumido em contracts/api.md (que não pedia reautenticação nesta
+// rota): exige senha_atual (RNF02) — desativar 2FA sem confirmar a senha é
+// superfície de abuso de sessão sequestrada.
+func (s *IAMServer) DesativarMfa(ctx context.Context, req *iamv1.DesativarMfaRequest) (*iamv1.DesativarMfaResponse, error) {
+	tc, err := s.requireUsuario(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.reautenticar(ctx, tc.GetUserId(), req.GetSenhaAtual()); err != nil {
+		return nil, err
+	}
+	if err := s.store.DesativarMfa(ctx, tc.GetUserId()); err != nil {
+		return nil, status.Error(codes.Internal, "falha ao desativar mfa")
+	}
+	return &iamv1.DesativarMfaResponse{}, nil
+}
+
+// ExcluirConta anonimiza a conta autenticada (RF16, RN07) — nunca um DELETE
+// físico (LGPD, preserva o id para referências históricas sem manter PII).
+// RN07: bloqueada se o tenant do usuário tiver 1+ filhos vinculados — a
+// checagem aqui reaproveita ListarFilhos (fail-fast, mesma consulta de
+// ListarTenants); store.ExcluirConta reconta os filhos DENTRO da mesma
+// transação da anonimização, para nunca excluir parcialmente numa corrida.
+// RNF02: senha_atual reautentica antes de qualquer escrita.
+func (s *IAMServer) ExcluirConta(ctx context.Context, req *iamv1.ExcluirContaRequest) (*iamv1.ExcluirContaResponse, error) {
+	tc, err := s.requireUsuario(ctx)
+	if err != nil {
+		return nil, err
+	}
+	filhos, err := s.store.ListarFilhos(ctx, tc.GetTenantId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao verificar tenants vinculados")
+	}
+	if len(filhos) > 0 {
+		return nil, status.Error(codes.FailedPrecondition, "existem tenants ativos vinculados a esta conta")
+	}
+	if err := s.reautenticar(ctx, tc.GetUserId(), req.GetSenhaAtual()); err != nil {
+		return nil, err
+	}
+	if err := s.store.ExcluirConta(ctx, tc.GetUserId(), tc.GetTenantId()); err != nil {
+		if errors.Is(err, store.ErrTenantAtivoVinculado) {
+			return nil, status.Error(codes.FailedPrecondition, "existem tenants ativos vinculados a esta conta")
+		}
+		return nil, status.Error(codes.Internal, "falha ao excluir conta")
+	}
+	return &iamv1.ExcluirContaResponse{}, nil
+}
+
+// SolicitarTrocaEmail grava o e-mail pendente e o token de confirmação (RF18,
+// RN08) — `email` (login) só muda na confirmação. Não há infraestrutura de
+// e-mail/SMTP no IAM (dívida técnica já aceita no projeto — mesma
+// simplificação de services/workers/internal/handlers/notificacao.go, que só
+// loga): loga o link de confirmação com log.Printf em vez de enviar e-mail.
+func (s *IAMServer) SolicitarTrocaEmail(ctx context.Context, req *iamv1.SolicitarTrocaEmailRequest) (*iamv1.SolicitarTrocaEmailResponse, error) {
+	tc, err := s.requireUsuario(ctx)
+	if err != nil {
+		return nil, err
+	}
+	novoEmail := req.GetNovoEmail()
+	if novoEmail == "" || !strings.Contains(novoEmail, "@") {
+		return nil, status.Error(codes.InvalidArgument, "novo_email inválido")
+	}
+
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return nil, status.Error(codes.Internal, "falha ao gerar token de confirmação")
+	}
+	token := hex.EncodeToString(tokenBytes)
+	soma := sha256.Sum256([]byte(token))
+	tokenHash := hex.EncodeToString(soma[:])
+
+	if err := s.store.SolicitarTrocaEmail(ctx, tc.GetUserId(), novoEmail, tokenHash, time.Now().Add(time.Hour)); err != nil {
+		if errors.Is(err, store.ErrEmailJaCadastrado) {
+			return nil, status.Error(codes.AlreadyExists, "e-mail já cadastrado")
+		}
+		return nil, status.Error(codes.Internal, "falha ao solicitar troca de e-mail")
+	}
+
+	log.Printf("iam: confirmação de troca de e-mail para %s: token=%s (válido por 1h)", novoEmail, token)
+	return &iamv1.SolicitarTrocaEmailResponse{}, nil
+}
+
+// erroTokenEmailInvalido cobre token inexistente e token expirado com a mesma
+// mensagem genérica (mesmo racional de erroCredenciaisInvalidas, RN04): não
+// distinguir "não existe" de "expirou".
+var erroTokenEmailInvalido = status.Error(codes.InvalidArgument, "token de confirmação inválido ou expirado")
+
+// ConfirmarTrocaEmail efetiva a troca de e-mail (RF18, RN08). Não checa o
+// tenant/usuário do chamador contra o token de propósito — o token por si só
+// já é a prova de posse do novo e-mail (mesmo modelo de link de confirmação
+// de e-mail comum a outros produtos).
+func (s *IAMServer) ConfirmarTrocaEmail(ctx context.Context, req *iamv1.ConfirmarTrocaEmailRequest) (*iamv1.ConfirmarTrocaEmailResponse, error) {
+	if req.GetToken() == "" {
+		return nil, erroTokenEmailInvalido
+	}
+	soma := sha256.Sum256([]byte(req.GetToken()))
+	tokenHash := hex.EncodeToString(soma[:])
+
+	err := s.store.ConfirmarTrocaEmail(ctx, tokenHash)
+	if errors.Is(err, store.ErrNaoEncontrado) {
+		return nil, erroTokenEmailInvalido
+	}
+	if errors.Is(err, store.ErrEmailJaCadastrado) {
+		return nil, status.Error(codes.AlreadyExists, "e-mail já cadastrado")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao confirmar troca de e-mail")
+	}
+	return &iamv1.ConfirmarTrocaEmailResponse{}, nil
+}
+
+// ComChaveMfa liga a chave de cifra AES-256-GCM usada para os segredos TOTP
+// (services/iam/auth/mfa.go) ao servidor — segue o mesmo padrão de
+// LogicServer.ComPublicador (services/logic/internal/server/grpc.go): setter
+// encadeável chamado depois de New, para não crescer a assinatura de New a
+// cada nova dependência opcional.
+func (s *IAMServer) ComChaveMfa(chave [32]byte) *IAMServer {
+	s.mfaKey = chave
+	return s
 }

@@ -3,9 +3,11 @@ package server
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -70,6 +72,34 @@ type fakeStore struct {
 	resumoFinanceiro       store.ResumoFinanceiro
 	resumoFinanceiroErr    error
 	resumoFinanceiroTenant string
+
+	// Conta/Configuração (spec 004, RF14-RF18)
+	perfilNome, perfilFotoURL, perfilUserIDChamado                         string
+	perfilErr                                                              error
+	emailUsuario                                                           string
+	emailUsuarioErr                                                        error
+	hashSenha                                                              string
+	hashSenhaErr                                                           error
+	senhaAtualizadaUserID, senhaAtualizadaHash                             string
+	atualizarSenhaErr                                                      error
+	iniciarMfaUserID                                                       string
+	iniciarMfaSegredo                                                      []byte
+	iniciarMfaErr                                                          error
+	segredoMfaPendente                                                     []byte
+	ultimoCodigoMfa                                                        string
+	ultimoCodigoMfaEm                                                      *time.Time
+	obterSegredoMfaErr                                                     error
+	confirmarMfaUserID, confirmarMfaCodigo                                 string
+	confirmarMfaErr                                                        error
+	desativarMfaUserID                                                     string
+	desativarMfaErr                                                        error
+	excluirContaUserID, excluirContaTenantID                               string
+	excluirContaErr                                                        error
+	solicitarTrocaUserID, solicitarTrocaNovoEmail, solicitarTrocaTokenHash string
+	solicitarTrocaExpira                                                   time.Time
+	solicitarTrocaErr                                                      error
+	confirmarTrocaTokenHash                                                string
+	confirmarTrocaErr                                                      error
 }
 
 func (f *fakeStore) RegistrarEventoLogin(_ context.Context, usuarioID, tenantID string) error {
@@ -138,6 +168,58 @@ func (f *fakeStore) ObterUsuarioPorEmailSenha(_ context.Context, email string) (
 	return f.obterSenhaUserID, f.obterSenhaTenantID, f.obterSenhaTipo, f.obterSenhaHash, f.obterSenhaErr
 }
 
+func (f *fakeStore) AtualizarPerfil(_ context.Context, userID, nome, fotoURL string) error {
+	f.perfilUserIDChamado, f.perfilNome, f.perfilFotoURL = userID, nome, fotoURL
+	return f.perfilErr
+}
+
+func (f *fakeStore) ObterEmailUsuario(context.Context, string) (string, error) {
+	return f.emailUsuario, f.emailUsuarioErr
+}
+
+func (f *fakeStore) ObterHashSenha(context.Context, string) (string, error) {
+	return f.hashSenha, f.hashSenhaErr
+}
+
+func (f *fakeStore) AtualizarSenha(_ context.Context, userID, novoHash string) error {
+	f.senhaAtualizadaUserID, f.senhaAtualizadaHash = userID, novoHash
+	return f.atualizarSenhaErr
+}
+
+func (f *fakeStore) IniciarMfa(_ context.Context, userID string, segredoCifrado []byte) error {
+	f.iniciarMfaUserID, f.iniciarMfaSegredo = userID, segredoCifrado
+	return f.iniciarMfaErr
+}
+
+func (f *fakeStore) ObterSegredoMfaPendente(context.Context, string) ([]byte, string, *time.Time, error) {
+	return f.segredoMfaPendente, f.ultimoCodigoMfa, f.ultimoCodigoMfaEm, f.obterSegredoMfaErr
+}
+
+func (f *fakeStore) ConfirmarMfa(_ context.Context, userID, codigoUsado string, _ time.Time) error {
+	f.confirmarMfaUserID, f.confirmarMfaCodigo = userID, codigoUsado
+	return f.confirmarMfaErr
+}
+
+func (f *fakeStore) DesativarMfa(_ context.Context, userID string) error {
+	f.desativarMfaUserID = userID
+	return f.desativarMfaErr
+}
+
+func (f *fakeStore) ExcluirConta(_ context.Context, userID, tenantID string) error {
+	f.excluirContaUserID, f.excluirContaTenantID = userID, tenantID
+	return f.excluirContaErr
+}
+
+func (f *fakeStore) SolicitarTrocaEmail(_ context.Context, userID, novoEmail, tokenHash string, expiraEm time.Time) error {
+	f.solicitarTrocaUserID, f.solicitarTrocaNovoEmail, f.solicitarTrocaTokenHash, f.solicitarTrocaExpira = userID, novoEmail, tokenHash, expiraEm
+	return f.solicitarTrocaErr
+}
+
+func (f *fakeStore) ConfirmarTrocaEmail(_ context.Context, tokenHash string) error {
+	f.confirmarTrocaTokenHash = tokenHash
+	return f.confirmarTrocaErr
+}
+
 func newServer(t *testing.T, store Store) (*IAMServer, *auth.Issuer) {
 	t.Helper()
 	priv, err := auth.GenerateKey()
@@ -146,6 +228,22 @@ func newServer(t *testing.T, store Store) (*IAMServer, *auth.Issuer) {
 	}
 	iss := auth.NewIssuer(priv, time.Hour)
 	return New(auth.NewValidator(&priv.PublicKey), iss, store), iss
+}
+
+// chaveMfaTeste é a chave AES-256-GCM fixa usada pelos testes de MFA — nunca
+// use uma chave fixa em produção (ver services/iam/cmd/main.go, loadMfaKey).
+var chaveMfaTeste = [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
+
+func newServerComMfa(t *testing.T, store Store) (*IAMServer, *auth.Issuer) {
+	t.Helper()
+	srv, iss := newServer(t, store)
+	return srv.ComChaveMfa(chaveMfaTeste), iss
+}
+
+// ctxComUsuario monta um TenantContext completo (tenant + user_id) — as rotas
+// de Conta/Configuração exigem user_id, diferente das rotas de tenants.
+func ctxComUsuario(tenantID, userID, tipo string) context.Context {
+	return tenantctx.NewContext(context.Background(), &commonv1.TenantContext{TenantId: tenantID, UserId: userID, Tipo: tipo})
 }
 
 func TestValidarToken_ValidoEInvalido(t *testing.T) {
@@ -714,5 +812,328 @@ func TestResumoFinanceiro_DevolveValoresDoStore(t *testing.T) {
 	}
 	if fs.resumoFinanceiroTenant != "tenant-A" {
 		t.Fatalf("tenant inesperado: %q", fs.resumoFinanceiroTenant)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Área "Conta/Configuração" (spec 004, RF14-RF18).
+// ─────────────────────────────────────────────────────────────────────────
+
+func TestAtualizarPerfil_SemTenantContext(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	if _, err := srv.AtualizarPerfil(context.Background(), &iamv1.AtualizarPerfilRequest{Nome: "Ana"}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("esperava Unauthenticated; got=%v", err)
+	}
+}
+
+func TestAtualizarPerfil_NomeVazio(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+	if _, err := srv.AtualizarPerfil(ctx, &iamv1.AtualizarPerfilRequest{}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("nome vazio deveria falhar; got=%v", err)
+	}
+}
+
+func TestAtualizarPerfil_Sucesso(t *testing.T) {
+	fs := &fakeStore{}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+	if _, err := srv.AtualizarPerfil(ctx, &iamv1.AtualizarPerfilRequest{Nome: "Ana", FotoUrl: "https://x/y.png"}); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if fs.perfilUserIDChamado != "user-1" || fs.perfilNome != "Ana" || fs.perfilFotoURL != "https://x/y.png" {
+		t.Fatalf("store chamado com args inesperados: %+v", fs)
+	}
+}
+
+func TestAtualizarSenha_SenhaCurta(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+	_, err := srv.AtualizarSenha(ctx, &iamv1.AtualizarSenhaRequest{SenhaAtual: "atual123", SenhaNova: "curta"})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("senha nova curta deveria falhar; got=%v", err)
+	}
+}
+
+func TestAtualizarSenha_SenhaAtualErrada(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("senha-correta"), bcrypt.DefaultCost)
+	fs := &fakeStore{hashSenha: string(hash)}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	_, err := srv.AtualizarSenha(ctx, &iamv1.AtualizarSenhaRequest{SenhaAtual: "senha-errada", SenhaNova: "12345678"})
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("senha atual errada deveria dar Unauthenticated; got=%v", err)
+	}
+	if fs.senhaAtualizadaHash != "" {
+		t.Fatal("senha não deveria ser trocada quando senha_atual está errada")
+	}
+}
+
+func TestAtualizarSenha_Sucesso(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("senha-correta"), bcrypt.DefaultCost)
+	fs := &fakeStore{hashSenha: string(hash)}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.AtualizarSenha(ctx, &iamv1.AtualizarSenhaRequest{SenhaAtual: "senha-correta", SenhaNova: "nova-senha-12345"}); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if fs.senhaAtualizadaUserID != "user-1" {
+		t.Fatalf("userID inesperado: %q", fs.senhaAtualizadaUserID)
+	}
+	if bcrypt.CompareHashAndPassword([]byte(fs.senhaAtualizadaHash), []byte("nova-senha-12345")) != nil {
+		t.Fatal("hash persistido não corresponde à nova senha")
+	}
+}
+
+func TestAtivarMfa_SemTenantContext(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	if _, err := srv.AtivarMfa(context.Background(), &iamv1.AtivarMfaRequest{}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("esperava Unauthenticated; got=%v", err)
+	}
+}
+
+func TestAtivarMfa_Sucesso(t *testing.T) {
+	fs := &fakeStore{emailUsuario: "ana@example.com"}
+	srv, _ := newServerComMfa(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	resp, err := srv.AtivarMfa(ctx, &iamv1.AtivarMfaRequest{})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if resp.GetSegredoOtpAuthUri() == "" || !strings.HasPrefix(resp.GetSegredoOtpAuthUri(), "otpauth://") {
+		t.Fatalf("uri otpauth inesperada: %q", resp.GetSegredoOtpAuthUri())
+	}
+	if fs.iniciarMfaUserID != "user-1" || len(fs.iniciarMfaSegredo) == 0 {
+		t.Fatalf("store não recebeu segredo cifrado: %+v", fs)
+	}
+	// O segredo persistido nunca é o texto claro — deve decifrar de volta.
+	if _, err := auth.DecifrarSegredo(chaveMfaTeste, fs.iniciarMfaSegredo); err != nil {
+		t.Fatalf("segredo cifrado não decifra com a mesma chave: %v", err)
+	}
+}
+
+func TestAtivarMfa_JaAtivo(t *testing.T) {
+	fs := &fakeStore{emailUsuario: "ana@example.com", iniciarMfaErr: store.ErrMfaJaAtivo}
+	srv, _ := newServerComMfa(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.AtivarMfa(ctx, &iamv1.AtivarMfaRequest{}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("mfa já ativo deveria dar FailedPrecondition; got=%v", err)
+	}
+}
+
+// gerarSegredoCifrado cria um segredo TOTP válido e devolve o texto claro e a
+// versão cifrada com chaveMfaTeste — usado pelos testes de ConfirmarMfa.
+func gerarSegredoCifrado(t *testing.T) (claro string, cifrado []byte) {
+	t.Helper()
+	chave, err := totp.Generate(totp.GenerateOpts{Issuer: "MACH V4", AccountName: "ana@example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cifrado, err = auth.CifrarSegredo(chaveMfaTeste, chave.Secret())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return chave.Secret(), cifrado
+}
+
+func TestConfirmarMfa_SemAtivacaoPendente(t *testing.T) {
+	fs := &fakeStore{}
+	srv, _ := newServerComMfa(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.ConfirmarMfa(ctx, &iamv1.ConfirmarMfaRequest{Codigo: "123456"}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("sem ativação pendente deveria dar FailedPrecondition; got=%v", err)
+	}
+}
+
+func TestConfirmarMfa_CodigoInvalido(t *testing.T) {
+	_, cifrado := gerarSegredoCifrado(t)
+	fs := &fakeStore{segredoMfaPendente: cifrado}
+	srv, _ := newServerComMfa(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.ConfirmarMfa(ctx, &iamv1.ConfirmarMfaRequest{Codigo: "000000"}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("código inválido deveria dar Unauthenticated; got=%v", err)
+	}
+	if fs.confirmarMfaCodigo != "" {
+		t.Fatal("mfa não deveria ser confirmado com código inválido")
+	}
+}
+
+func TestConfirmarMfa_Sucesso(t *testing.T) {
+	claro, cifrado := gerarSegredoCifrado(t)
+	codigo, err := totp.GenerateCode(claro, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	fs := &fakeStore{segredoMfaPendente: cifrado}
+	srv, _ := newServerComMfa(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.ConfirmarMfa(ctx, &iamv1.ConfirmarMfaRequest{Codigo: codigo}); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if fs.confirmarMfaUserID != "user-1" || fs.confirmarMfaCodigo != codigo {
+		t.Fatalf("store não confirmado com os args esperados: %+v", fs)
+	}
+}
+
+// Anti-replay (RF15): o mesmo código TOTP não pode confirmar o MFA duas vezes
+// seguidas, mesmo sendo criptograficamente válido dentro da janela de tempo.
+func TestConfirmarMfa_AntiReplay(t *testing.T) {
+	claro, cifrado := gerarSegredoCifrado(t)
+	codigo, err := totp.GenerateCode(claro, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	agora := time.Now()
+	fs := &fakeStore{segredoMfaPendente: cifrado, ultimoCodigoMfa: codigo, ultimoCodigoMfaEm: &agora}
+	srv, _ := newServerComMfa(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.ConfirmarMfa(ctx, &iamv1.ConfirmarMfaRequest{Codigo: codigo}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("código repetido deveria ser rejeitado; got=%v", err)
+	}
+	if fs.confirmarMfaCodigo != "" {
+		t.Fatal("mfa não deveria ser confirmado com código repetido")
+	}
+}
+
+func TestDesativarMfa_SenhaErrada(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("senha-correta"), bcrypt.DefaultCost)
+	fs := &fakeStore{hashSenha: string(hash)}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.DesativarMfa(ctx, &iamv1.DesativarMfaRequest{SenhaAtual: "errada"}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("senha errada deveria dar Unauthenticated; got=%v", err)
+	}
+	if fs.desativarMfaUserID != "" {
+		t.Fatal("mfa não deveria ser desativado com senha errada")
+	}
+}
+
+func TestDesativarMfa_Sucesso(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("senha-correta"), bcrypt.DefaultCost)
+	fs := &fakeStore{hashSenha: string(hash)}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.DesativarMfa(ctx, &iamv1.DesativarMfaRequest{SenhaAtual: "senha-correta"}); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if fs.desativarMfaUserID != "user-1" {
+		t.Fatalf("userID inesperado: %q", fs.desativarMfaUserID)
+	}
+}
+
+func TestExcluirConta_TenantVinculado(t *testing.T) {
+	fs := &fakeStore{filhos: []store.Tenant{{ID: "t1", Nome: "Acme"}}}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	_, err := srv.ExcluirConta(ctx, &iamv1.ExcluirContaRequest{SenhaAtual: "qualquer"})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("tenant vinculado deveria dar FailedPrecondition; got=%v", err)
+	}
+	if fs.excluirContaUserID != "" {
+		t.Fatal("conta não deveria ser excluída com tenant vinculado")
+	}
+}
+
+func TestExcluirConta_SenhaErrada(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("senha-correta"), bcrypt.DefaultCost)
+	fs := &fakeStore{hashSenha: string(hash)}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	_, err := srv.ExcluirConta(ctx, &iamv1.ExcluirContaRequest{SenhaAtual: "errada"})
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("senha errada deveria dar Unauthenticated; got=%v", err)
+	}
+	if fs.excluirContaUserID != "" {
+		t.Fatal("conta não deveria ser excluída com senha errada")
+	}
+}
+
+func TestExcluirConta_Sucesso(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("senha-correta"), bcrypt.DefaultCost)
+	fs := &fakeStore{hashSenha: string(hash)}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.ExcluirConta(ctx, &iamv1.ExcluirContaRequest{SenhaAtual: "senha-correta"}); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if fs.excluirContaUserID != "user-1" || fs.excluirContaTenantID != "tenant-A" {
+		t.Fatalf("store chamado com args inesperados: %+v", fs)
+	}
+}
+
+func TestSolicitarTrocaEmail_EmailInvalido(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+	if _, err := srv.SolicitarTrocaEmail(ctx, &iamv1.SolicitarTrocaEmailRequest{NovoEmail: "sem-arroba"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("e-mail inválido deveria falhar; got=%v", err)
+	}
+}
+
+func TestSolicitarTrocaEmail_Sucesso(t *testing.T) {
+	fs := &fakeStore{}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	if _, err := srv.SolicitarTrocaEmail(ctx, &iamv1.SolicitarTrocaEmailRequest{NovoEmail: "novo@example.com"}); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if fs.solicitarTrocaUserID != "user-1" || fs.solicitarTrocaNovoEmail != "novo@example.com" {
+		t.Fatalf("store chamado com args inesperados: %+v", fs)
+	}
+	if len(fs.solicitarTrocaTokenHash) != 64 { // sha256 em hex
+		t.Fatalf("tokenHash deveria ter 64 chars hex; got=%d", len(fs.solicitarTrocaTokenHash))
+	}
+	if fs.solicitarTrocaExpira.Before(time.Now().Add(50 * time.Minute)) {
+		t.Fatalf("expiração deveria ser ~1h no futuro; got=%v", fs.solicitarTrocaExpira)
+	}
+}
+
+func TestSolicitarTrocaEmail_EmailDuplicado(t *testing.T) {
+	fs := &fakeStore{solicitarTrocaErr: store.ErrEmailJaCadastrado}
+	srv, _ := newServer(t, fs)
+	ctx := ctxComUsuario("tenant-A", "user-1", "dono")
+
+	_, err := srv.SolicitarTrocaEmail(ctx, &iamv1.SolicitarTrocaEmailRequest{NovoEmail: "ja-existe@example.com"})
+	if status.Code(err) != codes.AlreadyExists {
+		t.Fatalf("e-mail duplicado deveria dar AlreadyExists; got=%v", err)
+	}
+}
+
+func TestConfirmarTrocaEmail_TokenVazio(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	if _, err := srv.ConfirmarTrocaEmail(context.Background(), &iamv1.ConfirmarTrocaEmailRequest{}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("token vazio deveria falhar; got=%v", err)
+	}
+}
+
+func TestConfirmarTrocaEmail_TokenInvalidoOuExpirado(t *testing.T) {
+	fs := &fakeStore{confirmarTrocaErr: store.ErrNaoEncontrado}
+	srv, _ := newServer(t, fs)
+	if _, err := srv.ConfirmarTrocaEmail(context.Background(), &iamv1.ConfirmarTrocaEmailRequest{Token: "lixo"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("token inválido/expirado deveria falhar; got=%v", err)
+	}
+}
+
+func TestConfirmarTrocaEmail_Sucesso(t *testing.T) {
+	fs := &fakeStore{}
+	srv, _ := newServer(t, fs)
+	if _, err := srv.ConfirmarTrocaEmail(context.Background(), &iamv1.ConfirmarTrocaEmailRequest{Token: "token-valido"}); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if len(fs.confirmarTrocaTokenHash) != 64 {
+		t.Fatalf("tokenHash deveria ter 64 chars hex; got=%d", len(fs.confirmarTrocaTokenHash))
 	}
 }

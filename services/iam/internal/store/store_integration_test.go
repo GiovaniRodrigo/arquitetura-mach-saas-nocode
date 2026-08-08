@@ -506,3 +506,284 @@ func TestRegistrarEventoLogin(t *testing.T) {
 		t.Fatalf("evento registrado não apareceu em últimos acessos: %+v", eventos)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Área "Conta/Configuração" (spec 004, RF14-RF18).
+// ─────────────────────────────────────────────────────────────────────────
+
+// criarUsuarioSenha cria (via CriarTenantEUsuarioComSenha) um tenant raiz +
+// usuário de senha para os testes desta seção, e registra a limpeza de ambos.
+func criarUsuarioSenha(t *testing.T, s *Store, email string) (userID, tenantID string) {
+	t.Helper()
+	userID, tenantID, err := s.CriarTenantEUsuarioComSenha(context.Background(), "Itg Conta", email, "hash-bcrypt-fake", "Itg Conta LTDA")
+	if err != nil {
+		t.Fatalf("criar usuário de senha: %v", err)
+	}
+	// users.tenant_id não tem ON DELETE CASCADE (diferente de tenants.parent_id,
+	// que é SET NULL) — apagar o tenant antes do usuário violaria a FK. Um único
+	// Cleanup, na ordem certa, evita o vazamento de dados de teste.
+	t.Cleanup(func() {
+		ctx := context.Background()
+		_, _ = s.db.Exec(ctx, `DELETE FROM users WHERE id=$1`, userID)
+		_, _ = s.db.Exec(ctx, `DELETE FROM tenants WHERE id=$1`, tenantID)
+	})
+	return userID, tenantID
+}
+
+func TestAtualizarPerfil_store(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	userID, _ := criarUsuarioSenha(t, s, "itg-perfil@example.com")
+
+	if err := s.AtualizarPerfil(context.Background(), userID, "Novo Nome", "https://x/foto.png"); err != nil {
+		t.Fatalf("atualizar perfil: %v", err)
+	}
+
+	var nome, foto string
+	if err := p.QueryRow(context.Background(), `SELECT nome, foto_url FROM users WHERE id=$1`, userID).Scan(&nome, &foto); err != nil {
+		t.Fatalf("verificar perfil: %v", err)
+	}
+	if nome != "Novo Nome" || foto != "https://x/foto.png" {
+		t.Fatalf("perfil não persistido corretamente: nome=%q foto=%q", nome, foto)
+	}
+
+	if err := s.AtualizarPerfil(context.Background(), "00000000-0000-0000-0000-000000000099", "X", ""); err != ErrNaoEncontrado {
+		t.Fatalf("usuário inexistente deveria dar ErrNaoEncontrado; got=%v", err)
+	}
+}
+
+func TestObterHashSenhaEAtualizarSenha(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	userID, _ := criarUsuarioSenha(t, s, "itg-senha@example.com")
+
+	hash, err := s.ObterHashSenha(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("obter hash: %v", err)
+	}
+	if hash != "hash-bcrypt-fake" {
+		t.Fatalf("hash inesperado: %q", hash)
+	}
+
+	if err := s.AtualizarSenha(context.Background(), userID, "novo-hash-bcrypt"); err != nil {
+		t.Fatalf("atualizar senha: %v", err)
+	}
+	hash2, err := s.ObterHashSenha(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("obter hash após atualizar: %v", err)
+	}
+	if hash2 != "novo-hash-bcrypt" {
+		t.Fatalf("senha não persistida corretamente: %q", hash2)
+	}
+}
+
+// TestFluxoMfa cobre ativar → confirmar → anti-replay → desativar (RF15): MFA
+// não fica ativo antes de confirmar, e o mesmo código não confirma duas vezes.
+func TestFluxoMfa(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	userID, _ := criarUsuarioSenha(t, s, "itg-mfa@example.com")
+	ctx := context.Background()
+
+	if err := s.IniciarMfa(ctx, userID, []byte("segredo-cifrado-1")); err != nil {
+		t.Fatalf("iniciar mfa: %v", err)
+	}
+
+	segredo, ultimoCodigo, ultimoCodigoEm, err := s.ObterSegredoMfaPendente(ctx, userID)
+	if err != nil {
+		t.Fatalf("obter segredo pendente: %v", err)
+	}
+	if string(segredo) != "segredo-cifrado-1" {
+		t.Fatalf("segredo pendente inesperado: %q", segredo)
+	}
+	if ultimoCodigo != "" || ultimoCodigoEm != nil {
+		t.Fatalf("não deveria haver anti-replay antes de qualquer confirmação: codigo=%q em=%v", ultimoCodigo, ultimoCodigoEm)
+	}
+
+	// MFA não fica ativo antes de confirmar.
+	var ativoAntes bool
+	if err := p.QueryRow(ctx, `SELECT mfa_ativo FROM users WHERE id=$1`, userID).Scan(&ativoAntes); err != nil {
+		t.Fatalf("consultar mfa_ativo: %v", err)
+	}
+	if ativoAntes {
+		t.Fatal("mfa_ativo deveria ser false antes de ConfirmarMfa")
+	}
+
+	// IniciarMfa de novo enquanto ainda não confirmado deve ser permitido
+	// (reconfigurar antes de terminar o enrollment não está bloqueado).
+	if err := s.IniciarMfa(ctx, userID, []byte("segredo-cifrado-2")); err != nil {
+		t.Fatalf("reiniciar mfa antes de confirmar: %v", err)
+	}
+
+	agora := time.Now().Truncate(time.Second)
+	if err := s.ConfirmarMfa(ctx, userID, "123456", agora); err != nil {
+		t.Fatalf("confirmar mfa: %v", err)
+	}
+
+	var ativoDepois bool
+	if err := p.QueryRow(ctx, `SELECT mfa_ativo FROM users WHERE id=$1`, userID).Scan(&ativoDepois); err != nil {
+		t.Fatalf("consultar mfa_ativo: %v", err)
+	}
+	if !ativoDepois {
+		t.Fatal("mfa_ativo deveria ser true após ConfirmarMfa")
+	}
+
+	// IniciarMfa deve recusar com ErrMfaJaAtivo agora que está confirmado.
+	if err := s.IniciarMfa(ctx, userID, []byte("segredo-cifrado-3")); err != ErrMfaJaAtivo {
+		t.Fatalf("esperava ErrMfaJaAtivo com mfa já confirmado; got=%v", err)
+	}
+
+	// Anti-replay: o mesmo código usado persiste em mfa_ultimo_codigo_usado.
+	_, ultimoCodigoDepois, ultimoCodigoEmDepois, err := s.ObterSegredoMfaPendente(ctx, userID)
+	if err != nil {
+		t.Fatalf("obter segredo após confirmar: %v", err)
+	}
+	if ultimoCodigoDepois != "123456" || ultimoCodigoEmDepois == nil {
+		t.Fatalf("estado de anti-replay não persistido: codigo=%q em=%v", ultimoCodigoDepois, ultimoCodigoEmDepois)
+	}
+
+	if err := s.DesativarMfa(ctx, userID); err != nil {
+		t.Fatalf("desativar mfa: %v", err)
+	}
+	var ativoFinal bool
+	var segredoFinal []byte
+	if err := p.QueryRow(ctx, `SELECT mfa_ativo, mfa_segredo_cifrado FROM users WHERE id=$1`, userID).Scan(&ativoFinal, &segredoFinal); err != nil {
+		t.Fatalf("consultar estado final do mfa: %v", err)
+	}
+	if ativoFinal || segredoFinal != nil {
+		t.Fatalf("mfa deveria estar totalmente desligado após DesativarMfa: ativo=%v segredo=%v", ativoFinal, segredoFinal)
+	}
+}
+
+// TestExcluirConta_BloqueadaComTenantFilho cobre RN07: a exclusão não roda
+// (nem parcialmente) se o tenant do usuário tiver 1+ filhos vinculados.
+func TestExcluirConta_BloqueadaComTenantFilho(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+	userID, tenantID := criarUsuarioSenha(t, s, "itg-excl-bloqueada@example.com")
+
+	filho, err := s.CriarTenant(ctx, "itg-excl-filho", "cliente", &tenantID, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar tenant filho: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, filho.ID) })
+
+	if err := s.ExcluirConta(ctx, userID, tenantID); err != ErrTenantAtivoVinculado {
+		t.Fatalf("esperava ErrTenantAtivoVinculado; got=%v", err)
+	}
+
+	// Nada deve ter sido anonimizado (nunca excluir parcialmente).
+	var email string
+	if err := p.QueryRow(ctx, `SELECT email FROM users WHERE id=$1`, userID).Scan(&email); err != nil {
+		t.Fatalf("verificar usuário após bloqueio: %v", err)
+	}
+	if email != "itg-excl-bloqueada@example.com" {
+		t.Fatalf("usuário não deveria ter sido alterado; email=%q", email)
+	}
+}
+
+// TestExcluirConta_Anonimiza cobre RF16: exclusão sem tenant vinculado
+// anonimiza a conta (LGPD) — não deixa e-mail/nome originais.
+func TestExcluirConta_Anonimiza(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+	userID, tenantID := criarUsuarioSenha(t, s, "itg-excl-ok@example.com")
+
+	if err := s.ExcluirConta(ctx, userID, tenantID); err != nil {
+		t.Fatalf("excluir conta: %v", err)
+	}
+
+	var nome, email, provedor string
+	var senhaHash *string
+	if err := p.QueryRow(ctx, `SELECT nome, email, provedor, senha_hash FROM users WHERE id=$1`, userID).
+		Scan(&nome, &email, &provedor, &senhaHash); err != nil {
+		t.Fatalf("verificar usuário anonimizado: %v", err)
+	}
+	if nome != "" {
+		t.Fatalf("nome deveria estar vazio; got=%q", nome)
+	}
+	if email == "itg-excl-ok@example.com" {
+		t.Fatal("e-mail original não deveria sobreviver à anonimização")
+	}
+	if provedor != "removido" {
+		t.Fatalf("provedor deveria ser 'removido'; got=%q", provedor)
+	}
+	if senhaHash != nil {
+		t.Fatalf("senha_hash deveria ser NULL; got=%v", *senhaHash)
+	}
+}
+
+func TestSolicitarEConfirmarTrocaEmail(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+	userID, _ := criarUsuarioSenha(t, s, "itg-email-antigo@example.com")
+
+	if err := s.SolicitarTrocaEmail(ctx, userID, "itg-email-novo@example.com", "hash-token-1", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("solicitar troca de e-mail: %v", err)
+	}
+
+	var emailPendente string
+	if err := p.QueryRow(ctx, `SELECT email_pendente FROM users WHERE id=$1`, userID).Scan(&emailPendente); err != nil {
+		t.Fatalf("verificar email_pendente: %v", err)
+	}
+	if emailPendente != "itg-email-novo@example.com" {
+		t.Fatalf("email_pendente inesperado: %q", emailPendente)
+	}
+
+	if err := s.ConfirmarTrocaEmail(ctx, "hash-token-1"); err != nil {
+		t.Fatalf("confirmar troca de e-mail: %v", err)
+	}
+
+	var email string
+	var pendenteDepois, tokenHashDepois *string
+	if err := p.QueryRow(ctx, `SELECT email, email_pendente, email_token_hash FROM users WHERE id=$1`, userID).
+		Scan(&email, &pendenteDepois, &tokenHashDepois); err != nil {
+		t.Fatalf("verificar e-mail após confirmação: %v", err)
+	}
+	if email != "itg-email-novo@example.com" {
+		t.Fatalf("email não trocado; got=%q", email)
+	}
+	if pendenteDepois != nil || tokenHashDepois != nil {
+		t.Fatalf("estado pendente deveria ser limpo após confirmar: pendente=%v tokenHash=%v", pendenteDepois, tokenHashDepois)
+	}
+}
+
+func TestSolicitarTrocaEmail_EmailJaCadastrado(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+	_, _ = criarUsuarioSenha(t, s, "itg-email-existente@example.com")
+	userID, _ := criarUsuarioSenha(t, s, "itg-email-solicitante@example.com")
+
+	if err := s.SolicitarTrocaEmail(ctx, userID, "itg-email-existente@example.com", "hash-token-2", time.Now().Add(time.Hour)); err != ErrEmailJaCadastrado {
+		t.Fatalf("esperava ErrEmailJaCadastrado; got=%v", err)
+	}
+}
+
+// TestConfirmarTrocaEmail_TokenExpirado_ErroGenerico cobre RN08/RN04: um token
+// expirado devolve o mesmo erro genérico de um token inexistente.
+func TestConfirmarTrocaEmail_TokenExpirado_ErroGenerico(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+	userID, _ := criarUsuarioSenha(t, s, "itg-email-expirado@example.com")
+
+	if err := s.SolicitarTrocaEmail(ctx, userID, "itg-email-expirado-novo@example.com", "hash-token-3", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("solicitar troca de e-mail: %v", err)
+	}
+	// Força a expiração diretamente no banco (SolicitarTrocaEmail sempre grava
+	// now()+1h; simulamos o relógio ter avançado).
+	if _, err := p.Exec(ctx, `UPDATE users SET email_token_expira_em = now() - interval '1 minute' WHERE id=$1`, userID); err != nil {
+		t.Fatalf("expirar token manualmente: %v", err)
+	}
+
+	errExpirado := s.ConfirmarTrocaEmail(ctx, "hash-token-3")
+	errInexistente := s.ConfirmarTrocaEmail(ctx, "hash-token-jamais-existiu")
+
+	if errExpirado != ErrNaoEncontrado || errInexistente != ErrNaoEncontrado {
+		t.Fatalf("token expirado e token inexistente deveriam devolver o mesmo ErrNaoEncontrado; expirado=%v inexistente=%v", errExpirado, errInexistente)
+	}
+}

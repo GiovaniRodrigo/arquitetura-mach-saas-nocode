@@ -127,6 +127,7 @@ message AutenticarSenhaResponse {
   string tipo = 4;
 }
 
+<<<<<<< HEAD
 // Dashboard (spec 004, RF04/RF05/RF06): os 3 cards mostram dados agregados
 // dos "tenants vinculados" ao usuário autenticado — o tenant do contexto +
 // seus filhos diretos (mesmo conjunto de ListarTenants, RN05).
@@ -184,6 +185,73 @@ message ResumoFinanceiroResponse {
 
 message ResumoFinanceiroRequest {}
 
+// Área "Conta/Configuração" (spec 004-reestruturacao-ia-navegacao, RF14-RF18):
+// perfil, troca de senha, MFA TOTP em duas etapas, exclusão de conta (LGPD,
+// anonimização) e troca de e-mail em duas etapas. Todas as rotas operam sobre
+// o usuário autenticado (user_id do TenantContext), nunca sobre um id do corpo.
+
+message AtualizarPerfilRequest {
+  string nome = 1;
+  string foto_url = 2;
+}
+
+message AtualizarPerfilResponse {}
+
+// RNF02: senha_atual é o mecanismo de reautenticação — validado via bcrypt
+// contra o hash já persistido antes de qualquer troca.
+message AtualizarSenhaRequest {
+  string senha_atual = 1;
+  string senha_nova = 2;
+}
+
+message AtualizarSenhaResponse {}
+
+message AtivarMfaRequest {}
+
+// segredo_otp_auth_uri é de exibição única (RNF01): não existe endpoint de
+// releitura — se perdido, o usuário precisa reiniciar o fluxo de ativação.
+message AtivarMfaResponse {
+  string segredo_otp_auth_uri = 1;
+}
+
+message ConfirmarMfaRequest {
+  string codigo = 1;
+}
+
+message ConfirmarMfaResponse {}
+
+// Decisão de segurança (diverge do contrato assumido em contracts/api.md):
+// desativar MFA também exige reautenticação por senha — evita que uma sessão
+// sequestrada desligue o segundo fator sem confirmar a senha.
+message DesativarMfaRequest {
+  string senha_atual = 1;
+}
+
+message DesativarMfaResponse {}
+
+// RN07: bloqueada se o tenant do usuário tiver 1+ tenants filhos vinculados.
+// RNF02: senha_atual reautentica antes da anonimização (LGPD, não é DELETE físico).
+message ExcluirContaRequest {
+  string senha_atual = 1;
+}
+
+message ExcluirContaResponse {}
+
+// RN08: `email` (login) só muda na confirmação — o POST inicial grava apenas
+// email_pendente e envia o token de confirmação (fora de escopo o envio real
+// por e-mail; ver services/iam/internal/server, log.Printf documentado).
+message SolicitarTrocaEmailRequest {
+  string novo_email = 1;
+}
+
+message SolicitarTrocaEmailResponse {}
+
+message ConfirmarTrocaEmailRequest {
+  string token = 1;
+}
+
+message ConfirmarTrocaEmailResponse {}
+
 service IAMService {
   rpc ValidarToken(ValidarTokenRequest) returns (ValidarTokenResponse);
   rpc AvaliarPermissoes(AvaliarPermissoesRequest) returns (AvaliarPermissoesResponse);
@@ -199,4 +267,12 @@ service IAMService {
   rpc ListarFeedback(ListarFeedbackRequest) returns (ListarFeedbackResponse);
   rpc AtualizarStatusFeedback(AtualizarStatusFeedbackRequest) returns (Feedback);
   rpc ResumoFinanceiro(ResumoFinanceiroRequest) returns (ResumoFinanceiroResponse);
+  rpc AtualizarPerfil(AtualizarPerfilRequest) returns (AtualizarPerfilResponse);
+  rpc AtualizarSenha(AtualizarSenhaRequest) returns (AtualizarSenhaResponse);
+  rpc AtivarMfa(AtivarMfaRequest) returns (AtivarMfaResponse);
+  rpc ConfirmarMfa(ConfirmarMfaRequest) returns (ConfirmarMfaResponse);
+  rpc DesativarMfa(DesativarMfaRequest) returns (DesativarMfaResponse);
+  rpc ExcluirConta(ExcluirContaRequest) returns (ExcluirContaResponse);
+  rpc SolicitarTrocaEmail(SolicitarTrocaEmailRequest) returns (SolicitarTrocaEmailResponse);
+  rpc ConfirmarTrocaEmail(ConfirmarTrocaEmailRequest) returns (ConfirmarTrocaEmailResponse);
 }
