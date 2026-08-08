@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -252,4 +253,196 @@ func (s *Store) PermissoesDe(ctx context.Context, blindIndexes []string) ([]perm
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// --- Dashboard (spec 004, RF04/RF05/RF06) --------------------------------
+//
+// Os 3 cards do Dashboard (Últimos Acessos, Feedback, Resumo Financeiro)
+// agregam dados do tenant do usuário autenticado + seus filhos diretos ao
+// mesmo tempo ("tenants vinculados", consistente com RF07/RN05). Isso é
+// incompatível com ScopedDB.WithTenant (que fixa exatamente 1 app.tenant_id),
+// então eventos_login/feedback/assinaturas_tenant ficam fora da Row-Level
+// Security (ver comentário de topo da migração 0010) e o filtro por tenant é
+// feito manualmente aqui via WHERE tenant_id = ANY($lista) — mesmo padrão já
+// usado para tenants/users nas funções acima.
+
+// EventoLogin é uma linha do histórico de login para o card "Últimos Acessos"
+// (RF04).
+type EventoLogin struct {
+	UsuarioNome string
+	TenantNome  string
+	CriadoEm    time.Time
+}
+
+// Feedback é uma mensagem de feedback/reclamação de um tenant vinculado
+// (RF05).
+type Feedback struct {
+	ID         string
+	TenantNome string
+	Mensagem   string
+	Status     string
+	CriadoEm   time.Time
+}
+
+// ResumoFinanceiro é a receita agregada do mês corrente dos tenants
+// vinculados (RF06).
+type ResumoFinanceiro struct {
+	ReceitaTotalCentavos int64
+	Moeda                string
+	Competencia          string
+}
+
+// tenantsVinculados devolve o tenant do contexto + seus filhos diretos — o
+// conjunto usado pelos 3 cards do Dashboard (Últimos Acessos, Feedback, Resumo
+// Financeiro), consistente com RF07/RN05 já implementado (spec 004).
+func (s *Store) tenantsVinculados(ctx context.Context, tenantID string) ([]string, error) {
+	filhos, err := s.ListarFilhos(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(filhos)+1)
+	ids = append(ids, tenantID)
+	for _, f := range filhos {
+		ids = append(ids, f.ID)
+	}
+	return ids, nil
+}
+
+// RegistrarEventoLogin grava um evento de login para telemetria do card
+// "Últimos Acessos" (RF04). Chamado a partir de AutenticarSenha/
+// AutenticarThirdParty; falha aqui nunca deve impedir o login (é telemetria
+// auxiliar, não o fluxo crítico).
+func (s *Store) RegistrarEventoLogin(ctx context.Context, usuarioID, tenantID string) error {
+	_, err := s.db.Exec(ctx,
+		`INSERT INTO eventos_login (usuario_id, tenant_id) VALUES ($1, $2)`,
+		usuarioID, tenantID,
+	)
+	if err != nil {
+		return fmt.Errorf("store: registrar evento de login: %w", err)
+	}
+	return nil
+}
+
+// UltimosAcessos devolve os `limite` logins mais recentes dos tenants
+// vinculados a tenantID (tenant do contexto + filhos diretos), mais recente
+// primeiro (RF04, RN02).
+func (s *Store) UltimosAcessos(ctx context.Context, tenantID string, limite int) ([]EventoLogin, error) {
+	vinculados, err := s.tenantsVinculados(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("store: últimos acessos: %w", err)
+	}
+	rows, err := s.db.Query(ctx,
+		`SELECT u.nome, t.nome, e.criado_em
+		   FROM eventos_login e
+		   JOIN users u ON u.id = e.usuario_id
+		   JOIN tenants t ON t.id = e.tenant_id
+		  WHERE e.tenant_id = ANY($1)
+		  ORDER BY e.criado_em DESC
+		  LIMIT $2`,
+		vinculados, limite,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("store: últimos acessos: %w", err)
+	}
+	defer rows.Close()
+
+	var out []EventoLogin
+	for rows.Next() {
+		var ev EventoLogin
+		if err := rows.Scan(&ev.UsuarioNome, &ev.TenantNome, &ev.CriadoEm); err != nil {
+			return nil, err
+		}
+		out = append(out, ev)
+	}
+	return out, rows.Err()
+}
+
+// ListarFeedback devolve as mensagens de feedback dos tenants vinculados a
+// tenantID, mais recente primeiro, opcionalmente filtradas por status (RF05).
+// status == nil devolve todas.
+func (s *Store) ListarFeedback(ctx context.Context, tenantID string, status *string) ([]Feedback, error) {
+	vinculados, err := s.tenantsVinculados(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("store: listar feedback: %w", err)
+	}
+
+	sql := `SELECT f.id, t.nome, f.mensagem, f.status::text, f.criado_em
+	          FROM feedback f
+	          JOIN tenants t ON t.id = f.tenant_id
+	         WHERE f.tenant_id = ANY($1)`
+	args := []any{vinculados}
+	if status != nil {
+		sql += ` AND f.status = $2`
+		args = append(args, *status)
+	}
+	sql += ` ORDER BY f.criado_em DESC`
+
+	rows, err := s.db.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("store: listar feedback: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Feedback
+	for rows.Next() {
+		var f Feedback
+		if err := rows.Scan(&f.ID, &f.TenantNome, &f.Mensagem, &f.Status, &f.CriadoEm); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// AtualizarStatusFeedback aplica a transição de status de uma mensagem de
+// feedback. RN03: a única transição válida é pendente→respondido — o
+// UPDATE só afeta linhas com status='pendente' quando novoStatus='respondido',
+// tornando a transição reversa (respondido→pendente) impossível mesmo sob
+// corrida. O chamador (grpc.go) já rejeita novoStatus="pendente" antes de
+// chegar aqui.
+func (s *Store) AtualizarStatusFeedback(ctx context.Context, id, novoStatus string) (Feedback, error) {
+	var f Feedback
+	err := s.db.QueryRow(ctx,
+		`UPDATE feedback f SET status = $2
+		   FROM tenants t
+		  WHERE f.id = $1 AND f.status = 'pendente' AND t.id = f.tenant_id
+		  RETURNING f.id, t.nome, f.mensagem, f.status::text, f.criado_em`,
+		id, novoStatus,
+	).Scan(&f.ID, &f.TenantNome, &f.Mensagem, &f.Status, &f.CriadoEm)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Feedback{}, ErrNaoEncontrado
+	}
+	if err != nil {
+		return Feedback{}, fmt.Errorf("store: atualizar status de feedback: %w", err)
+	}
+	return f, nil
+}
+
+// ResumoFinanceiro soma a receita de assinatura do mês corrente dos tenants
+// vinculados a tenantID (RF06, RN04). Sem linhas, devolve 0/BRL (COALESCE
+// cobre o SUM de conjunto vazio, que seria NULL). Não existe motor de billing
+// real neste repo (fora de escopo — spec.md §8): a tabela é lida como está,
+// semeada manualmente nos testes de integração.
+func (s *Store) ResumoFinanceiro(ctx context.Context, tenantID string) (ResumoFinanceiro, error) {
+	vinculados, err := s.tenantsVinculados(ctx, tenantID)
+	if err != nil {
+		return ResumoFinanceiro{}, fmt.Errorf("store: resumo financeiro: %w", err)
+	}
+
+	var totalCentavos int64
+	err = s.db.QueryRow(ctx,
+		`SELECT COALESCE(SUM(valor_centavos), 0)
+		   FROM assinaturas_tenant
+		  WHERE tenant_id = ANY($1) AND to_char(competencia, 'YYYY-MM') = to_char(now(), 'YYYY-MM')`,
+		vinculados,
+	).Scan(&totalCentavos)
+	if err != nil {
+		return ResumoFinanceiro{}, fmt.Errorf("store: resumo financeiro: %w", err)
+	}
+
+	return ResumoFinanceiro{
+		ReceitaTotalCentavos: totalCentavos,
+		Moeda:                "BRL",
+		Competencia:          time.Now().Format("2006-01"),
+	}, nil
 }
