@@ -127,7 +127,6 @@ message AutenticarSenhaResponse {
   string tipo = 4;
 }
 
-<<<<<<< HEAD
 // Dashboard (spec 004, RF04/RF05/RF06): os 3 cards mostram dados agregados
 // dos "tenants vinculados" ao usuário autenticado — o tenant do contexto +
 // seus filhos diretos (mesmo conjunto de ListarTenants, RN05).
