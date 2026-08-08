@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -176,6 +177,77 @@ func (m *Manager) ObterAtiva(ctx context.Context, sistemaID string) (VersaoAtiva
 		return VersaoAtiva{}, fmt.Errorf("versions: versão ativa: %w", err)
 	}
 	return v, nil
+}
+
+// VersaoResumo é uma versão listada (sem a definição consolidada completa).
+type VersaoResumo struct {
+	ID       string
+	Numero   int32
+	Ativa    bool
+	CriadoEm time.Time
+}
+
+// ListarVersoes devolve todas as versões do sistema, mais recente primeiro (RF12).
+func (m *Manager) ListarVersoes(ctx context.Context, sistemaID string) ([]VersaoResumo, error) {
+	var versoes []VersaoResumo
+	err := m.db.WithTenant(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := exigirSistema(ctx, tx, sistemaID); err != nil {
+			return err
+		}
+		rows, err := tx.Query(ctx,
+			`SELECT id, numero, ativa, criado_em FROM versoes_sistema WHERE sistema_id=$1 ORDER BY numero DESC`,
+			sistemaID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		versoes = []VersaoResumo{}
+		for rows.Next() {
+			var v VersaoResumo
+			if err := rows.Scan(&v.ID, &v.Numero, &v.Ativa, &v.CriadoEm); err != nil {
+				return err
+			}
+			versoes = append(versoes, v)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		if errors.Is(err, ErrSistemaInexistente) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("versions: listar versões: %w", err)
+	}
+	return versoes, nil
+}
+
+// RollbackPorID resolve um id de versão para o número correspondente e delega a
+// Rollback (mesma semântica/garantias de RN05) — usado pela fachada REST de
+// versoes/{versaoId}/reverter (spec 004, RF12), que referencia versão por id em
+// vez de número.
+func (m *Manager) RollbackPorID(ctx context.Context, sistemaID, versaoID string) (int32, error) {
+	var numero int32
+	err := m.db.WithTenant(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := exigirSistema(ctx, tx, sistemaID); err != nil {
+			return err
+		}
+		err := tx.QueryRow(ctx,
+			`SELECT numero FROM versoes_sistema WHERE id=$1 AND sistema_id=$2`,
+			versaoID, sistemaID).Scan(&numero)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSemVersaoAnterior
+		}
+		return err
+	})
+	if err != nil {
+		if errors.Is(err, ErrSistemaInexistente) {
+			return 0, err
+		}
+		if errors.Is(err, ErrSemVersaoAnterior) {
+			return 0, err
+		}
+		return 0, fmt.Errorf("versions: resolver versão por id: %w", err)
+	}
+	return m.Rollback(ctx, sistemaID, numero)
 }
 
 // exigirSistema confirma que o sistema pertence ao tenant corrente (RLS). Sem isso
