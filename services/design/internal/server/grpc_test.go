@@ -24,6 +24,13 @@ type fakeStore struct {
 	sistemaID   string
 	sistemaNome string
 	listaSis    []*designv1.Sistema
+
+	listaSisTenant   []*designv1.Sistema
+	tenantIDPedido   string
+	listarTenantErr  error
+	whiteLabelOut    store.WhiteLabel
+	whiteLabelErr    error
+	whiteLabelPedido store.WhiteLabel
 }
 
 func (f *fakeStore) Criar(_ context.Context, _ *designv1.Design) (string, error) {
@@ -44,6 +51,20 @@ func (f *fakeStore) CriarSistema(_ context.Context, nome string) (string, error)
 }
 func (f *fakeStore) ListarSistemas(_ context.Context) ([]*designv1.Sistema, error) {
 	return f.listaSis, nil
+}
+func (f *fakeStore) ListarSistemasDoTenant(_ context.Context, tenantID string) ([]*designv1.Sistema, error) {
+	f.tenantIDPedido = tenantID
+	if f.listarTenantErr != nil {
+		return nil, f.listarTenantErr
+	}
+	return f.listaSisTenant, nil
+}
+func (f *fakeStore) AtualizarWhiteLabel(_ context.Context, dados store.WhiteLabel) (store.WhiteLabel, error) {
+	f.whiteLabelPedido = dados
+	if f.whiteLabelErr != nil {
+		return store.WhiteLabel{}, f.whiteLabelErr
+	}
+	return f.whiteLabelOut, nil
 }
 
 func comTenant() context.Context { return comTenantTipo("dono") }
@@ -174,5 +195,46 @@ func TestListarSistemas_OK(t *testing.T) {
 	}
 	if len(out.GetSistemas()) != 2 || out.GetSistemas()[0].GetNome() != "Alfa" {
 		t.Fatalf("lista inesperada: %+v", out.GetSistemas())
+	}
+}
+
+// Com tenant_id preenchido, o Design Engine delega ao store explícito (RF08) —
+// SEM revalidar hierarquia aqui (essa é responsabilidade do Gateway via IAM,
+// ver comentário do método ListarSistemas).
+func TestListarSistemas_ComTenantId_UsaStoreExplicito(t *testing.T) {
+	fs := &fakeStore{
+		listaSis:       []*designv1.Sistema{{Id: "contexto", Nome: "DoContexto"}},
+		listaSisTenant: []*designv1.Sistema{{Id: "filho", Nome: "DoFilho"}},
+	}
+	s := New(fs)
+	out, err := s.ListarSistemas(comTenant(), &designv1.ListarSistemasRequest{TenantId: "tenant-filho"})
+	if err != nil {
+		t.Fatalf("inesperado: %v", err)
+	}
+	if fs.tenantIDPedido != "tenant-filho" {
+		t.Fatalf("tenant_id não propagado ao store: %q", fs.tenantIDPedido)
+	}
+	if len(out.GetSistemas()) != 1 || out.GetSistemas()[0].GetId() != "filho" {
+		t.Fatalf("deveria usar a lista do tenant explícito, não a do contexto: %+v", out.GetSistemas())
+	}
+}
+
+func TestAtualizarWhiteLabel_OK(t *testing.T) {
+	fs := &fakeStore{whiteLabelOut: store.WhiteLabel{LogoURL: "https://x/logo.png", CorPrimaria: "#111111", DominioValidado: false}}
+	s := New(fs)
+	out, err := s.AtualizarWhiteLabel(comTenant(), &designv1.AtualizarWhiteLabelRequest{LogoUrl: "https://x/logo.png", CorPrimaria: "#111111"})
+	if err != nil {
+		t.Fatalf("inesperado: %v", err)
+	}
+	if out.GetLogoUrl() != "https://x/logo.png" || out.GetDominioValidado() {
+		t.Fatalf("resposta inesperada: %+v", out)
+	}
+}
+
+func TestAtualizarWhiteLabel_SemTenant_Unauthenticated(t *testing.T) {
+	s := New(&fakeStore{})
+	_, err := s.AtualizarWhiteLabel(context.Background(), &designv1.AtualizarWhiteLabelRequest{})
+	if code(err) != codes.Unauthenticated {
+		t.Fatalf("esperava Unauthenticated; got %v", err)
 	}
 }

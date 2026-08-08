@@ -51,10 +51,35 @@ message CriarSistemaRequest {
   string nome = 1;
 }
 
-message ListarSistemasRequest {}
+message ListarSistemasRequest {
+  // Opcional: quando preenchido, lista os sistemas deste tenant (não o do
+  // contexto/Metadata) — usado pelo Gateway em RF08, após validar via IAM que
+  // o tenant é filho direto do tenant do contexto (RN05). Vazio preserva o
+  // comportamento atual (tenant do contexto). O Design Engine NÃO valida
+  // hierarquia aqui: confia que quem chamou já autorizou (ver grpc.go).
+  string tenant_id = 1;
+}
 
 message ListarSistemasResponse {
   repeated Sistema sistemas = 1;
+}
+
+message AtualizarWhiteLabelRequest {
+  string logo_url = 1;
+  string cor_primaria = 2;
+  string cor_secundaria = 3;
+  string dominio_proprio = 4;
+}
+
+// WhiteLabel espelha a personalização de marca do tenant (RF13, RNF03). A
+// validação de dominio_proprio é assíncrona e fora de escopo: dominio_validado
+// é sempre false nesta entrega.
+message WhiteLabel {
+  string logo_url = 1;
+  string cor_primaria = 2;
+  string cor_secundaria = 3;
+  string dominio_proprio = 4;
+  bool dominio_validado = 5;
 }
 
 service DesignEngineService {
@@ -68,4 +93,6 @@ service DesignEngineService {
   // (RN01). Criar é restrito a dono/parceiro; listar é aberto ao tenant.
   rpc CriarSistema(CriarSistemaRequest) returns (Sistema);
   rpc ListarSistemas(ListarSistemasRequest) returns (ListarSistemasResponse);
+  // Personalização de marca do tenant (RF13, RNF03).
+  rpc AtualizarWhiteLabel(AtualizarWhiteLabelRequest) returns (WhiteLabel);
 }

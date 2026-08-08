@@ -65,3 +65,25 @@ func (s *ScopedDB) WithTenant(ctx context.Context, fn func(ctx context.Context, 
 	}
 	return tx.Commit(ctx)
 }
+
+// WithExplicitTenant executa fn com app.tenant_id fixado no tenantID informado
+// diretamente (não o do contexto) — usado quando a autorização cross-tenant já
+// foi validada por outra camada (ex.: Gateway validando hierarquia via IAM antes
+// de repassar ao Design, RF08/RN05). Nunca chame isto sem essa validação prévia.
+func (s *ScopedDB) WithExplicitTenant(ctx context.Context, tenantID string, fn func(ctx context.Context, tx pgx.Tx) error) error {
+	if tenantID == "" {
+		return ErrNoTenant
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, "SELECT set_config('app.tenant_id', $1, true)", tenantID); err != nil {
+		return err
+	}
+	if err := fn(ctx, tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
