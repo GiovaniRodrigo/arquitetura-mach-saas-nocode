@@ -22,6 +22,7 @@ type DesignCliente interface {
 	RemoverDesign(ctx context.Context, in *designv1.ObterDesignRequest, opts ...grpc.CallOption) (*designv1.RemoverResponse, error)
 	CriarSistema(ctx context.Context, in *designv1.CriarSistemaRequest, opts ...grpc.CallOption) (*designv1.Sistema, error)
 	ListarSistemas(ctx context.Context, in *designv1.ListarSistemasRequest, opts ...grpc.CallOption) (*designv1.ListarSistemasResponse, error)
+	AtualizarWhiteLabel(ctx context.Context, in *designv1.AtualizarWhiteLabelRequest, opts ...grpc.CallOption) (*designv1.WhiteLabel, error)
 }
 
 // componenteDTO espelha o nó Composite no corpo JSON. `propriedades` trafega como

@@ -25,6 +25,8 @@ type Persistencia interface {
 	Salvar(ctx context.Context, d *designv1.Design) error
 	CriarSistema(ctx context.Context, nome string) (string, error)
 	ListarSistemas(ctx context.Context) ([]*designv1.Sistema, error)
+	ListarSistemasDoTenant(ctx context.Context, tenantID string) ([]*designv1.Sistema, error)
+	AtualizarWhiteLabel(ctx context.Context, dados store.WhiteLabel) (store.WhiteLabel, error)
 }
 
 // DesignServer implementa designv1.DesignEngineServiceServer.
@@ -143,15 +145,57 @@ func (s *DesignServer) CriarSistema(ctx context.Context, req *designv1.CriarSist
 
 // ListarSistemas devolve os sistemas do tenant do contexto (aberto a qualquer
 // autenticado; a RLS isola por tenant).
-func (s *DesignServer) ListarSistemas(ctx context.Context, _ *designv1.ListarSistemasRequest) (*designv1.ListarSistemasResponse, error) {
+//
+// Fronteira de confiança (RF08/RN05): quando req.tenant_id vem preenchido, o
+// Design Engine lista os sistemas DESSE tenant em vez do tenant do contexto,
+// SEM validar aqui se ele é filho do tenant do contexto — essa validação de
+// hierarquia é responsabilidade exclusiva do Gateway, que a faz via
+// IAMServiceClient.ObterTenant (RN05) ANTES de chamar esta RPC. O Design
+// Engine confia que qualquer chamador desta RPC com tenant_id preenchido já
+// autorizou o acesso cross-tenant. Nunca exponha esta RPC diretamente a um
+// cliente não confiável sem essa validação prévia.
+func (s *DesignServer) ListarSistemas(ctx context.Context, req *designv1.ListarSistemasRequest) (*designv1.ListarSistemasResponse, error) {
 	if err := exigirTenant(ctx); err != nil {
 		return nil, err
 	}
-	sistemas, err := s.store.ListarSistemas(ctx)
+	var (
+		sistemas []*designv1.Sistema
+		err      error
+	)
+	if tid := req.GetTenantId(); tid != "" {
+		sistemas, err = s.store.ListarSistemasDoTenant(ctx, tid)
+	} else {
+		sistemas, err = s.store.ListarSistemas(ctx)
+	}
 	if err != nil {
 		return nil, mapErr(err)
 	}
 	return &designv1.ListarSistemasResponse{Sistemas: sistemas}, nil
+}
+
+// AtualizarWhiteLabel faz upsert da personalização de marca (logo/cores/domínio
+// próprio) do tenant do contexto (RF13, RNF03). A validação do domínio é
+// assíncrona e fora de escopo: dominio_validado volta sempre false.
+func (s *DesignServer) AtualizarWhiteLabel(ctx context.Context, req *designv1.AtualizarWhiteLabelRequest) (*designv1.WhiteLabel, error) {
+	if err := exigirTenant(ctx); err != nil {
+		return nil, err
+	}
+	out, err := s.store.AtualizarWhiteLabel(ctx, store.WhiteLabel{
+		LogoURL:        req.GetLogoUrl(),
+		CorPrimaria:    req.GetCorPrimaria(),
+		CorSecundaria:  req.GetCorSecundaria(),
+		DominioProprio: req.GetDominioProprio(),
+	})
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	return &designv1.WhiteLabel{
+		LogoUrl:         out.LogoURL,
+		CorPrimaria:     out.CorPrimaria,
+		CorSecundaria:   out.CorSecundaria,
+		DominioProprio:  out.DominioProprio,
+		DominioValidado: out.DominioValidado,
+	}, nil
 }
 
 // exigirTenant rejeita chamadas sem TenantContext no Metadata (RN01, RNF02).

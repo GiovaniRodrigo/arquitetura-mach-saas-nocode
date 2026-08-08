@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	designv1 "github.com/machv4/platform/gen/go/construtor/design/v1"
+	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	"github.com/machv4/platform/services/gateway/internal/web"
 )
 
@@ -22,12 +23,28 @@ type criarSistemaReq struct {
 	Nome string `json:"nome"`
 }
 
-// ListarSistemas serve GET /api/v1/sistemas (RN01): devolve os sistemas do tenant
-// do contexto. O tenant vem do TenantContext (posto pelo Auth) e é propagado ao
-// Design Engine via Metadata gRPC.
-func ListarSistemas(design DesignCliente) http.HandlerFunc {
+// ListarSistemas serve GET /api/v1/sistemas (RN01) e sua extensão
+// ?tenant_id={id} (spec 004, RF08): sem tenant_id, devolve os sistemas do
+// tenant do contexto (comportamento atual, TenantContext posto pelo Auth,
+// propagado ao Design Engine via Metadata gRPC). Com tenant_id — usado pela
+// tela "Clientes" para listar os sistemas de um tenant filho —, PRIMEIRO valida
+// via iam.ObterTenant que o tenant é filho direto do tenant do contexto (RN05);
+// só então repassa ao Design Engine. Esta validação é o único gate de
+// autorização cross-tenant do endpoint: o Design Engine, ao receber tenant_id,
+// não reverifica hierarquia (ver comentário em DesignServer.ListarSistemas) —
+// por isso ela NUNCA pode ser pulada aqui.
+func ListarSistemas(design DesignCliente, iam TenantsCliente) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		out, err := design.ListarSistemas(r.Context(), &designv1.ListarSistemasRequest{})
+		tenantID := r.URL.Query().Get("tenant_id")
+
+		if tenantID != "" {
+			if _, err := iam.ObterTenant(r.Context(), &iamv1.ObterTenantRequest{Id: tenantID}); err != nil {
+				writeTenantError(w, err)
+				return
+			}
+		}
+
+		out, err := design.ListarSistemas(r.Context(), &designv1.ListarSistemasRequest{TenantId: tenantID})
 		if err != nil {
 			writeSistemaError(w, err)
 			return

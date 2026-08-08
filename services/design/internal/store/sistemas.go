@@ -58,3 +58,31 @@ func (s *Store) ListarSistemas(ctx context.Context) ([]*designv1.Sistema, error)
 	}
 	return sistemas, nil
 }
+
+// ListarSistemasDoTenant devolve os sistemas de um tenant explícito (não o do
+// contexto), mais recentes primeiro — usado por RF08 quando o Gateway já
+// validou (via IAM) que o tenant é filho direto do tenant do contexto (RN05).
+// A RLS continua restringindo as linhas ao tenantID fixado na transação.
+func (s *Store) ListarSistemasDoTenant(ctx context.Context, tenantID string) ([]*designv1.Sistema, error) {
+	var sistemas []*designv1.Sistema
+	err := s.db.WithExplicitTenant(ctx, tenantID, func(ctx context.Context, tx pgx.Tx) error {
+		rows, e := tx.Query(ctx,
+			`SELECT id, nome FROM sistemas ORDER BY criado_em DESC`)
+		if e != nil {
+			return e
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var sis designv1.Sistema
+			if e := rows.Scan(&sis.Id, &sis.Nome); e != nil {
+				return e
+			}
+			sistemas = append(sistemas, &sis)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, fmt.Errorf("store: listar sistemas do tenant: %w", err)
+	}
+	return sistemas, nil
+}
