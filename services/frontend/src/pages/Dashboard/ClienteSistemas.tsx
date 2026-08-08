@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { TonalCard } from '../../components/m3/TonalCard';
 import { ElevatedCard } from '../../components/m3/ElevatedCard';
 import { Skeleton, EmptyState, ErrorState } from '../../components/ui/StateViews';
@@ -130,52 +131,75 @@ export function ClienteSistemas() {
         </ElevatedCard>
       )}
 
-      {estado.fase === 'erro' ? (
-        <ErrorState mensagem="Não foi possível carregar os sistemas deste cliente." onRepetir={recarregar} />
-      ) : estado.fase === 'carregando' ? (
-        <Skeleton itens={3} />
-      ) : estado.fase === 'vazio' ? (
-        <EmptyState
-          titulo="Nenhum sistema para este cliente ainda"
-          descricao={usuario.podeCriarSistema ? 'Crie o primeiro sistema para começar.' : undefined}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {estado.sistemas.map((s) => (
-            <ElevatedCard key={s.id}>
-              <h3 className="text-lg font-heading font-bold mb-4">{s.nome}</h3>
-              <Link
-                to={`/dashboard/clientes/${tenantId}/sistemas/${s.id}`}
-                className="text-sm font-medium text-primary hover:underline"
-              >
-                Abrir sistema &rarr;
-              </Link>
-            </ElevatedCard>
-          ))}
-        </div>
-      )}
-
-      {estadoTenant.fase === 'pronto' && (
-        <ElevatedCard>
-          <h3 className="text-md font-heading font-bold mb-2 text-destructive">Excluir cliente</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Esta ação é permanente e exclui todos os sistemas e dados deste cliente.
-          </p>
-          <button
-            type="button"
-            onClick={excluir}
-            disabled={excluindo}
-            className="self-start text-sm bg-destructive text-destructive-foreground px-4 py-2 rounded-lg font-medium hover:bg-destructive/90 disabled:opacity-60"
-          >
-            {excluindo ? 'Excluindo…' : 'Excluir cliente'}
-          </button>
-          {erroExcluir && (
-            <p role="alert" className="text-sm text-destructive">
-              {erroExcluir}
-            </p>
+      <ElevatedCard>
+        <div className="flex items-center justify-between gap-4 mb-1">
+          <h3 className="text-lg font-heading font-bold">Sistemas</h3>
+          {estadoTenant.fase === 'pronto' && (
+            <button
+              type="button"
+              onClick={excluir}
+              disabled={excluindo}
+              title="Esta ação é permanente e exclui todos os sistemas e dados deste cliente."
+              className="shrink-0 text-sm bg-destructive text-destructive-foreground px-4 py-2 rounded-lg font-medium hover:bg-destructive/90 disabled:opacity-60"
+            >
+              {excluindo ? 'Excluindo…' : 'Excluir cliente'}
+            </button>
           )}
-        </ElevatedCard>
-      )}
+        </div>
+        {erroExcluir && (
+          <p role="alert" className="text-sm text-destructive mb-4">
+            {erroExcluir}
+          </p>
+        )}
+
+        {estado.fase === 'erro' ? (
+          <div className="mt-4">
+            <ErrorState mensagem="Não foi possível carregar os sistemas deste cliente." onRepetir={recarregar} />
+          </div>
+        ) : estado.fase === 'carregando' ? (
+          <div className="mt-4">
+            <Skeleton itens={3} />
+          </div>
+        ) : estado.fase === 'vazio' ? (
+          <div className="mt-4">
+            <EmptyState
+              titulo="Nenhum sistema para este cliente ainda"
+              descricao={usuario.podeCriarSistema ? 'Crie o primeiro sistema para começar.' : undefined}
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto -mx-6 -mb-6 mt-4">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-border text-xs font-semibold uppercase text-muted-foreground">
+                  <th scope="col" className="px-6 py-4">
+                    Nome
+                  </th>
+                  <th scope="col" className="px-6 py-4 text-right">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {estado.sistemas.map((s) => (
+                  <tr key={s.id}>
+                    <td className="px-6 py-4 font-medium">{s.nome}</td>
+                    <td className="px-6 py-4 text-right">
+                      <Link
+                        to={`/dashboard/clientes/${tenantId}/sistemas/${s.id}`}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        Abrir sistema
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ElevatedCard>
     </div>
   );
 }

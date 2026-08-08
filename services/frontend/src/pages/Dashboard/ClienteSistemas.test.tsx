@@ -36,6 +36,24 @@ describe('Page: ClienteSistemas (RF07/RF08, RN05)', () => {
     expect(link).toHaveAttribute('href', '/dashboard/clientes/t1/sistemas/s1');
   });
 
+  it('lista os sistemas em uma tabela com coluna de Ações', async () => {
+    const sistemas: Sistema[] = [
+      { id: 's1', nome: 'ERP' },
+      { id: 's2', nome: 'CRM' },
+    ];
+    renderPagina({ listarSistemas: vi.fn().mockResolvedValue(sistemas) });
+
+    const tabela = await screen.findByRole('table');
+    expect(screen.getByRole('columnheader', { name: /nome/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /ações/i })).toBeInTheDocument();
+
+    const linhas = screen.getAllByRole('row').slice(1); // pula o cabeçalho
+    expect(linhas).toHaveLength(2);
+    expect(tabela).toHaveTextContent('ERP');
+    expect(tabela).toHaveTextContent('CRM');
+    expect(screen.getAllByRole('link', { name: /abrir sistema/i })).toHaveLength(2);
+  });
+
   it('exibe estado vazio quando o tenant não tem sistemas', async () => {
     renderPagina({ listarSistemas: vi.fn().mockResolvedValue([]) });
     expect(await screen.findByText(/nenhum sistema/i)).toBeInTheDocument();
