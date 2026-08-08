@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { ApiClient } from "./api/client";
+import { ApiClient, ApiError } from "./api/client";
 import type { CampoDef, Componente, MapaPermissoes, VersaoAtiva } from "./api/types";
 import { CompositeRenderer } from "./renderer/CompositeRenderer";
 import { blindIndexesDe, filtrarVisiveis } from "./permissions/permissionMap";
@@ -38,7 +38,7 @@ export function App({ config, client: injetado }: { config: FrontendConfig; clie
   );
   const [versao, setVersao] = useState<VersaoAtiva | null>(null);
   const [permissoes, setPermissoes] = useState<MapaPermissoes>({});
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!config.sistemaId) return;
@@ -53,7 +53,7 @@ export function App({ config, client: injetado }: { config: FrontendConfig; clie
           setPermissoes(p);
         }
       } catch (e) {
-        if (vivo) setErro(String(e));
+        if (vivo) setErro(e instanceof Error ? e : new Error(String(e)));
       }
     })();
     return () => {
@@ -63,7 +63,21 @@ export function App({ config, client: injetado }: { config: FrontendConfig; clie
 
   // Um sistema explícito na URL (?sistema=…) exibe seus próprios estados de
   // carregamento/erro; sem sistema, seguimos direto para a casca (dashboard).
-  if (config.sistemaId && erro) return <div role="alert">{erro}</div>;
+  if (config.sistemaId && erro) {
+    // Sistema existente mas sem versão publicada é o caso mais comum de 404
+    // aqui (RN04) — mensagem dedicada em vez do ApiError cru; demais erros
+    // mantêm a mensagem original do servidor.
+    const mensagem =
+      erro instanceof ApiError && erro.codigo === "NOT_FOUND"
+        ? "Este sistema ainda não foi publicado."
+        : erro.message;
+    return (
+      <div role="alert">
+        <p>{mensagem}</p>
+        <a href={`${import.meta.env.BASE_URL}dashboard`}>Voltar ao Dashboard</a>
+      </div>
+    );
+  }
   if (config.sistemaId && !versao) return <div>Carregando…</div>;
 
   const rotas = versao ? rotasDe(versao, permissoes) : [];
