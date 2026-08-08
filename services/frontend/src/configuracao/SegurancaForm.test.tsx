@@ -11,7 +11,7 @@ describe('SegurancaForm (RF14-RF16, RN07, RNF01, RNF02)', () => {
     const client = fakeClient({ atualizarSenha });
     renderDashboard(<SegurancaForm />, { client });
 
-    fireEvent.change(screen.getByLabelText(/senha atual/i), { target: { value: 'atual123' } });
+    fireEvent.change(screen.getByLabelText('Senha atual'), { target: { value: 'atual123' } });
     fireEvent.change(screen.getByLabelText(/^nova senha/i), { target: { value: 'nova123' } });
     fireEvent.click(screen.getByRole('button', { name: /atualizar senha/i }));
 
@@ -41,8 +41,39 @@ describe('SegurancaForm (RF14-RF16, RN07, RNF01, RNF02)', () => {
     const client = fakeClient({ excluirConta });
     renderDashboard(<SegurancaForm />, { client });
 
+    fireEvent.change(screen.getByLabelText(/senha atual \(excluir conta\)/i), { target: { value: 'minha-senha' } });
     fireEvent.click(screen.getByRole('button', { name: /excluir conta/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/tenants ativos vinculados/i);
+  });
+
+  it('excluirConta envia a senha atual digitada como reautenticação (RF16, RNF02)', async () => {
+    const excluirConta = vi.fn().mockResolvedValue(undefined);
+    const client = fakeClient({ excluirConta });
+    renderDashboard(<SegurancaForm />, { client });
+
+    fireEvent.change(screen.getByLabelText(/senha atual \(excluir conta\)/i), { target: { value: 'senha-correta' } });
+    fireEvent.click(screen.getByRole('button', { name: /excluir conta/i }));
+
+    await waitFor(() => expect(excluirConta).toHaveBeenCalledWith('senha-correta'));
+  });
+
+  it('desativarMfa envia a senha atual digitada como reautenticação (RF15, RNF02)', async () => {
+    const ativarMfa = vi.fn().mockResolvedValue({ segredoOtpAuthUri: 'otpauth://totp/x' });
+    const confirmarMfa = vi.fn().mockResolvedValue(undefined);
+    const desativarMfa = vi.fn().mockResolvedValue(undefined);
+    const client = fakeClient({ ativarMfa, confirmarMfa, desativarMfa });
+    renderDashboard(<SegurancaForm />, { client });
+
+    fireEvent.click(screen.getByRole('button', { name: /ativar mfa/i }));
+    await screen.findByText(/otpauth:\/\/totp\/x/);
+    fireEvent.change(screen.getByLabelText(/código/i), { target: { value: '654321' } });
+    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }));
+    await waitFor(() => expect(confirmarMfa).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/senha atual \(desativar mfa\)/i), { target: { value: 'senha-do-usuario' } });
+    fireEvent.click(screen.getByRole('button', { name: /desativar mfa/i }));
+
+    await waitFor(() => expect(desativarMfa).toHaveBeenCalledWith('senha-do-usuario'));
   });
 });

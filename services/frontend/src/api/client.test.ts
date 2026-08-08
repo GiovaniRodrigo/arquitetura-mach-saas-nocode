@@ -201,14 +201,15 @@ describe("ApiClient (RF03/RN08)", () => {
     expect(JSON.parse(init.body as string)).toEqual({ codigo: "123456" });
   });
 
-  it("desativarMfa faz DELETE (RF15)", async () => {
+  it("desativarMfa faz DELETE enviando a senha atual como reautenticação (RF15, RNF02)", async () => {
     const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
     const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
 
-    await client.desativarMfa();
+    await client.desativarMfa("senha-atual");
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe("http://gw/api/v1/conta/mfa");
     expect(init.method).toBe("DELETE");
+    expect(JSON.parse(init.body as string)).toEqual({ senha_atual: "senha-atual" });
   });
 
   it("excluirConta propaga 409 TENANT_ATIVO_VINCULADO como ApiError (RF16/RN07)", async () => {
@@ -217,19 +218,20 @@ describe("ApiClient (RF03/RN08)", () => {
     );
     const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
 
-    const erro = await client.excluirConta().catch((e) => e);
+    const erro = await client.excluirConta("senha-atual").catch((e) => e);
     expect(erro).toBeInstanceOf(ApiError);
     expect(erro.codigo).toBe("TENANT_ATIVO_VINCULADO");
   });
 
-  it("excluirConta faz DELETE em /conta quando não há bloqueio (RF16)", async () => {
+  it("excluirConta faz DELETE em /conta enviando a senha atual como reautenticação (RF16, RNF02)", async () => {
     const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
     const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
 
-    await client.excluirConta();
+    await client.excluirConta("senha-atual");
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe("http://gw/api/v1/conta");
     expect(init.method).toBe("DELETE");
+    expect(JSON.parse(init.body as string)).toEqual({ senha_atual: "senha-atual" });
   });
 
   it("listarUltimosAcessos desembrulha o campo eventos (RF04/RN02)", async () => {

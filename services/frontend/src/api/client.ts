@@ -230,20 +230,25 @@ export class ApiClient {
     await this.parse<unknown>(resp);
   }
 
-  /** Desativa o MFA (RF15). */
-  async desativarMfa(): Promise<void> {
+  /** Desativa o MFA; exige a senha atual como reautenticação (RF15, RNF02). */
+  async desativarMfa(senhaAtual: string): Promise<void> {
     const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta/mfa`, {
       method: "DELETE",
       headers: this.headers(),
+      body: JSON.stringify({ senha_atual: senhaAtual }),
     });
     await this.parse<unknown>(resp);
   }
 
-  /** Exclui a conta; 409 TENANT_ATIVO_VINCULADO se houver tenant ativo (RF16, RN07). */
-  async excluirConta(): Promise<void> {
+  /**
+   * Exclui a conta; exige a senha atual como reautenticação (RF16, RNF02).
+   * 409 TENANT_ATIVO_VINCULADO se houver tenant ativo (RN07).
+   */
+  async excluirConta(senhaAtual: string): Promise<void> {
     const resp = await this.fetchFn(`${this.baseUrl}/api/v1/conta`, {
       method: "DELETE",
       headers: this.headers(),
+      body: JSON.stringify({ senha_atual: senhaAtual }),
     });
     await this.parse<unknown>(resp);
   }

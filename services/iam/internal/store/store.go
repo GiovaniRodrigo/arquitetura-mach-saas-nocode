@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -252,4 +253,272 @@ func (s *Store) PermissoesDe(ctx context.Context, blindIndexes []string) ([]perm
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Área "Conta/Configuração" (spec 004-reestruturacao-ia-navegacao, RF14-RF18):
+// perfil, senha, MFA TOTP, exclusão (anonimização) e troca de e-mail. Todos os
+// métodos abaixo operam por userID (não por tenant), diferente do restante do
+// arquivo — a identidade do usuário chamador vem do TenantContext (user_id).
+// ─────────────────────────────────────────────────────────────────────────
+
+// ErrMfaJaAtivo indica que a conta já tem MFA ativo — AtivarMfa não permite
+// gerar um novo segredo por cima de um MFA já confirmado (o usuário precisa
+// desativar antes de reconfigurar).
+var ErrMfaJaAtivo = errors.New("store: mfa já ativo")
+
+// ErrTenantAtivoVinculado indica que o tenant do usuário ainda tem 1+ tenants
+// filhos vinculados — bloqueia a exclusão de conta (RN07).
+var ErrTenantAtivoVinculado = errors.New("store: tenant ativo vinculado")
+
+// AtualizarPerfil atualiza nome e foto_url do usuário (RF17).
+func (s *Store) AtualizarPerfil(ctx context.Context, userID, nome, fotoURL string) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE users SET nome = $2, foto_url = $3, atualizado_em = now() WHERE id = $1`,
+		userID, nome, fotoURL)
+	if err != nil {
+		return fmt.Errorf("store: atualizar perfil: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
+}
+
+// ObterEmailUsuario devolve o e-mail de login do usuário — usado para nomear a
+// conta no otpauth:// URI (RF15) e para as mensagens de erro de troca de e-mail.
+func (s *Store) ObterEmailUsuario(ctx context.Context, userID string) (string, error) {
+	var email string
+	err := s.db.QueryRow(ctx, `SELECT email FROM users WHERE id = $1`, userID).Scan(&email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNaoEncontrado
+	}
+	if err != nil {
+		return "", fmt.Errorf("store: obter email do usuário: %w", err)
+	}
+	return email, nil
+}
+
+// ObterHashSenha busca o hash de senha do usuário por id — para reautenticação
+// (RNF02) em troca de senha, MFA e exclusão de conta. Diferente de
+// ObterUsuarioPorEmailSenha (usado só no login), esta consulta é por userID.
+func (s *Store) ObterHashSenha(ctx context.Context, userID string) (string, error) {
+	var hash string
+	err := s.db.QueryRow(ctx,
+		`SELECT coalesce(senha_hash, '') FROM users WHERE id = $1`, userID,
+	).Scan(&hash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNaoEncontrado
+	}
+	if err != nil {
+		return "", fmt.Errorf("store: obter hash de senha: %w", err)
+	}
+	return hash, nil
+}
+
+// AtualizarSenha persiste o novo hash de senha (RF14). O chamador (grpc.go) já
+// validou senha_atual via bcrypt antes de chegar aqui.
+func (s *Store) AtualizarSenha(ctx context.Context, userID, novoHash string) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE users SET senha_hash = $2, atualizado_em = now() WHERE id = $1`,
+		userID, novoHash)
+	if err != nil {
+		return fmt.Errorf("store: atualizar senha: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
+}
+
+// IniciarMfa persiste um novo segredo TOTP cifrado (etapa "ativar", RF15) sem
+// marcar mfa_ativo — só ConfirmarMfa liga o MFA. Zera qualquer estado de
+// anti-replay de uma ativação anterior abandonada. Recusa com ErrMfaJaAtivo se
+// a conta já tiver MFA confirmado (é preciso desativar antes de reconfigurar).
+func (s *Store) IniciarMfa(ctx context.Context, userID string, segredoCifrado []byte) error {
+	var ativo bool
+	err := s.db.QueryRow(ctx, `SELECT mfa_ativo FROM users WHERE id = $1`, userID).Scan(&ativo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNaoEncontrado
+	}
+	if err != nil {
+		return fmt.Errorf("store: consultar mfa antes de iniciar: %w", err)
+	}
+	if ativo {
+		return ErrMfaJaAtivo
+	}
+	if _, err := s.db.Exec(ctx,
+		`UPDATE users
+		    SET mfa_segredo_cifrado = $2, mfa_ultimo_codigo_usado = NULL, mfa_ultimo_codigo_em = NULL, atualizado_em = now()
+		  WHERE id = $1`,
+		userID, segredoCifrado,
+	); err != nil {
+		return fmt.Errorf("store: salvar segredo mfa: %w", err)
+	}
+	return nil
+}
+
+// ObterSegredoMfaPendente devolve o segredo cifrado e o estado de anti-replay
+// para a etapa "confirmar" (RF15). segredoCifrado nil (ou vazio) indica que
+// nenhuma ativação foi iniciada — o chamador trata isso como token inválido.
+func (s *Store) ObterSegredoMfaPendente(ctx context.Context, userID string) (segredoCifrado []byte, ultimoCodigo string, ultimoCodigoEm *time.Time, err error) {
+	var codigo *string
+	err = s.db.QueryRow(ctx,
+		`SELECT mfa_segredo_cifrado, mfa_ultimo_codigo_usado, mfa_ultimo_codigo_em FROM users WHERE id = $1`,
+		userID,
+	).Scan(&segredoCifrado, &codigo, &ultimoCodigoEm)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, "", nil, ErrNaoEncontrado
+	}
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("store: obter segredo mfa pendente: %w", err)
+	}
+	if codigo != nil {
+		ultimoCodigo = *codigo
+	}
+	return segredoCifrado, ultimoCodigo, ultimoCodigoEm, nil
+}
+
+// ConfirmarMfa liga o MFA (mfa_ativo = true) e registra o código usado para o
+// anti-replay (RF15): a próxima confirmação/uso não pode repetir codigoUsado.
+func (s *Store) ConfirmarMfa(ctx context.Context, userID, codigoUsado string, usadoEm time.Time) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE users
+		    SET mfa_ativo = true, mfa_ultimo_codigo_usado = $2, mfa_ultimo_codigo_em = $3, atualizado_em = now()
+		  WHERE id = $1`,
+		userID, codigoUsado, usadoEm)
+	if err != nil {
+		return fmt.Errorf("store: confirmar mfa: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
+}
+
+// DesativarMfa desliga o MFA e descarta o segredo cifrado (RF15) — reativar
+// depois exige um novo enrollment completo (ativar → confirmar), nunca reusa
+// um segredo antigo.
+func (s *Store) DesativarMfa(ctx context.Context, userID string) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE users
+		    SET mfa_ativo = false, mfa_segredo_cifrado = NULL, mfa_ultimo_codigo_usado = NULL, mfa_ultimo_codigo_em = NULL, atualizado_em = now()
+		  WHERE id = $1`,
+		userID)
+	if err != nil {
+		return fmt.Errorf("store: desativar mfa: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
+}
+
+// ExcluirConta anonimiza o usuário (LGPD — não é DELETE físico, preserva o id
+// para qualquer referência histórica sem manter PII, RF16/RN07). O check de
+// bloqueio (tenant do usuário sem filhos vinculados) e a anonimização
+// acontecem na MESMA transação: o gRPC já consultou ListarFilhos antes de
+// chegar aqui (fail-fast), mas essa recontagem dentro da transação evita que
+// uma corrida (um tenant filho criado entre o check e o commit) deixe a conta
+// anonimizada com um cliente órfão vinculado.
+func (s *Store) ExcluirConta(ctx context.Context, userID, tenantID string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("store: iniciar transação de exclusão de conta: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op após commit bem-sucedido
+
+	var filhos int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM tenants WHERE parent_id = $1`, tenantID).Scan(&filhos); err != nil {
+		return fmt.Errorf("store: contar filhos do tenant na exclusão: %w", err)
+	}
+	if filhos > 0 {
+		return ErrTenantAtivoVinculado
+	}
+
+	tag, err := tx.Exec(ctx,
+		`UPDATE users
+		    SET nome = '',
+		        email = gen_random_uuid()::text || '@removido.local',
+		        external_id = gen_random_uuid()::text,
+		        foto_url = '',
+		        senha_hash = NULL,
+		        provedor = 'removido',
+		        mfa_segredo_cifrado = NULL,
+		        mfa_ativo = false,
+		        mfa_ultimo_codigo_usado = NULL,
+		        mfa_ultimo_codigo_em = NULL,
+		        email_pendente = NULL,
+		        email_token_hash = NULL,
+		        email_token_expira_em = NULL,
+		        atualizado_em = now()
+		  WHERE id = $1`,
+		userID)
+	if err != nil {
+		return fmt.Errorf("store: anonimizar usuário: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("store: commit da exclusão de conta: %w", err)
+	}
+	return nil
+}
+
+// SolicitarTrocaEmail grava o e-mail pendente e o hash (sha256, hex) do token
+// de confirmação (RF18, RN08) — `email` (login) só muda em ConfirmarTrocaEmail.
+// Recusa com ErrEmailJaCadastrado se novoEmail já pertencer a outra conta de
+// senha (mesma checagem lógica da constraint parcial da migração 0014, que só
+// se aplica à coluna `email`, não a `email_pendente`).
+func (s *Store) SolicitarTrocaEmail(ctx context.Context, userID, novoEmail, tokenHash string, expiraEm time.Time) error {
+	var emailEmUso bool
+	if err := s.db.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM users WHERE provedor = 'senha' AND email = $1)`, novoEmail,
+	).Scan(&emailEmUso); err != nil {
+		return fmt.Errorf("store: verificar e-mail em uso: %w", err)
+	}
+	if emailEmUso {
+		return ErrEmailJaCadastrado
+	}
+
+	tag, err := s.db.Exec(ctx,
+		`UPDATE users
+		    SET email_pendente = $2, email_token_hash = $3, email_token_expira_em = $4, atualizado_em = now()
+		  WHERE id = $1`,
+		userID, novoEmail, tokenHash, expiraEm)
+	if err != nil {
+		return fmt.Errorf("store: solicitar troca de e-mail: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
+}
+
+// ConfirmarTrocaEmail efetiva email = email_pendente (RF18, RN08) quando o
+// hash do token bate e ainda não expirou. Token inexistente e token expirado
+// devolvem o mesmo ErrNaoEncontrado — mesmo racional de erroCredenciaisInvalidas
+// em grpc.go (RN04): não distinguir "não existe" de "expirou".
+func (s *Store) ConfirmarTrocaEmail(ctx context.Context, tokenHash string) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE users
+		    SET email = email_pendente, email_pendente = NULL, email_token_hash = NULL, email_token_expira_em = NULL, atualizado_em = now()
+		  WHERE email_token_hash = $1 AND email_token_expira_em > now()`,
+		tokenHash)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		// Corrida rara: outra conta confirmou o mesmo e-mail pendente entre a
+		// solicitação e esta confirmação (SolicitarTrocaEmail só checa unicidade
+		// no momento do POST, não há lock entre as duas etapas).
+		return ErrEmailJaCadastrado
+	}
+	if err != nil {
+		return fmt.Errorf("store: confirmar troca de e-mail: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
 }

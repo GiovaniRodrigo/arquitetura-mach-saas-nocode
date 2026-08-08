@@ -7,13 +7,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/machv4/platform/services/gateway/internal/middleware"
-	"github.com/machv4/platform/services/gateway/internal/routes"
 	deployv1 "github.com/machv4/platform/gen/go/construtor/deploy/v1"
 	designv1 "github.com/machv4/platform/gen/go/construtor/design/v1"
 	exportv1 "github.com/machv4/platform/gen/go/construtor/export/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
+	"github.com/machv4/platform/services/gateway/internal/middleware"
+	"github.com/machv4/platform/services/gateway/internal/routes"
 )
 
 // NewRouter compõe a cadeia de middlewares e as rotas REST→gRPC.
@@ -72,6 +72,17 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 
 		r.Post("/api/v1/exportacoes", routes.CriarExportacao(export))
 		r.Get("/api/v1/exportacoes/{job_id}", routes.ObterExportacao(export))
+
+		// Conta/Configuração (spec 004, RF14-RF18): perfil, senha, MFA, exclusão
+		// de conta e troca de e-mail — todas sobre o usuário do TenantContext.
+		r.Patch("/api/v1/conta/perfil", routes.AtualizarPerfil(iam))
+		r.Put("/api/v1/conta/senha", routes.AtualizarSenha(iam))
+		r.Post("/api/v1/conta/mfa/ativar", routes.AtivarMfa(iam))
+		r.Post("/api/v1/conta/mfa/confirmar", routes.ConfirmarMfa(iam))
+		r.Delete("/api/v1/conta/mfa", routes.DesativarMfa(iam))
+		r.Delete("/api/v1/conta", routes.ExcluirConta(iam))
+		r.Post("/api/v1/conta/email", routes.SolicitarTrocaEmail(iam))
+		r.Post("/api/v1/conta/email/confirmar", routes.ConfirmarTrocaEmail(iam))
 	})
 
 	return r
