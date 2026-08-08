@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,6 +23,9 @@ type Store interface {
 	UpsertUsuarioThirdParty(ctx context.Context, provedor, externalID, email, nome string) (userID, tenantID, tipo string, err error)
 	ListarFilhos(ctx context.Context, parentID string) ([]store.Tenant, error)
 	CriarTenant(ctx context.Context, nome, tipo string, parentID *string, chaveBlindIndex []byte) (store.Tenant, error)
+	ObterTenant(ctx context.Context, id string) (store.Tenant, error)
+	AtualizarTenant(ctx context.Context, id, nome string) (store.Tenant, error)
+	ExcluirTenant(ctx context.Context, id string) error
 }
 
 // IAMServer implementa iamv1.IAMServiceServer.
@@ -146,4 +150,85 @@ func (s *IAMServer) CriarTenant(ctx context.Context, req *iamv1.CriarTenantReque
 		return nil, status.Error(codes.Internal, "falha ao criar tenant")
 	}
 	return &iamv1.Tenant{Id: t.ID, Nome: t.Nome, Tipo: t.Tipo}, nil
+}
+
+// filhoDoContexto busca um tenant por id e garante que é filho direto do
+// tenant do contexto (RN05) — usado por Obter/Atualizar/Excluir para nunca
+// operar sobre (nem revelar a existência de) um tenant fora da hierarquia do
+// chamador. Um id inexistente ou fora da hierarquia devolve o mesmo NotFound.
+func (s *IAMServer) filhoDoContexto(ctx context.Context, parentID, id string) (store.Tenant, error) {
+	t, err := s.store.ObterTenant(ctx, id)
+	if errors.Is(err, store.ErrNaoEncontrado) {
+		return store.Tenant{}, status.Error(codes.NotFound, "cliente não encontrado")
+	}
+	if err != nil {
+		return store.Tenant{}, status.Error(codes.Internal, "falha ao obter tenant")
+	}
+	if t.ParentID == nil || *t.ParentID != parentID {
+		return store.Tenant{}, status.Error(codes.NotFound, "cliente não encontrado")
+	}
+	return t, nil
+}
+
+// ObterTenant devolve um cliente específico sob o tenant do contexto (spec
+// 004, RF07). Mesma restrição de CriarTenant (dono/parceiro).
+func (s *IAMServer) ObterTenant(ctx context.Context, req *iamv1.ObterTenantRequest) (*iamv1.Tenant, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	if tc.GetTipo() != "dono" && tc.GetTipo() != "parceiro" {
+		return nil, status.Error(codes.PermissionDenied, "apenas dono ou parceiro podem visualizar clientes")
+	}
+	if req.GetId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "id obrigatório")
+	}
+	t, err := s.filhoDoContexto(ctx, tc.GetTenantId(), req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return &iamv1.Tenant{Id: t.ID, Nome: t.Nome, Tipo: t.Tipo}, nil
+}
+
+// AtualizarTenant renomeia um cliente sob o tenant do contexto (spec 004,
+// RF07). Mesma restrição de CriarTenant (dono/parceiro).
+func (s *IAMServer) AtualizarTenant(ctx context.Context, req *iamv1.AtualizarTenantRequest) (*iamv1.Tenant, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	if tc.GetTipo() != "dono" && tc.GetTipo() != "parceiro" {
+		return nil, status.Error(codes.PermissionDenied, "apenas dono ou parceiro podem atualizar clientes")
+	}
+	if req.GetNome() == "" {
+		return nil, status.Error(codes.InvalidArgument, "nome obrigatório")
+	}
+	if _, err := s.filhoDoContexto(ctx, tc.GetTenantId(), req.GetId()); err != nil {
+		return nil, err
+	}
+	t, err := s.store.AtualizarTenant(ctx, req.GetId(), req.GetNome())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao atualizar tenant")
+	}
+	return &iamv1.Tenant{Id: t.ID, Nome: t.Nome, Tipo: t.Tipo}, nil
+}
+
+// ExcluirTenant remove um cliente sob o tenant do contexto (spec 004, RF07).
+// Mesma restrição de CriarTenant (dono/parceiro). A exclusão é em cascata
+// sobre sistemas/designs/versões/dados do cliente (ver store.ExcluirTenant).
+func (s *IAMServer) ExcluirTenant(ctx context.Context, req *iamv1.ExcluirTenantRequest) (*iamv1.ExcluirTenantResponse, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	if tc.GetTipo() != "dono" && tc.GetTipo() != "parceiro" {
+		return nil, status.Error(codes.PermissionDenied, "apenas dono ou parceiro podem excluir clientes")
+	}
+	if _, err := s.filhoDoContexto(ctx, tc.GetTenantId(), req.GetId()); err != nil {
+		return nil, err
+	}
+	if err := s.store.ExcluirTenant(ctx, req.GetId()); err != nil {
+		return nil, status.Error(codes.Internal, "falha ao excluir tenant")
+	}
+	return &iamv1.ExcluirTenantResponse{}, nil
 }

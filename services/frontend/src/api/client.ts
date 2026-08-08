@@ -304,6 +304,33 @@ export class ApiClient {
     return this.parse<Tenant>(resp);
   }
 
+  /** Detalhe de um cliente/negócio (tenant) específico; 404 se fora da hierarquia (RF07). */
+  async obterTenant(id: string): Promise<Tenant> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/tenants/${encodeURIComponent(id)}`, {
+      headers: this.headers(),
+    });
+    return this.parse<Tenant>(resp);
+  }
+
+  /** Renomeia um cliente/negócio (tenant) (RF07). */
+  async atualizarTenant(id: string, nome: string): Promise<Tenant> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/tenants/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: this.headers(),
+      body: JSON.stringify({ nome }),
+    });
+    return this.parse<Tenant>(resp);
+  }
+
+  /** Exclui um cliente/negócio (tenant) e, em cascata, todos os seus sistemas/dados (RF07). */
+  async excluirTenant(id: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/tenants/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    await this.parse<unknown>(resp);
+  }
+
   /** Regras de validação de componente do sistema (RF10/RF11). */
   async listarRegrasNegocio(sistemaId: string): Promise<RegraNegocio[]> {
     const resp = await this.fetchFn(

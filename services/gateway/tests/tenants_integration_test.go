@@ -5,7 +5,7 @@
 // o Postgres do docker-compose com as migrações aplicadas. Executar:
 //
 //	DATABASE_URL=postgres://mach:mach@localhost:5432/machv4?sslmode=disable \
-//	  go test -tags integration ./gateway/tests/...
+//	  go test -tags integration ./services/gateway/tests/...
 package tests
 
 import (
@@ -103,6 +103,97 @@ func TestTenants_IsolamentoEntreTenants(t *testing.T) {
 	for _, tt := range lista.Tenants {
 		if tt.ID == criado.ID {
 			t.Fatalf("B não deveria ver o tenant de A (%s)", criado.ID)
+		}
+	}
+}
+
+func TestTenants_CicloCompletoDeVisualizarAtualizarExcluir(t *testing.T) {
+	handler, iss, tenantA, _ := harness(t)
+	tok := tokenDe(t, iss, tenantA, "dono")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/tenants", strings.NewReader(`{"nome":"Ciclo E2E"}`))
+	req.Header.Set("Authorization", "Bearer "+tok)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST esperava 201; got=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var criado struct{ ID, Nome string }
+	_ = json.Unmarshal(rec.Body.Bytes(), &criado)
+
+	// GET /{id} devolve o tenant recém-criado.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/tenants/"+criado.ID, nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /{id} esperava 200; got=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	// PATCH renomeia.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPatch, "/api/v1/tenants/"+criado.ID, strings.NewReader(`{"nome":"Ciclo Renomeado"}`))
+	req.Header.Set("Authorization", "Bearer "+tok)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("PATCH esperava 200; got=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var atualizado struct{ Nome string }
+	_ = json.Unmarshal(rec.Body.Bytes(), &atualizado)
+	if atualizado.Nome != "Ciclo Renomeado" {
+		t.Fatalf("nome não atualizado: %+v", atualizado)
+	}
+
+	// DELETE remove.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodDelete, "/api/v1/tenants/"+criado.ID, nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("DELETE esperava 204; got=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	// GET depois do DELETE vira 404.
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/tenants/"+criado.ID, nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("GET pós-exclusão esperava 404; got=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestTenants_IsolamentoNoVisualizarAtualizarExcluir(t *testing.T) {
+	handler, iss, tenantA, tenantB := harness(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/tenants", strings.NewReader(`{"nome":"So de A 2"}`))
+	req.Header.Set("Authorization", "Bearer "+tokenDe(t, iss, tenantA, "dono"))
+	handler.ServeHTTP(rec, req)
+	var criado struct{ ID string }
+	_ = json.Unmarshal(rec.Body.Bytes(), &criado)
+
+	tokB := tokenDe(t, iss, tenantB, "dono")
+	for _, tc := range []struct {
+		nome   string
+		method string
+		corpo  string
+	}{
+		{"GET", http.MethodGet, ""},
+		{"PATCH", http.MethodPatch, `{"nome":"Invasão"}`},
+		{"DELETE", http.MethodDelete, ""},
+	} {
+		rec := httptest.NewRecorder()
+		var req *http.Request
+		if tc.corpo == "" {
+			req = httptest.NewRequest(tc.method, "/api/v1/tenants/"+criado.ID, nil)
+		} else {
+			req = httptest.NewRequest(tc.method, "/api/v1/tenants/"+criado.ID, strings.NewReader(tc.corpo))
+		}
+		req.Header.Set("Authorization", "Bearer "+tokB)
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("%s de B sobre tenant de A deveria ser 404; got=%d body=%s", tc.nome, rec.Code, rec.Body.String())
 		}
 	}
 }

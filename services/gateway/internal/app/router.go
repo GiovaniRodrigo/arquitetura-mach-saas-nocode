@@ -7,13 +7,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/machv4/platform/services/gateway/internal/middleware"
+	"github.com/machv4/platform/services/gateway/internal/routes"
 	deployv1 "github.com/machv4/platform/gen/go/construtor/deploy/v1"
 	designv1 "github.com/machv4/platform/gen/go/construtor/design/v1"
 	exportv1 "github.com/machv4/platform/gen/go/construtor/export/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
-	"github.com/machv4/platform/gateway/internal/middleware"
-	"github.com/machv4/platform/gateway/internal/routes"
 )
 
 // NewRouter compõe a cadeia de middlewares e as rotas REST→gRPC.
@@ -42,6 +42,9 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 
 		r.Get("/api/v1/tenants", routes.ListarTenants(iam))
 		r.Post("/api/v1/tenants", routes.CriarTenant(iam))
+		r.Get("/api/v1/tenants/{id}", routes.ObterTenant(iam))
+		r.Patch("/api/v1/tenants/{id}", routes.AtualizarTenant(iam))
+		r.Delete("/api/v1/tenants/{id}", routes.ExcluirTenant(iam))
 
 		r.Get("/api/v1/sistemas", routes.ListarSistemas(design))
 		r.Post("/api/v1/sistemas", routes.CriarSistema(design))

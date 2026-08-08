@@ -67,6 +67,45 @@ func TestHierarquiaTenants(t *testing.T) {
 	}
 }
 
+func TestAtualizarEExcluirTenant(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+
+	dono, err := s.CriarTenant(ctx, "itg-dono-upd", "dono", nil, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar dono: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, dono.ID) })
+
+	cliente, err := s.CriarTenant(ctx, "itg-cliente-upd", "cliente", &dono.ID, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar cliente: %v", err)
+	}
+
+	atualizado, err := s.AtualizarTenant(ctx, cliente.ID, "itg-cliente-renomeado")
+	if err != nil {
+		t.Fatalf("atualizar: %v", err)
+	}
+	if atualizado.Nome != "itg-cliente-renomeado" {
+		t.Fatalf("nome não atualizado: %+v", atualizado)
+	}
+
+	if _, err := s.AtualizarTenant(ctx, "00000000-0000-0000-0000-000000000099", "x"); err != ErrNaoEncontrado {
+		t.Fatalf("esperava ErrNaoEncontrado; got=%v", err)
+	}
+
+	if err := s.ExcluirTenant(ctx, cliente.ID); err != nil {
+		t.Fatalf("excluir: %v", err)
+	}
+	if _, err := s.ObterTenant(ctx, cliente.ID); err != ErrNaoEncontrado {
+		t.Fatalf("esperava ErrNaoEncontrado após excluir; got=%v", err)
+	}
+	if err := s.ExcluirTenant(ctx, cliente.ID); err != ErrNaoEncontrado {
+		t.Fatalf("excluir de novo deveria devolver ErrNaoEncontrado; got=%v", err)
+	}
+}
+
 func TestPermissoesDe_FiltraPorTenant(t *testing.T) {
 	p := pool(t)
 	s := New(p)

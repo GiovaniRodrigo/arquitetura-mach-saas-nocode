@@ -76,10 +76,28 @@ message CriarTenantRequest {
   string nome = 1;
 }
 
+message ObterTenantRequest {
+  string id = 1;
+}
+
+message AtualizarTenantRequest {
+  string id = 1;
+  string nome = 2;
+}
+
+message ExcluirTenantRequest {
+  string id = 1;
+}
+
+message ExcluirTenantResponse {}
+
 service IAMService {
   rpc ValidarToken(ValidarTokenRequest) returns (ValidarTokenResponse);
   rpc AvaliarPermissoes(AvaliarPermissoesRequest) returns (AvaliarPermissoesResponse);
   rpc AutenticarThirdParty(AutenticarThirdPartyRequest) returns (AutenticarThirdPartyResponse);
   rpc ListarTenants(ListarTenantsRequest) returns (ListarTenantsResponse);
   rpc CriarTenant(CriarTenantRequest) returns (Tenant);
+  rpc ObterTenant(ObterTenantRequest) returns (Tenant);
+  rpc AtualizarTenant(AtualizarTenantRequest) returns (Tenant);
+  rpc ExcluirTenant(ExcluirTenantRequest) returns (ExcluirTenantResponse);
 }

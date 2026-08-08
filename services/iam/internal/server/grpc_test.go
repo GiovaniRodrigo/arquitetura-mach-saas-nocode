@@ -5,8 +5,11 @@ import (
 	"testing"
 	"time"
 
-	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	commonv1 "github.com/machv4/platform/gen/go/construtor/common/v1"
+	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	"github.com/machv4/platform/pkg/tenantctx"
 	"github.com/machv4/platform/services/iam/auth"
 	"github.com/machv4/platform/services/iam/internal/permissions"
@@ -27,6 +30,15 @@ type fakeStore struct {
 	nomeCriado   string
 	tipoCriado   string
 	parentCriado *string
+	// tenants (ObterTenant/AtualizarTenant/ExcluirTenant)
+	obterTenant     store.Tenant
+	obterErr        error
+	atualizarTenant store.Tenant
+	atualizarErr    error
+	idAtualizado    string
+	nomeAtualizado  string
+	excluirErr      error
+	idExcluido      string
 }
 
 func (f *fakeStore) PermissoesDe(context.Context, []string) ([]permissions.Permissao, error) {
@@ -44,6 +56,20 @@ func (f *fakeStore) ListarFilhos(context.Context, string) ([]store.Tenant, error
 func (f *fakeStore) CriarTenant(_ context.Context, nome, tipo string, parentID *string, _ []byte) (store.Tenant, error) {
 	f.nomeCriado, f.tipoCriado, f.parentCriado = nome, tipo, parentID
 	return f.criarTenant, f.criarErr
+}
+
+func (f *fakeStore) ObterTenant(context.Context, string) (store.Tenant, error) {
+	return f.obterTenant, f.obterErr
+}
+
+func (f *fakeStore) AtualizarTenant(_ context.Context, id, nome string) (store.Tenant, error) {
+	f.idAtualizado, f.nomeAtualizado = id, nome
+	return f.atualizarTenant, f.atualizarErr
+}
+
+func (f *fakeStore) ExcluirTenant(_ context.Context, id string) error {
+	f.idExcluido = id
+	return f.excluirErr
 }
 
 func newServer(t *testing.T, store Store) (*IAMServer, *auth.Issuer) {
@@ -186,5 +212,124 @@ func TestCriarTenant_DonoCriaSobPropioTenant(t *testing.T) {
 	}
 	if fs.parentCriado == nil || *fs.parentCriado != "tenant-A" {
 		t.Fatalf("parent_id deveria ser o tenant do contexto: %+v", fs.parentCriado)
+	}
+}
+
+func tenantACtx() context.Context {
+	return tenantctx.NewContext(context.Background(), &commonv1.TenantContext{TenantId: "tenant-A", Tipo: "dono"})
+}
+
+func TestObterTenant_SemTenantContext(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	if _, err := srv.ObterTenant(context.Background(), &iamv1.ObterTenantRequest{Id: "t1"}); err == nil {
+		t.Fatal("sem TenantContext deveria retornar erro Unauthenticated")
+	}
+}
+
+func TestObterTenant_ClienteFinalNegado(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	ctx := tenantctx.NewContext(context.Background(), &commonv1.TenantContext{TenantId: "tenant-A", Tipo: "cliente"})
+	if _, err := srv.ObterTenant(ctx, &iamv1.ObterTenantRequest{Id: "t1"}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("esperava PermissionDenied; got=%v", err)
+	}
+}
+
+func TestObterTenant_ForaDaHierarquia_NotFound(t *testing.T) {
+	parent := "tenant-B"
+	fs := &fakeStore{obterTenant: store.Tenant{ID: "t1", Nome: "Acme", Tipo: "cliente", ParentID: &parent}}
+	srv, _ := newServer(t, fs)
+	if _, err := srv.ObterTenant(tenantACtx(), &iamv1.ObterTenantRequest{Id: "t1"}); status.Code(err) != codes.NotFound {
+		t.Fatalf("tenant fora da hierarquia deveria ser NotFound; got=%v", err)
+	}
+}
+
+func TestObterTenant_Inexistente_NotFound(t *testing.T) {
+	fs := &fakeStore{obterErr: store.ErrNaoEncontrado}
+	srv, _ := newServer(t, fs)
+	if _, err := srv.ObterTenant(tenantACtx(), &iamv1.ObterTenantRequest{Id: "t1"}); status.Code(err) != codes.NotFound {
+		t.Fatalf("esperava NotFound; got=%v", err)
+	}
+}
+
+func TestObterTenant_FilhoDoContexto_OK(t *testing.T) {
+	parent := "tenant-A"
+	fs := &fakeStore{obterTenant: store.Tenant{ID: "t1", Nome: "Acme", Tipo: "cliente", ParentID: &parent}}
+	srv, _ := newServer(t, fs)
+	resp, err := srv.ObterTenant(tenantACtx(), &iamv1.ObterTenantRequest{Id: "t1"})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if resp.GetId() != "t1" || resp.GetNome() != "Acme" {
+		t.Fatalf("tenant inesperado: %+v", resp)
+	}
+}
+
+func TestAtualizarTenant_NomeVazio(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	if _, err := srv.AtualizarTenant(tenantACtx(), &iamv1.AtualizarTenantRequest{Id: "t1"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("nome vazio deveria falhar; got=%v", err)
+	}
+}
+
+func TestAtualizarTenant_ForaDaHierarquia_NotFound(t *testing.T) {
+	parent := "tenant-B"
+	fs := &fakeStore{obterTenant: store.Tenant{ID: "t1", ParentID: &parent}}
+	srv, _ := newServer(t, fs)
+	if _, err := srv.AtualizarTenant(tenantACtx(), &iamv1.AtualizarTenantRequest{Id: "t1", Nome: "Novo"}); status.Code(err) != codes.NotFound {
+		t.Fatalf("esperava NotFound; got=%v", err)
+	}
+	if fs.idAtualizado != "" {
+		t.Fatal("store.AtualizarTenant não deveria ser chamado fora da hierarquia")
+	}
+}
+
+func TestAtualizarTenant_FilhoDoContexto_OK(t *testing.T) {
+	parent := "tenant-A"
+	fs := &fakeStore{
+		obterTenant:     store.Tenant{ID: "t1", ParentID: &parent},
+		atualizarTenant: store.Tenant{ID: "t1", Nome: "Novo Nome", Tipo: "cliente"},
+	}
+	srv, _ := newServer(t, fs)
+	resp, err := srv.AtualizarTenant(tenantACtx(), &iamv1.AtualizarTenantRequest{Id: "t1", Nome: "Novo Nome"})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if resp.GetNome() != "Novo Nome" {
+		t.Fatalf("nome inesperado: %+v", resp)
+	}
+	if fs.idAtualizado != "t1" || fs.nomeAtualizado != "Novo Nome" {
+		t.Fatalf("store chamado com args inesperados: id=%q nome=%q", fs.idAtualizado, fs.nomeAtualizado)
+	}
+}
+
+func TestExcluirTenant_ClienteFinalNegado(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	ctx := tenantctx.NewContext(context.Background(), &commonv1.TenantContext{TenantId: "tenant-A", Tipo: "cliente"})
+	if _, err := srv.ExcluirTenant(ctx, &iamv1.ExcluirTenantRequest{Id: "t1"}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("esperava PermissionDenied; got=%v", err)
+	}
+}
+
+func TestExcluirTenant_ForaDaHierarquia_NotFound(t *testing.T) {
+	parent := "tenant-B"
+	fs := &fakeStore{obterTenant: store.Tenant{ID: "t1", ParentID: &parent}}
+	srv, _ := newServer(t, fs)
+	if _, err := srv.ExcluirTenant(tenantACtx(), &iamv1.ExcluirTenantRequest{Id: "t1"}); status.Code(err) != codes.NotFound {
+		t.Fatalf("esperava NotFound; got=%v", err)
+	}
+	if fs.idExcluido != "" {
+		t.Fatal("store.ExcluirTenant não deveria ser chamado fora da hierarquia")
+	}
+}
+
+func TestExcluirTenant_FilhoDoContexto_OK(t *testing.T) {
+	parent := "tenant-A"
+	fs := &fakeStore{obterTenant: store.Tenant{ID: "t1", ParentID: &parent}}
+	srv, _ := newServer(t, fs)
+	if _, err := srv.ExcluirTenant(tenantACtx(), &iamv1.ExcluirTenantRequest{Id: "t1"}); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if fs.idExcluido != "t1" {
+		t.Fatalf("store chamado com id inesperado: %q", fs.idExcluido)
 	}
 }

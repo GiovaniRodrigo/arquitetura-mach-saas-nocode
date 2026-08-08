@@ -85,6 +85,37 @@ func (s *Store) ObterTenant(ctx context.Context, id string) (Tenant, error) {
 	return t, nil
 }
 
+// AtualizarTenant renomeia um tenant existente.
+func (s *Store) AtualizarTenant(ctx context.Context, id, nome string) (Tenant, error) {
+	var t Tenant
+	err := s.db.QueryRow(ctx,
+		`UPDATE tenants SET nome = $2 WHERE id = $1
+		 RETURNING id, parent_id, nome, tipo::text`,
+		id, nome,
+	).Scan(&t.ID, &t.ParentID, &t.Nome, &t.Tipo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Tenant{}, ErrNaoEncontrado
+	}
+	if err != nil {
+		return Tenant{}, fmt.Errorf("store: atualizar tenant: %w", err)
+	}
+	return t, nil
+}
+
+// ExcluirTenant remove um tenant por id. A exclusão é em cascata sobre
+// sistemas/designs/versões/dados vinculados (ver ON DELETE CASCADE nas
+// migrações que referenciam tenants).
+func (s *Store) ExcluirTenant(ctx context.Context, id string) error {
+	tag, err := s.db.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("store: excluir tenant: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
+}
+
 // ListarFilhos devolve os tenants filhos diretos de parentID (hierarquia).
 func (s *Store) ListarFilhos(ctx context.Context, parentID string) ([]Tenant, error) {
 	rows, err := s.db.Query(ctx,

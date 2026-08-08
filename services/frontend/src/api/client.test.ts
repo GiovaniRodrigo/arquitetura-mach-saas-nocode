@@ -315,6 +315,44 @@ describe("ApiClient (RF03/RN08)", () => {
     await expect(client.criarTenant("Acme")).rejects.toBeInstanceOf(ApiError);
   });
 
+  it("obterTenant faz GET em /tenants/{id} e devolve o tenant (RF07)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { id: "t1", nome: "Acme" }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const t = await client.obterTenant("t1");
+    expect(fetchFn.mock.calls[0][0]).toBe("http://gw/api/v1/tenants/t1");
+    expect(t).toEqual({ id: "t1", nome: "Acme" });
+  });
+
+  it("obterTenant propaga 404 como ApiError (fora da hierarquia ou inexistente)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(404, { codigo: "NOT_FOUND", mensagem: "cliente não encontrado" }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await expect(client.obterTenant("t1")).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("atualizarTenant faz PATCH com o novo nome e devolve o tenant (RF07)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { id: "t1", nome: "Novo Nome" }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const atualizado = await client.atualizarTenant("t1", "Novo Nome");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/tenants/t1");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({ nome: "Novo Nome" });
+    expect(atualizado.nome).toBe("Novo Nome");
+  });
+
+  it("excluirTenant faz DELETE em /tenants/{id} (RF07)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, {}));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.excluirTenant("t1");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/tenants/t1");
+    expect(init.method).toBe("DELETE");
+  });
+
   it("listarSistemas aceita filtro opcional de tenant_id (RF08)", async () => {
     const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, { sistemas: [] }));
     const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
