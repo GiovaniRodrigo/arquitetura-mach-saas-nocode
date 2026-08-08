@@ -36,8 +36,43 @@ message VersaoAtiva {
   bytes definicao_json = 3;
 }
 
+// Fachada REST de versoes/{id} usada pela aba "Versão" da tela Clientes
+// (spec 004, RF12) — sobre a mesma lógica de Publicar/Rollback acima.
+
+message Versao {
+  string id = 1;
+  int32 numero = 2;
+  bool ativa = 3;
+  string criado_em = 4; // RFC3339
+}
+
+message ListarVersoesRequest {
+  string sistema_id = 1;
+}
+
+message ListarVersoesResponse {
+  repeated Versao versoes = 1;
+}
+
+message PublicarVersaoRequest {
+  string sistema_id = 1;
+}
+
+message ReverterVersaoRequest {
+  string sistema_id = 1;
+  string versao_id = 2;
+}
+
+message ReverterVersaoResponse {
+  int32 versao_ativa = 1;
+}
+
 service DeployEngineService {
   rpc Publicar(PublicarRequest) returns (PublicarResponse);
   rpc Rollback(RollbackRequest) returns (RollbackResponse);
   rpc ObterVersaoAtiva(ObterVersaoAtivaRequest) returns (VersaoAtiva);
+
+  rpc ListarVersoes(ListarVersoesRequest) returns (ListarVersoesResponse);
+  rpc PublicarVersao(PublicarVersaoRequest) returns (PublicarResponse);
+  rpc ReverterVersao(ReverterVersaoRequest) returns (ReverterVersaoResponse);
 }
