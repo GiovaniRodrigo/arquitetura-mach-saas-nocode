@@ -26,12 +26,13 @@ import (
 // (raiz, dono) → filho (cliente, parent_id=A) → neto (cliente,
 // parent_id=filho), mais um tenant totalmente alheio (B, raiz). Semeia um
 // sistema em cada um dos três (filho/neto/alheio) para detectar vazamento.
-func tenantIDHarness(t *testing.T) (handler http.Handler, tokenA string, filhoID, netoID, alheioID, sisFilhoID, sisNetoID, sisAlheioID string) {
+func tenantIDHarness(t *testing.T) (handler http.Handler, tokenA, tenantAID string, filhoID, netoID, alheioID, sisFilhoID, sisNetoID, sisAlheioID string) {
 	t.Helper()
 	ctx := context.Background()
 
 	h, iss, tenantA, tenantB := sistemasHarness(t)
 	tokenA = tokenDe(t, iss, tenantA, "dono")
+	tenantAID = tenantA
 
 	admin, err := pgx.Connect(ctx, dsn())
 	if err != nil {
@@ -78,7 +79,7 @@ func tenantIDHarness(t *testing.T) (handler http.Handler, tokenA string, filhoID
 		_, _ = c.Exec(context.Background(), `DELETE FROM tenants WHERE id = ANY($1)`, []string{filhoID, netoID})
 	})
 
-	return h, tokenA, filhoID, netoID, alheioID, sisFilhoID, sisNetoID, sisAlheioID
+	return h, tokenA, tenantAID, filhoID, netoID, alheioID, sisFilhoID, sisNetoID, sisAlheioID
 }
 
 func listarSistemasIDs(t *testing.T, rec *httptest.ResponseRecorder) []string {
@@ -109,7 +110,7 @@ func contains(ids []string, id string) bool {
 // sistemas do tenant do JWT (A), e os sistemas dos outros tenants da
 // hierarquia (filho/neto/alheio) nunca aparecem.
 func TestListarSistemas_SemTenantID_ComportamentoAtualPreservado(t *testing.T) {
-	handler, tokenA, _, _, _, sisFilho, sisNeto, sisAlheio := tenantIDHarness(t)
+	handler, tokenA, _, _, _, _, sisFilho, sisNeto, sisAlheio := tenantIDHarness(t)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/sistemas", nil)
@@ -130,7 +131,7 @@ func TestListarSistemas_SemTenantID_ComportamentoAtualPreservado(t *testing.T) {
 // (b) tenant_id de um filho direto do tenant do JWT → 200, lista os sistemas
 // desse filho.
 func TestListarSistemas_ComTenantID_FilhoDireto_ListaSistemasDoFilho(t *testing.T) {
-	handler, tokenA, filhoID, _, _, sisFilho, _, _ := tenantIDHarness(t)
+	handler, tokenA, _, filhoID, _, _, sisFilho, _, _ := tenantIDHarness(t)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/sistemas?tenant_id="+filhoID, nil)
@@ -146,12 +147,55 @@ func TestListarSistemas_ComTenantID_FilhoDireto_ListaSistemasDoFilho(t *testing.
 	}
 }
 
+// (b.1) tenant_id igual ao PRÓPRIO tenant do JWT (não um filho) → 200, sem
+// passar pela checagem de hierarquia — pedir a si mesmo é trivialmente
+// autorizado, e iam.ObterTenant sempre devolveria NotFound aqui (um tenant
+// não é filho de si mesmo). Cenário real: SeletorSistemas/SistemaAbas navegam
+// com o tenant_id do próprio usuário (dono raiz, sem tenant pai).
+func TestListarSistemas_ComTenantID_ProprioTenant_ListaSemChecarHierarquia(t *testing.T) {
+	handler, tokenA, tenantAID, _, _, _, _, _, _ := tenantIDHarness(t)
+
+	admin, err := pgx.Connect(context.Background(), dsn())
+	if err != nil {
+		t.Skipf("Postgres indisponível (%v)", err)
+	}
+	defer admin.Close(context.Background())
+
+	var sisProprio string
+	if err := admin.QueryRow(context.Background(),
+		`INSERT INTO sistemas (tenant_id, nome) VALUES ($1,'Sistema do Próprio Tenant') RETURNING id`, tenantAID,
+	).Scan(&sisProprio); err != nil {
+		t.Fatalf("sistema do próprio tenant: %v", err)
+	}
+	t.Cleanup(func() {
+		c, err := pgx.Connect(context.Background(), dsn())
+		if err != nil {
+			return
+		}
+		defer c.Close(context.Background())
+		_, _ = c.Exec(context.Background(), `DELETE FROM sistemas WHERE id=$1`, sisProprio)
+	})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sistemas?tenant_id="+tenantAID, nil)
+	req.Header.Set("Authorization", "Bearer "+tokenA)
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("esperava 200; got=%d body=%s", rec.Code, rec.Body.String())
+	}
+	ids := listarSistemasIDs(t, rec)
+	if !contains(ids, sisProprio) {
+		t.Fatalf("sistema do próprio tenant não apareceu na listagem: %+v", ids)
+	}
+}
+
 // (c) O TESTE MAIS IMPORTANTE DO PR: tenant_id que NÃO é filho direto do
 // tenant do JWT — seja um "neto" (dois níveis abaixo) ou um tenant totalmente
 // alheio — deve dar 404, e os sistemas desse tenant nunca podem vazar na
 // resposta.
 func TestListarSistemas_ComTenantID_ForaDaHierarquia_404_SemVazamento(t *testing.T) {
-	handler, tokenA, _, netoID, alheioID, _, sisNeto, sisAlheio := tenantIDHarness(t)
+	handler, tokenA, _, _, netoID, alheioID, _, sisNeto, sisAlheio := tenantIDHarness(t)
 
 	casos := []struct {
 		nome        string

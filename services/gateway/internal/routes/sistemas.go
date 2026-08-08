@@ -9,6 +9,7 @@ import (
 
 	designv1 "github.com/machv4/platform/gen/go/construtor/design/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
+	"github.com/machv4/platform/pkg/tenantctx"
 	"github.com/machv4/platform/services/gateway/internal/web"
 )
 
@@ -32,12 +33,16 @@ type criarSistemaReq struct {
 // só então repassa ao Design Engine. Esta validação é o único gate de
 // autorização cross-tenant do endpoint: o Design Engine, ao receber tenant_id,
 // não reverifica hierarquia (ver comentário em DesignServer.ListarSistemas) —
-// por isso ela NUNCA pode ser pulada aqui.
+// por isso ela NUNCA pode ser pulada aqui. Exceção: tenant_id igual ao próprio
+// tenant do contexto pula a checagem — iam.ObterTenant exige filho DIRETO
+// (ParentID == contexto), então pedir o próprio tenant sempre devolveria
+// NotFound (um tenant não é filho de si mesmo), embora seja trivialmente
+// autorizado (é o dado do próprio chamador).
 func ListarSistemas(design DesignCliente, iam TenantsCliente) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tenantID := r.URL.Query().Get("tenant_id")
 
-		if tenantID != "" {
+		if tenantID != "" && tenantID != tenantctx.TenantID(r.Context()) {
 			if _, err := iam.ObterTenant(r.Context(), &iamv1.ObterTenantRequest{Id: tenantID}); err != nil {
 				writeTenantError(w, err)
 				return
