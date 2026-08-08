@@ -37,6 +37,27 @@ message RemoverResponse {
   bool sucesso = 1;
 }
 
+// Regra de validação de estado de componente (regex/tamanho/obrigatório),
+// entidade distinta de Regra (árvore de decisão do motor de ações) — sem
+// integração com o disparo de ações nesta fase (RF10/RF11, RN06).
+message RegraValidacao {
+  string id = 1;
+  string sistema_id = 2;
+  repeated string blind_indexes = 3;
+  // regex | tamanho | obrigatorio
+  string tipo = 4;
+  // JSON serializado (parâmetros da validação, formato depende de `tipo`).
+  bytes parametros = 5;
+}
+
+message ListarRegrasValidacaoRequest {
+  string sistema_id = 1;
+}
+
+message ListarRegrasValidacaoResponse {
+  repeated RegraValidacao regras = 1;
+}
+
 service LogicEngineService {
   // Ação Unary para validar e gravar dados na base partilhada (RF07, RN08).
   rpc SalvarFormulario(SalvarFormularioRequest) returns (SalvarFormularioResponse);
@@ -45,4 +66,8 @@ service LogicEngineService {
   rpc ObterRegra(ObterRegraRequest) returns (Regra);
   rpc AtualizarRegra(Regra) returns (Regra);
   rpc RemoverRegra(ObterRegraRequest) returns (RemoverResponse);
+
+  // CRUD de regras de validação de componente (RF10/RF11).
+  rpc ListarRegrasValidacao(ListarRegrasValidacaoRequest) returns (ListarRegrasValidacaoResponse);
+  rpc CriarRegraValidacao(RegraValidacao) returns (RegraValidacao);
 }

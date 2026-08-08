@@ -76,6 +76,9 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 		r.Post("/api/v1/sistemas/{sistema_id}/versoes/{versao_id}/publicar", routes.PublicarVersaoRota(deploy))
 		r.Post("/api/v1/sistemas/{sistema_id}/versoes/{versao_id}/reverter", routes.ReverterVersaoRota(deploy))
 
+		r.Get("/api/v1/sistemas/{sistema_id}/regras-negocio", routes.ListarRegrasNegocio(logic))
+		r.Post("/api/v1/sistemas/{sistema_id}/regras-negocio", routes.CriarRegraNegocio(logic))
+
 		r.Post("/api/v1/exportacoes", routes.CriarExportacao(export))
 		r.Get("/api/v1/exportacoes/{job_id}", routes.ObterExportacao(export))
 	})
