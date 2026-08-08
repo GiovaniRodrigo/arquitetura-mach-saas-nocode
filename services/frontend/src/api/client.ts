@@ -16,6 +16,7 @@ import type {
   Versao,
   VersaoAtiva,
 } from "./types";
+import { encerrarSessao } from "../auth/session";
 
 /** `fetch` injetável para testes. */
 export type FetchFn = typeof fetch;
@@ -40,6 +41,17 @@ export class ApiClient {
     // ("Illegal invocation") qualquer `this` que não seja o objeto global. A
     // arrow o invoca como chamada livre (this = global), preservando o binding.
     private readonly fetchFn: FetchFn = (input, init) => fetch(input, init),
+    // Disparado quando o Gateway responde 401 (token ausente/expirado/inválido):
+    // encerra a sessão local e força um reload — só um boot novo de main.tsx
+    // reavalia a ausência de token e troca para as rotas públicas (login), já
+    // que a árvore autenticada não é desmontada por navegação client-side (ver
+    // main.tsx). Mesmo padrão manual já usado em DashboardLayout/SeletorSistemas,
+    // agora centralizado aqui para cobrir toda chamada autenticada de uma vez.
+    // Injetável para permitir teste sem depender de window.location real.
+    private readonly aoNaoAutorizado: () => void = () => {
+      encerrarSessao();
+      window.location.reload();
+    },
   ) {}
 
   private headers(): HeadersInit {
@@ -70,6 +82,10 @@ export class ApiClient {
   private async parse<T>(resp: Response): Promise<T> {
     const texto = await resp.text();
     const corpo = ApiClient.parseJsonSeguro(texto);
+
+    if (resp.status === 401) {
+      this.aoNaoAutorizado();
+    }
 
     if (corpo === null) {
       // Corpo não-JSON: transforma em ApiError com mensagem útil, nunca SyntaxError.

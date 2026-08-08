@@ -51,9 +51,27 @@ describe("ApiClient (RF03/RN08)", () => {
 
   it("erros de transporte viram ApiError", async () => {
     const fetchFn = vi.fn().mockResolvedValue(respostaJSON(401, { codigo: "UNAUTHORIZED", mensagem: "sem token" }));
-    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch, () => {});
 
     await expect(client.versaoAtiva("s1")).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("401 dispara logout automático (token expirado/inválido) antes de lançar", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(401, { codigo: "UNAUTHORIZED", mensagem: "token expirado" }));
+    const aoNaoAutorizado = vi.fn();
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch, aoNaoAutorizado);
+
+    await expect(client.versaoAtiva("s1")).rejects.toBeInstanceOf(ApiError);
+    expect(aoNaoAutorizado).toHaveBeenCalledOnce();
+  });
+
+  it("não dispara logout para outros erros de transporte (ex.: 500)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(500, { codigo: "INTERNAL", mensagem: "erro interno" }));
+    const aoNaoAutorizado = vi.fn();
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch, aoNaoAutorizado);
+
+    await expect(client.versaoAtiva("s1")).rejects.toBeInstanceOf(ApiError);
+    expect(aoNaoAutorizado).not.toHaveBeenCalled();
   });
 
   it("listarSistemas desembrulha o campo sistemas", async () => {
