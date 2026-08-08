@@ -127,6 +127,63 @@ message AutenticarSenhaResponse {
   string tipo = 4;
 }
 
+// Dashboard (spec 004, RF04/RF05/RF06): os 3 cards mostram dados agregados
+// dos "tenants vinculados" ao usuário autenticado — o tenant do contexto +
+// seus filhos diretos (mesmo conjunto de ListarTenants, RN05).
+
+// EventoLogin é uma linha do histórico de login (RF04, RN02).
+message EventoLogin {
+  string usuario_nome = 1;
+  string tenant_nome = 2;
+  string criado_em = 3;
+}
+
+message ListarUltimosAcessosRequest {}
+
+message ListarUltimosAcessosResponse {
+  // Os 10 logins mais recentes dos tenants vinculados, mais recente primeiro.
+  repeated EventoLogin eventos = 1;
+}
+
+// Feedback é uma mensagem de feedback/reclamação de um tenant vinculado
+// (RF05). status: pendente | respondido — a transição respondido→pendente
+// nunca é aceita (RN03).
+message Feedback {
+  string id = 1;
+  string tenant_nome = 2;
+  string mensagem = 3;
+  string status = 4;
+  string criado_em = 5;
+}
+
+message ListarFeedbackRequest {
+  // pendente | respondido; vazio = sem filtro.
+  string status = 1;
+}
+
+message ListarFeedbackResponse {
+  repeated Feedback itens = 1;
+}
+
+message AtualizarStatusFeedbackRequest {
+  string id = 1;
+  // Único valor aceito é "respondido" (RN03).
+  string status = 2;
+}
+
+// ResumoFinanceiroResponse é a receita agregada do mês corrente dos tenants
+// vinculados (RF06, RN04). Nomeado com sufixo Response (em vez de
+// ResumoFinanceiro puro) porque o protoc/buf rejeita uma message com o mesmo
+// nome do rpc que a devolve (colisão de escopo dentro de service IAMService).
+message ResumoFinanceiroResponse {
+  int64 receita_total_centavos = 1;
+  string moeda = 2;
+  // Formato "AAAA-MM" (ex.: "2026-08").
+  string competencia = 3;
+}
+
+message ResumoFinanceiroRequest {}
+
 service IAMService {
   rpc ValidarToken(ValidarTokenRequest) returns (ValidarTokenResponse);
   rpc AvaliarPermissoes(AvaliarPermissoesRequest) returns (AvaliarPermissoesResponse);
@@ -138,4 +195,8 @@ service IAMService {
   rpc ExcluirTenant(ExcluirTenantRequest) returns (ExcluirTenantResponse);
   rpc RegistrarUsuario(RegistrarUsuarioRequest) returns (RegistrarUsuarioResponse);
   rpc AutenticarSenha(AutenticarSenhaRequest) returns (AutenticarSenhaResponse);
+  rpc ListarUltimosAcessos(ListarUltimosAcessosRequest) returns (ListarUltimosAcessosResponse);
+  rpc ListarFeedback(ListarFeedbackRequest) returns (ListarFeedbackResponse);
+  rpc AtualizarStatusFeedback(AtualizarStatusFeedbackRequest) returns (Feedback);
+  rpc ResumoFinanceiro(ResumoFinanceiroRequest) returns (ResumoFinanceiroResponse);
 }

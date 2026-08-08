@@ -83,6 +83,11 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 
 		r.Post("/api/v1/exportacoes", routes.CriarExportacao(export))
 		r.Get("/api/v1/exportacoes/{job_id}", routes.ObterExportacao(export))
+
+		r.Get("/api/v1/dashboard/ultimos-acessos", routes.ListarUltimosAcessos(iam))
+		r.Get("/api/v1/dashboard/feedback", routes.ListarFeedback(iam))
+		r.Patch("/api/v1/dashboard/feedback/{id}", routes.AtualizarStatusFeedback(iam))
+		r.Get("/api/v1/dashboard/resumo-financeiro", routes.ResumoFinanceiro(iam))
 	})
 
 	return r

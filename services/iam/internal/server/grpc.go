@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"log"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -38,6 +40,11 @@ type Store interface {
 	ExcluirTenant(ctx context.Context, id string) error
 	CriarTenantEUsuarioComSenha(ctx context.Context, nomeUsuario, email, senhaHash, nomeTenant string) (userID, tenantID string, err error)
 	ObterUsuarioPorEmailSenha(ctx context.Context, email string) (userID, tenantID, tipo, senhaHash string, err error)
+	RegistrarEventoLogin(ctx context.Context, usuarioID, tenantID string) error
+	UltimosAcessos(ctx context.Context, tenantID string, limite int) ([]store.EventoLogin, error)
+	ListarFeedback(ctx context.Context, tenantID string, status *string) ([]store.Feedback, error)
+	AtualizarStatusFeedback(ctx context.Context, id, novoStatus string) (store.Feedback, error)
+	ResumoFinanceiro(ctx context.Context, tenantID string) (store.ResumoFinanceiro, error)
 }
 
 // IAMServer implementa iamv1.IAMServiceServer.
@@ -80,6 +87,9 @@ func (s *IAMServer) AutenticarThirdParty(ctx context.Context, req *iamv1.Autenti
 	userID, tenantID, tipo, err := s.store.UpsertUsuarioThirdParty(ctx, req.GetProvedor(), req.GetExternalId(), req.GetEmail(), req.GetNome())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "falha ao registrar usuário")
+	}
+	if err := s.store.RegistrarEventoLogin(ctx, userID, tenantID); err != nil {
+		log.Printf("iam: falha ao registrar evento de login (third-party): %v", err)
 	}
 	token, err := s.issuer.Issue(userID, tenantID, tipo)
 	if err != nil {
@@ -298,10 +308,113 @@ func (s *IAMServer) AutenticarSenha(ctx context.Context, req *iamv1.AutenticarSe
 	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.GetSenha())) != nil {
 		return nil, erroCredenciaisInvalidas
 	}
+	if err := s.store.RegistrarEventoLogin(ctx, userID, tenantID); err != nil {
+		log.Printf("iam: falha ao registrar evento de login (senha): %v", err)
+	}
 
 	token, err := s.issuer.Issue(userID, tenantID, tipo)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "falha ao emitir token")
 	}
 	return &iamv1.AutenticarSenhaResponse{Jwt: token, UserId: userID, TenantId: tenantID, Tipo: tipo}, nil
+}
+
+// ListarUltimosAcessos devolve os 10 logins mais recentes dos tenants
+// vinculados ao tenant do contexto (tenant + filhos diretos), para o card
+// "Últimos Acessos" do Dashboard (spec 004, RF04, RN02).
+func (s *IAMServer) ListarUltimosAcessos(ctx context.Context, _ *iamv1.ListarUltimosAcessosRequest) (*iamv1.ListarUltimosAcessosResponse, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	eventos, err := s.store.UltimosAcessos(ctx, tc.GetTenantId(), 10)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao listar últimos acessos")
+	}
+	out := make([]*iamv1.EventoLogin, 0, len(eventos))
+	for _, e := range eventos {
+		out = append(out, &iamv1.EventoLogin{
+			UsuarioNome: e.UsuarioNome,
+			TenantNome:  e.TenantNome,
+			CriadoEm:    e.CriadoEm.Format(time.RFC3339),
+		})
+	}
+	return &iamv1.ListarUltimosAcessosResponse{Eventos: out}, nil
+}
+
+// ListarFeedback devolve as mensagens de feedback dos tenants vinculados ao
+// tenant do contexto, opcionalmente filtradas por status (spec 004, RF05).
+func (s *IAMServer) ListarFeedback(ctx context.Context, req *iamv1.ListarFeedbackRequest) (*iamv1.ListarFeedbackResponse, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	var filtroStatus *string
+	if valor := req.GetStatus(); valor != "" {
+		if valor != "pendente" && valor != "respondido" {
+			return nil, status.Error(codes.InvalidArgument, "status deve ser 'pendente' ou 'respondido'")
+		}
+		filtroStatus = &valor
+	}
+	itens, err := s.store.ListarFeedback(ctx, tc.GetTenantId(), filtroStatus)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao listar feedback")
+	}
+	out := make([]*iamv1.Feedback, 0, len(itens))
+	for _, f := range itens {
+		out = append(out, &iamv1.Feedback{
+			Id:         f.ID,
+			TenantNome: f.TenantNome,
+			Mensagem:   f.Mensagem,
+			Status:     f.Status,
+			CriadoEm:   f.CriadoEm.Format(time.RFC3339),
+		})
+	}
+	return &iamv1.ListarFeedbackResponse{Itens: out}, nil
+}
+
+// AtualizarStatusFeedback aplica a transição de status de uma mensagem de
+// feedback (spec 004, RF05, RN03). A única transição aceita é
+// pendente→respondido — o inverso (respondido→pendente) é sempre rejeitado,
+// mesmo antes de tocar o banco.
+func (s *IAMServer) AtualizarStatusFeedback(ctx context.Context, req *iamv1.AtualizarStatusFeedbackRequest) (*iamv1.Feedback, error) {
+	if _, err := tenantctx.Require(ctx); err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	if req.GetStatus() != "respondido" {
+		return nil, status.Error(codes.InvalidArgument, "único status aceito é 'respondido' — a transição respondido→pendente não é permitida (RN03)")
+	}
+	f, err := s.store.AtualizarStatusFeedback(ctx, req.GetId(), req.GetStatus())
+	if errors.Is(err, store.ErrNaoEncontrado) {
+		return nil, status.Error(codes.NotFound, "feedback não encontrado")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao atualizar status de feedback")
+	}
+	return &iamv1.Feedback{
+		Id:         f.ID,
+		TenantNome: f.TenantNome,
+		Mensagem:   f.Mensagem,
+		Status:     f.Status,
+		CriadoEm:   f.CriadoEm.Format(time.RFC3339),
+	}, nil
+}
+
+// ResumoFinanceiro devolve a receita agregada do mês corrente dos tenants
+// vinculados ao tenant do contexto, para o card "Resumo Financeiro" do
+// Dashboard (spec 004, RF06, RN04).
+func (s *IAMServer) ResumoFinanceiro(ctx context.Context, _ *iamv1.ResumoFinanceiroRequest) (*iamv1.ResumoFinanceiroResponse, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	r, err := s.store.ResumoFinanceiro(ctx, tc.GetTenantId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao calcular resumo financeiro")
+	}
+	return &iamv1.ResumoFinanceiroResponse{
+		ReceitaTotalCentavos: r.ReceitaTotalCentavos,
+		Moeda:                r.Moeda,
+		Competencia:          r.Competencia,
+	}, nil
 }
