@@ -1,6 +1,6 @@
 # USAGE — Como rodar o MACH V4 localmente
 
-Guia de startup do monorepo. Ordem: **infra → proto → Go services → Gateway → Collab → Player**.
+Guia de startup do monorepo. Ordem: **infra → proto → Go services → Gateway → Collab → Frontend**.
 
 Todos os scripts de build/startup/deploy do repo vivem em **`build/`**.
 
@@ -10,7 +10,7 @@ Todos os scripts de build/startup/deploy do repo vivem em **`build/`**.
 
 ```bash
 ./build/dev-up.sh              # sobe tudo, com checagens e prompts de confirmação
-./build/dev-up.sh --no-player  # sobe tudo menos o player (ex.: você já roda o Vite noutro terminal)
+./build/dev-up.sh --no-frontend  # sobe tudo menos o frontend (ex.: você já roda o Vite noutro terminal)
 ./build/dev-up.sh --yes        # não pergunta nada, assume "sim" em todos os prompts
 ```
 
@@ -23,7 +23,7 @@ O que ele faz, na ordem, com feedback visual (✓/✗/!) a cada etapa:
 5. **Workers** (RabbitMQ).
 6. **Gateway** (`:8080`).
 7. **Collab** (Phoenix, `:4000`).
-8. **Player** — instala deps se faltarem e pergunta se quer abrir agora (`npm run dev`, foreground).
+8. **Frontend** — instala deps se faltarem e pergunta se quer abrir agora (`npm run dev`, foreground).
 
 Ao final, mostra um resumo com as URLs de cada serviço. **Ctrl+C encerra todos os processos que o script iniciou.**
 
@@ -90,13 +90,13 @@ go run ./services/export/cmd   # Export   :50055 (usa S3_ENDPOINT/S3_ACCESS_KEY/
 #### Workers assíncronos (RabbitMQ)
 
 ```bash
-go run ./workers/cmd           # consome filas via RABBITMQ_URL (default amqp://mach:mach@localhost:5672/)
+go run ./services/workers/cmd  # consome filas via RABBITMQ_URL (default amqp://mach:mach@localhost:5672/)
 ```
 
 ### 4. Sobe o Gateway HTTP
 
 ```bash
-go run ./gateway/cmd           # :8080
+go run ./services/gateway/cmd  # :8080
 ```
 
 Lê os endereços dos services acima via env (defaults já corretos para local):
@@ -107,22 +107,22 @@ Para login social em dev, opcionalmente: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECR
 ### 5. Sobe o Collab (Elixir/Phoenix — colaboração em tempo real)
 
 ```bash
-cd collab
+cd services/collab
 mix deps.get
 mix phx.server     # http://localhost:4000
 ```
 
 > `jose` está pinado em `1.11.5` no `mix.exs` (compat com OTP 25).
 
-### 6. Sobe o Player (frontend Vite/React)
+### 6. Sobe o Frontend (Vite/React)
 
 ```bash
-cd player
+cd services/frontend
 npm install         # se node_modules ainda não existir
 npm run dev
 ```
 
-Config em `player/.env.local` (`VITE_BYPASS_AUTH=true` pula auth em dev). Config runtime injetada via `window.__PLAYER_CONFIG__` (baseUrl/token/sistemaId do host).
+Config em `services/frontend/.env.local` (`VITE_BYPASS_AUTH=true` pula auth em dev). Config runtime injetada via `window.__FRONTEND_CONFIG__` (baseUrl/token/sistemaId do host).
 
 ---
 
@@ -145,7 +145,7 @@ Config em `player/.env.local` (`VITE_BYPASS_AUTH=true` pula auth em dev). Config
 | Export Service     | 50055   |
 | Gateway (HTTP)     | 8080    |
 | Collab (Phoenix)   | 4000    |
-| Player (Vite dev)  | 5173 (default do Vite) |
+| Frontend (Vite dev)| 5173 (default do Vite) |
 
 ## Comandos úteis (Makefile)
 
@@ -162,7 +162,7 @@ make proto-breaking   # buf breaking --against main
 Também em `build/`, usados pelo pipeline `.github/workflows/cd.yml` (e reaproveitáveis localmente para ensaiar um release):
 
 ```bash
-SHA=$(git rev-parse --short HEAD) build/build-artifacts.sh          # empacota os 7 binários + release Elixir + player/dist em dist/artifacts/
+SHA=$(git rev-parse --short HEAD) build/build-artifacts.sh          # empacota os 7 binários + release Elixir + services/frontend/dist em dist/artifacts/
 build/deploy.sh --env staging --host <host> --user <user> --sha <sha>   # rsync + troca atômica de symlink + restart
 build/smoke-test.sh --host <host>                                    # healthcheck pós-deploy
 build/rollback.sh --env staging --host <host> [--sha <sha>]          # repontar current ao release anterior, sem rebuild
@@ -184,4 +184,4 @@ OTLP_ENDPOINT=localhost:4317 JAEGER_QUERY=localhost:16686 \
   go test -tags e2e ./tests/e2e/...
 ```
 
-Testes do player: `cd player && npm test` (vitest) e `npm run typecheck` (`tsc --noEmit`).
+Testes do frontend: `cd services/frontend && npm test` (vitest) e `npm run typecheck` (`tsc --noEmit`).

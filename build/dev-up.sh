@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Startup guiado do stack MACH V4 para desenvolvimento local.
-# Ordem: pré-checagens -> infra -> proto -> services Go -> workers -> gateway -> collab -> player.
+# Ordem: pré-checagens -> infra -> proto -> services Go -> workers -> gateway -> collab -> frontend.
 #
 # Uso:
-#   ./build/dev-up.sh              # sobe tudo, com prompts de confirmação
-#   ./build/dev-up.sh --no-player  # sobe tudo menos o player
-#   ./build/dev-up.sh --yes        # não pergunta nada, assume "sim" em todos os prompts
+#   ./build/dev-up.sh                # sobe tudo, com prompts de confirmação
+#   ./build/dev-up.sh --no-frontend  # sobe tudo menos o frontend
+#   ./build/dev-up.sh --yes          # não pergunta nada, assume "sim" em todos os prompts
 #
 # Logs de cada processo em background: .dev-logs/<nome>.log
 # Ctrl+C encerra todos os processos que este script iniciou.
@@ -22,11 +22,11 @@ fi
 MINIO_HOST_PORT="${MINIO_HOST_PORT:-9000}"
 MINIO_CONSOLE_HOST_PORT="${MINIO_CONSOLE_HOST_PORT:-9001}"
 
-WITH_PLAYER=1
+WITH_FRONTEND=1
 ASSUME_YES=0
 for arg in "$@"; do
   case "$arg" in
-    --no-player) WITH_PLAYER=0 ;;
+    --no-frontend) WITH_FRONTEND=0 ;;
     --yes|-y) ASSUME_YES=1 ;;
     *) echo "Argumento desconhecido: $arg" >&2; exit 1 ;;
   esac
@@ -223,32 +223,32 @@ ok "5 services gRPC no ar"
 
 # =============================================================================
 step "4/7  Workers (consumidores RabbitMQ)"
-run_bg workers go run ./workers/cmd
+run_bg workers go run ./services/workers/cmd
 sleep 1
 ok "workers iniciado (sem porta própria — acompanhe $LOG_DIR/workers.log)"
 
 # =============================================================================
 step "5/7  Gateway HTTP"
-run_bg gateway go run ./gateway/cmd
+run_bg gateway go run ./services/gateway/cmd
 wait_for_port localhost 8080 gateway || abort "gateway não subiu"
 ok "Gateway em http://localhost:8080"
 
 # =============================================================================
 step "6/7  Collab (Phoenix)"
 info "mix deps.get"
-(cd collab && mix deps.get >/dev/null 2>&1) || warn "mix deps.get retornou erro — verifique $LOG_DIR ou rode manualmente"
-run_bg collab bash -c "cd collab && mix phx.server"
+(cd services/collab && mix deps.get >/dev/null 2>&1) || warn "mix deps.get retornou erro — verifique $LOG_DIR ou rode manualmente"
+run_bg collab bash -c "cd services/collab && mix phx.server"
 wait_for_port localhost 4000 collab || abort "collab não subiu"
 ok "Collab em http://localhost:4000"
 
 # =============================================================================
-if [ "$WITH_PLAYER" = "1" ]; then
-  step "7/7  Player (Vite)"
-  if [ ! -d player/node_modules ]; then
-    info "player/node_modules ausente — rodando npm install"
-    (cd player && npm install) || abort "npm install falhou"
+if [ "$WITH_FRONTEND" = "1" ]; then
+  step "7/7  Frontend (Vite)"
+  if [ ! -d services/frontend/node_modules ]; then
+    info "services/frontend/node_modules ausente — rodando npm install"
+    (cd services/frontend && npm install) || abort "npm install falhou"
   fi
-  ok "dependências do player prontas"
+  ok "dependências do frontend prontas"
 fi
 
 # =============================================================================
@@ -263,13 +263,13 @@ cat <<EOF
   Logs dos processos em background: ${C_DIM}$LOG_DIR/*.log${C_RESET}
 EOF
 
-if [ "$WITH_PLAYER" = "1" ]; then
-  echo "  ${C_BOLD}Player${C_RESET}    http://localhost:5173  (iniciando em foreground abaixo)"
+if [ "$WITH_FRONTEND" = "1" ]; then
+  echo "  ${C_BOLD}Frontend${C_RESET}  http://localhost:5173  (iniciando em foreground abaixo)"
   echo
-  confirm "Abrir o player agora (npm run dev, foreground, Ctrl+C encerra tudo)?" && {
-    cd player && exec npm run dev
+  confirm "Abrir o frontend agora (npm run dev, foreground, Ctrl+C encerra tudo)?" && {
+    cd services/frontend && exec npm run dev
   }
-  info "Player não iniciado. Rode manualmente: cd player && npm run dev"
+  info "Frontend não iniciado. Rode manualmente: cd services/frontend && npm run dev"
 fi
 
 echo

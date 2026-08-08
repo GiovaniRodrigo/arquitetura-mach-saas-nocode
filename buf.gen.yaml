@@ -9,7 +9,7 @@ plugins:
     out: gen/go
     opt: paths=source_relative
 
-  # --- TypeScript — consumido pelo Headless Player via Gateway ---
+  # --- TypeScript — consumido pelo Frontend via Gateway ---
   - remote: buf.build/bufbuild/es
     out: gen/ts
     opt: target=ts

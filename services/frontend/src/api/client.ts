@@ -1,4 +1,4 @@
-// Cliente HTTP autenticado do Player: anexa o JWT (Bearer) a todas as chamadas ao
+// Cliente HTTP autenticado do Frontend: anexa o JWT (Bearer) a todas as chamadas ao
 // Gateway e traduz as rotas REST. A identidade viaja apenas no cabeçalho
 // Authorization; o tenant é derivado do token pelo Gateway (nunca enviado no corpo).
 
@@ -118,7 +118,7 @@ export class ApiClient {
     return this.parse<Sistema>(resp);
   }
 
-  /** Versão ativa consolidada — o Player sempre consome esta (RN04). */
+  /** Versão ativa consolidada — o Frontend sempre consome esta (RN04). */
   async versaoAtiva(sistemaId: string): Promise<VersaoAtiva> {
     const resp = await this.fetchFn(
       `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/versao-ativa`,

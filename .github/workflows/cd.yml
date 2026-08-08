@@ -58,7 +58,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: player/package-lock.json
+          cache-dependency-path: services/frontend/package-lock.json
       - uses: bufbuild/buf-setup-action@v1
         with:
           version: "1.42.0"

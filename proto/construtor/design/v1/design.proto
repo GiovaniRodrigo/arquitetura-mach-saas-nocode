@@ -64,7 +64,7 @@ service DesignEngineService {
   rpc RemoverDesign(ObterDesignRequest) returns (RemoverResponse);
   // Chamada única em lote da colaboração (write-behind).
   rpc SalvarDesign(SalvarDesignRequest) returns (SalvarDesignResponse);
-  // Descoberta/criação de sistemas do tenant, consumida pelo seletor do Player
+  // Descoberta/criação de sistemas do tenant, consumida pelo seletor do Frontend
   // (RN01). Criar é restrito a dono/parceiro; listar é aberto ao tenant.
   rpc CriarSistema(CriarSistemaRequest) returns (Sistema);
   rpc ListarSistemas(ListarSistemasRequest) returns (ListarSistemasResponse);

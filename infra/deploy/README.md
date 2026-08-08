@@ -2,7 +2,7 @@
 
 Este documento descreve o alvo da entrega contínua: um host Linux com `systemd` e
 Nginx que recebe **apenas artefatos compilados** (binários Go, release OTP do
-`collab`, bundle estático do `player`) via `rsync`/SSH. O host nunca clona o
+`collab`, bundle estático do `frontend`) via `rsync`/SSH. O host nunca clona o
 repositório nem possui toolchain de build (RNF01, RN01).
 
 ## 1. Layout do sistema de arquivos
@@ -13,7 +13,7 @@ repositório nem possui toolchain de build (RNF01, RN01).
 │   ├── <sha>/                # um diretório por release, imutável (RN04)
 │   │   ├── bin/{gateway,iam,design,logic,deploy,export,workers}
 │   │   ├── collab/           # release OTP autocontido (bin/, lib/, releases/, erts-*)
-│   │   └── player/           # dist estático (docroot do Nginx)
+│   │   └── frontend/         # dist estático (docroot do Nginx)
 │   └── <sha-anterior>/       # retido para rollback (RELEASES_KEEP, padrão 5)
 └── current -> releases/<sha> # symlink trocado atomicamente na ativação (RN04, RN07)
 

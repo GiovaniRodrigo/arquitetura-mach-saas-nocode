@@ -54,7 +54,7 @@ message AutenticarThirdPartyResponse {
   string tipo = 4;
 }
 
-// Tenants (clientes/negócios) do Player autenticado (spec 004, RF07/RF08).
+// Tenants (clientes/negócios) do Frontend autenticado (spec 004, RF07/RF08).
 // ListarTenants devolve os filhos diretos do tenant do contexto (RN05: um
 // Dono/Parceiro navega para os tenants que ele mesmo criou como clientes);
 // CriarTenant insere um novo filho do tipo "cliente" sob o tenant do contexto,

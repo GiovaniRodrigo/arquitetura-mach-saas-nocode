@@ -46,7 +46,7 @@ type Publicacao struct {
 	Numero   int32
 }
 
-// VersaoAtiva é a versão ativa consolidada (consumida pelo Headless Player).
+// VersaoAtiva é a versão ativa consolidada (consumida pelo Frontend).
 type VersaoAtiva struct {
 	VersaoID      string
 	Numero        int32
@@ -192,7 +192,7 @@ func exigirSistema(ctx context.Context, tx pgx.Tx, sistemaID string) error {
 }
 
 // consolidar monta a definicao_json a partir do estado atual: os designs (árvore
-// de UI) e os campos (schema) do sistema — o que o Headless Player renderiza.
+// de UI) e os campos (schema) do sistema — o que o Frontend renderiza.
 func consolidar(ctx context.Context, tx pgx.Tx, sistemaID string) ([]byte, error) {
 	type designOut struct {
 		ID     string          `json:"id"`

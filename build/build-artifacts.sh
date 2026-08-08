@@ -2,7 +2,7 @@
 # Compila os artefatos de release do MACH V4 (spec 002, task 4).
 #
 # Fluxo: gera os stubs .proto -> compila os 7 binários Go estáticos, o release
-# OTP do collab e o bundle estático do player -> empacota cada unidade em um
+# OTP do collab e o bundle estático do frontend -> empacota cada unidade em um
 # tarball contendo APENAS conteúdo executável (RN01, RN05, RN06).
 #
 # Saída: dist/artifacts/<unidade>-<sha>.tar.gz
@@ -13,7 +13,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 SHA="${SHA:-$(git rev-parse --short HEAD)}"
-STAGE="$ROOT/dist/release"        # espelha o layout do host: bin/ collab/ player/
+STAGE="$ROOT/dist/release"        # espelha o layout do host: bin/ collab/ frontend/
 OUT="$ROOT/dist/artifacts"
 
 # --- Toolchains: em CI vêm das setup-actions; localmente, dos caminhos ~/.local.
@@ -34,13 +34,13 @@ buf generate
 
 # --- 2. Binários Go estáticos (CGO_ENABLED=0 — RN06) -------------------------
 declare -A GO_UNITS=(
-  [gateway]=./gateway/cmd
+  [gateway]=./services/gateway/cmd
   [iam]=./services/iam/cmd
   [design]=./services/design/cmd
   [logic]=./services/logic/cmd
   [deploy]=./services/deploy/cmd
   [export]=./services/export/cmd
-  [workers]=./workers/cmd
+  [workers]=./services/workers/cmd
 )
 for name in "${!GO_UNITS[@]}"; do
   echo "==> go build $name"
@@ -52,25 +52,25 @@ done
 # --- 3. Release OTP do collab (autocontido: BEAM + ERTS, sem Mix/deps) -------
 echo "==> mix release collab"
 (
-  cd "$ROOT/collab"
+  cd "$ROOT/services/collab"
   export MIX_ENV=prod
   mix deps.get --only prod
   mix release collab --overwrite
 )
-cp -a "$ROOT/collab/_build/prod/rel/collab" "$STAGE/collab"
+cp -a "$ROOT/services/collab/_build/prod/rel/collab" "$STAGE/collab"
 # Remove os templates de geradores (mix phx.gen.*) embarcados no priv/ das libs:
 # são assets de desenvolvimento, inertes em runtime (RN01). O release mantém
 # apenas .beam compilado + o runtime.exs (config obrigatória de boot do release).
 find "$STAGE/collab" -type d -path '*/priv/templates' -prune -exec rm -rf {} +
 
-# --- 4. Bundle estático do player (minificado, sem node_modules) -------------
-echo "==> vite build (player)"
+# --- 4. Bundle estático do frontend (minificado, sem node_modules) -----------
+echo "==> vite build (frontend)"
 (
-  cd "$ROOT/player"
+  cd "$ROOT/services/frontend"
   npm ci
   npm run build
 )
-cp -a "$ROOT/player/dist" "$STAGE/player"
+cp -a "$ROOT/services/frontend/dist" "$STAGE/frontend"
 
 # --- 5. Empacotamento por unidade (só executável) ---------------------------
 echo "==> Empacotando artefatos ($SHA)"
@@ -78,7 +78,7 @@ for name in "${!GO_UNITS[@]}"; do
   tar czf "$OUT/$name-$SHA.tar.gz" -C "$STAGE" "bin/$name"
 done
 tar czf "$OUT/collab-$SHA.tar.gz" -C "$STAGE" collab
-tar czf "$OUT/player-$SHA.tar.gz" -C "$STAGE" player
+tar czf "$OUT/frontend-$SHA.tar.gz" -C "$STAGE" frontend
 
 echo "==> Artefatos gerados em dist/artifacts:"
 ls -1 "$OUT"

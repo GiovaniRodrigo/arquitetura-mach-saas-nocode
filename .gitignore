@@ -12,15 +12,15 @@ go.work.sum
 /dist/
 
 # Elixir / Phoenix (collab)
-/collab/_build/
-/collab/deps/
-/collab/*.ez
+/services/collab/_build/
+/services/collab/deps/
+/services/collab/*.ez
 
-# Node / Player
+# Node / Frontend
 node_modules/
-/player/dist/
-/player/playwright-report/
-/player/test-results/
+/services/frontend/dist/
+/services/frontend/playwright-report/
+/services/frontend/test-results/
 
 # Infra / segredos locais
 .env
