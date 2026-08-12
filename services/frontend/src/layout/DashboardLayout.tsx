@@ -24,6 +24,17 @@ function sair() {
   window.location.reload();
 }
 
+// Nome da página atual exibido no cabeçalho, derivado da rota — mesmo
+// agrupamento usado nos links da Sidebar.
+function tituloDaPagina(pathname: string): string {
+  if (pathname === '/dashboard') return 'Dashboard';
+  if (pathname.startsWith('/dashboard/clientes')) return 'Clientes';
+  if (pathname.startsWith('/dashboard/configuracao')) return 'Configuração';
+  if (pathname.startsWith('/dashboard/perfil')) return 'Cadastro/Perfil';
+  if (pathname.startsWith('/dashboard/ajuda')) return 'Ajuda';
+  return 'Dashboard';
+}
+
 export function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -41,14 +52,14 @@ export function DashboardLayout() {
     return () => document.removeEventListener('mousedown', onClickFora);
   }, [menuAberto]);
 
-  const saudacao = usuario.nome ? `Bem-vindo, ${usuario.nome}` : 'Bem-vindo';
+  const titulo = tituloDaPagina(location.pathname);
 
   return (
     <TooltipProvider>
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader className="p-4">
-            <h2 className="text-lg font-bold font-heading">SaaS NoCode</h2>
+            <h2 className="text-lg font-bold font-heading">MAYS - Make Your SaaS</h2>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -95,7 +106,7 @@ export function DashboardLayout() {
           <header className="flex h-16 shrink-0 items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md sticky top-0 z-20 border-b border-border">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="-ml-2" />
-              <h1 className="text-xl font-heading font-medium text-foreground hidden sm:block">{saudacao}</h1>
+              <h1 className="text-xl font-heading font-medium text-foreground hidden sm:block">{titulo}</h1>
             </div>
             <div className="flex items-center gap-3">
               {/* Dica de busca — dispara o atalho Cmd/Ctrl+K do CommandPalette (RF10). */}

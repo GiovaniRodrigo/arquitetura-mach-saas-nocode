@@ -64,7 +64,7 @@ export function Login({
       <div className="md:w-1/2 flex flex-col justify-center items-center p-8 md:p-12">
         <div className="w-full max-w-sm space-y-8">
           <div className="text-center">
-            <h2 className="font-heading text-3xl font-bold tracking-tight">Bem-vindo de volta</h2>
+            <h2 className="font-heading text-3xl font-bold tracking-tight">MAYS - Make Your SaaS de volta</h2>
             <p className="text-muted-foreground mt-2">Entre para acessar seus sistemas.</p>
           </div>
 

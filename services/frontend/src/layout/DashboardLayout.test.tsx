@@ -54,18 +54,31 @@ describe('Template: DashboardLayout', () => {
 
   it('renderiza a navegação principal (Sidebar) e os links', () => {
     renderLayout();
-    expect(screen.getByText('SaaS NoCode')).toBeInTheDocument();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Clientes')).toBeInTheDocument();
-    expect(screen.getByText('Configuração')).toBeInTheDocument();
-    expect(screen.getByText('Cadastro/Perfil')).toBeInTheDocument();
-    expect(screen.getByText('Ajuda')).toBeInTheDocument();
+    expect(screen.getByText('MAYS - Make Your SaaS')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Clientes' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Configuração' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cadastro/Perfil' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ajuda' })).toBeInTheDocument();
   });
 
   it('exibe a identidade real do usuário no cabeçalho (RF03)', () => {
     renderLayout();
-    expect(screen.getByText(/Bem-vindo, Ana Silva/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /menu do usuário/i })).toHaveTextContent('AS');
+    fireEvent.click(screen.getByRole('button', { name: /menu do usuário/i }));
+    expect(screen.getByText('Ana Silva')).toBeInTheDocument();
+    expect(screen.getByText('ana@x.com')).toBeInTheDocument();
+  });
+
+  it('exibe o nome da página atual no cabeçalho', () => {
+    renderLayout();
+    expect(screen.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeInTheDocument();
+
+    renderLayout('/dashboard/clientes');
+    expect(screen.getByRole('heading', { name: 'Clientes', level: 1 })).toBeInTheDocument();
+
+    renderLayout('/dashboard/ajuda');
+    expect(screen.getByRole('heading', { name: 'Ajuda', level: 1 })).toBeInTheDocument();
   });
 
   it('abre o menu do avatar com as ações (RF14/C7)', () => {
@@ -101,6 +114,6 @@ describe('Template: DashboardLayout', () => {
     const trigger = screen.getByRole('button', { name: /toggle sidebar/i });
     expect(trigger).toBeInTheDocument();
     fireEvent.click(trigger);
-    expect(screen.getByText('SaaS NoCode')).toBeInTheDocument();
+    expect(screen.getByText('MAYS - Make Your SaaS')).toBeInTheDocument();
   });
 });
