@@ -24,6 +24,10 @@ type fakeDesign struct {
 	listarErr      error
 	nomeCriado     string
 	tenantIDPedido string
+
+	designsResp            []*designv1.DesignResumo
+	listarDesignsErr       error
+	sistemaIDDesignsPedido string
 }
 
 func (f *fakeDesign) CriarDesign(context.Context, *designv1.Design, ...grpc.CallOption) (*designv1.Design, error) {
@@ -37,6 +41,13 @@ func (f *fakeDesign) AtualizarDesign(context.Context, *designv1.Design, ...grpc.
 }
 func (f *fakeDesign) RemoverDesign(context.Context, *designv1.ObterDesignRequest, ...grpc.CallOption) (*designv1.RemoverResponse, error) {
 	return nil, nil
+}
+func (f *fakeDesign) ListarDesigns(_ context.Context, in *designv1.ListarDesignsRequest, _ ...grpc.CallOption) (*designv1.ListarDesignsResponse, error) {
+	f.sistemaIDDesignsPedido = in.GetSistemaId()
+	if f.listarDesignsErr != nil {
+		return nil, f.listarDesignsErr
+	}
+	return &designv1.ListarDesignsResponse{Designs: f.designsResp}, nil
 }
 func (f *fakeDesign) CriarSistema(_ context.Context, in *designv1.CriarSistemaRequest, _ ...grpc.CallOption) (*designv1.Sistema, error) {
 	f.nomeCriado = in.GetNome()

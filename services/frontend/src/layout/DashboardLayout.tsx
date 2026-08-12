@@ -53,6 +53,11 @@ export function DashboardLayout() {
   }, [menuAberto]);
 
   const titulo = tituloDaPagina(location.pathname);
+  // A aba Telas é um editor de viewport fixo (como Figma/Webflow): cabeçalho
+  // e abas ficam parados, e cada painel (esquerdo/canvas/direito) rola por
+  // conta própria dentro de uma altura definida — em vez da página inteira
+  // rolar (comportamento padrão das demais páginas do dashboard).
+  const ehAbaTelas = location.pathname.endsWith('/telas');
 
   return (
     <TooltipProvider>
@@ -189,7 +194,13 @@ export function DashboardLayout() {
           </header>
 
           {/* Main Content Area */}
-          <main className="flex-1 overflow-y-auto p-4 md:p-8">
+          <main
+            className={
+              ehAbaTelas
+                ? 'flex flex-col min-h-0 overflow-hidden p-4 md:p-8 h-[calc(100svh-4rem)]'
+                : 'flex-1 overflow-y-auto p-4 md:p-8'
+            }
+          >
             <Outlet />
           </main>
         </SidebarInset>

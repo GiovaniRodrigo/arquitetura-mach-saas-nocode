@@ -3,6 +3,9 @@
 // Authorization; o tenant é derivado do token pelo Gateway (nunca enviado no corpo).
 
 import type {
+  Componente,
+  Design,
+  DesignResumo,
   EventoLogin,
   Feedback,
   MapaPermissoes,
@@ -132,6 +135,44 @@ export class ApiClient {
       body: JSON.stringify({ nome }),
     });
     return this.parse<Sistema>(resp);
+  }
+
+  /** Lista as telas (Designs) de um sistema, sem a árvore (RF09). */
+  async listarTelas(sistemaId: string): Promise<DesignResumo[]> {
+    const resp = await this.fetchFn(
+      `${this.baseUrl}/api/v1/designs?sistema_id=${encodeURIComponent(sistemaId)}`,
+      { headers: this.headers() },
+    );
+    const corpo = await this.parse<{ telas: DesignResumo[] }>(resp);
+    return corpo.telas ?? [];
+  }
+
+  /** Cria uma tela (Design) num sistema; devolve o id gerado (RF09). */
+  async criarDesign(dados: { sistemaId: string; nome: string; arvore: Componente }): Promise<{ id: string }> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/designs`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ sistema_id: dados.sistemaId, nome: dados.nome, arvore: dados.arvore }),
+    });
+    const corpo = await this.parse<{ design_id: string }>(resp);
+    return { id: corpo.design_id };
+  }
+
+  /** Busca a árvore completa de uma tela (RF09). */
+  async obterDesign(id: string): Promise<Design> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/designs/${encodeURIComponent(id)}`, {
+      headers: this.headers(),
+    });
+    return this.parse<Design>(resp);
+  }
+
+  /** Remove uma tela (RF09). */
+  async removerDesign(id: string): Promise<void> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/designs/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    await this.parse<unknown>(resp);
   }
 
   /** Versão ativa consolidada — o Frontend sempre consome esta (RN04). */

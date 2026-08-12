@@ -89,6 +89,11 @@ colunas (sidebar/canvas/propriedades) e o estado vazio, e trata o editor funcion
 prontidão para uma spec própria subsequente (RF09 fica parcialmente coberto — ver
 Riscos).
 
+> **Atualização:** o editor funcional foi implementado em
+> `specs/007-editor-visual-canvas` (árvore real, drag&drop, rich text por
+> trecho, posicionamento livre, catálogo de 32 componentes) — RF09 está
+> coberto por completo lá.
+
 ---
 
 ## 3. Dependências e Pré-requisitos

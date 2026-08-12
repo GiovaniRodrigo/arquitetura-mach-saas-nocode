@@ -124,6 +124,8 @@ npm run dev
 
 Config em `services/frontend/.env.local` (`VITE_BYPASS_AUTH=true` pula auth em dev). Config runtime injetada via `window.__FRONTEND_CONFIG__` (baseUrl/token/sistemaId do host).
 
+Porta fixada em `5183` via `server.port` + `server.strictPort: true` em `vite.config.ts` — sem `strictPort`, o Vite cai silenciosamente para `5173` se a porta estiver ocupada. Editor visual (aba Telas — canvas, rich text, posicionamento livre, catálogo de componentes) documentado em `specs/007-editor-visual-canvas/`.
+
 ---
 
 ## Referência rápida de portas
@@ -145,7 +147,7 @@ Config em `services/frontend/.env.local` (`VITE_BYPASS_AUTH=true` pula auth em d
 | Export Service     | 50055   |
 | Gateway (HTTP)     | 8080    |
 | Collab (Phoenix)   | 4000    |
-| Frontend (Vite dev)| 5173 (default do Vite) |
+| Frontend (Vite dev)| 5183    |
 
 ## Comandos úteis (Makefile)
 

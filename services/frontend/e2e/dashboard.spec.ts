@@ -1,21 +1,30 @@
 import { test, expect } from '@playwright/test';
+import { mockGatewayPadrao } from './mockApi';
 
 test.describe('Dashboard Layout E2E', () => {
   test('deve renderizar a Sidebar e o Header sem sobreposição', async ({ page }) => {
-    // Acessa o dashboard (o bypass auth local já deve permitir a navegação direta)
-    await page.goto('/dashboard');
+    await mockGatewayPadrao(page);
 
-    // Verifica se a Sidebar e os itens de menu estão visíveis
-    const homeLink = page.getByRole('link', { name: /home/i });
-    await expect(homeLink).toBeVisible();
+    // Acessa o dashboard (o bypass auth local já deve permitir a navegação direta).
+    // Sem barra inicial: a app é servida sob /ui/ (ver baseURL em playwright.config.ts).
+    await page.goto('dashboard');
 
-    // Verifica se o Header e o Toggle estão visíveis
-    const headerTitle = page.getByText(/welcome, user/i);
+    // Verifica se a Sidebar e os itens de menu estão visíveis (não existe
+    // item "Home" na Sidebar atual — os links são Dashboard/Clientes/
+    // Configuração/Cadastro-Perfil/Ajuda, ver DashboardLayout.tsx).
+    const clientesLink = page.getByRole('link', { name: 'Clientes' });
+    await expect(clientesLink).toBeVisible();
+
+    // Verifica se o Header (título da página) está visível.
+    const headerTitle = page.getByRole('heading', { name: 'Dashboard' });
     await expect(headerTitle).toBeVisible();
 
-    // Uma asserção crucial: o link deve estar no topo e receber cliques
-    // Se o header estivesse cortando/sobrepondo, o click seria interceptado por ele
-    await homeLink.click();
+    // Uma asserção crucial: o link deve estar no topo e receber cliques —
+    // se o header estivesse cortando/sobrepondo, o click seria interceptado
+    // por ele. Usa "Clientes" (não "Dashboard", já ativo) para exercitar uma
+    // navegação real em vez de um click que não move a rota.
+    await clientesLink.click();
+    await expect(page).toHaveURL(/\/dashboard\/clientes$/);
 
     // Testa a funcionalidade responsiva/drawer abrindo e fechando
     const toggleButton = page.getByRole('button', { name: /toggle sidebar/i });

@@ -31,6 +31,8 @@ export interface CollabHandlers {
   onLock?: (blindIndex: string, userId: string) => void;
   onUnlock?: (blindIndex: string) => void;
   onPresence?: (state: unknown) => void;
+  /** Chamado com a árvore atual do ecrã devolvida pelo `join` (antes de resolver). */
+  onJoin?: (tree: unknown) => void;
 }
 
 const factoryPadrao: SocketFactory = (url, opts) => new Socket(url, opts) as unknown as SocketLike;
@@ -43,10 +45,19 @@ export class CollabClient {
     this.socket = factory(url, { params: { token } });
   }
 
-  /** Conecta e junta-se ao canal do ecrã, ligando os handlers. */
-  entrar(screenId: string, handlers: CollabHandlers = {}): Promise<void> {
+  /**
+   * Conecta e junta-se ao canal do ecrã, ligando os handlers. `params` semeia
+   * o `ScreenServer` (sistema_id/design_id/nome) no primeiro join — só tem
+   * efeito quando ainda não existe um processo ativo para este ecrã (ver
+   * CollabWeb.ScreenChannel.join/3).
+   */
+  entrar(
+    screenId: string,
+    handlers: CollabHandlers = {},
+    params: { sistema_id?: string; design_id?: string; nome?: string } = {},
+  ): Promise<void> {
     this.socket.connect();
-    const ch = this.socket.channel(`screen:${screenId}`, {});
+    const ch = this.socket.channel(`screen:${screenId}`, params);
 
     ch.on("mutation", (p) => handlers.onMutation?.(p.mutation, p.from));
     ch.on("lock", (p) => handlers.onLock?.(p.blind_index, p.user_id));
@@ -57,7 +68,10 @@ export class CollabClient {
 
     return new Promise((resolve, reject) => {
       ch.join()
-        .receive("ok", () => resolve())
+        .receive("ok", (resp) => {
+          handlers.onJoin?.((resp as { tree?: unknown } | undefined)?.tree);
+          resolve();
+        })
         .receive("error", (e) => reject(e))
         .receive("timeout", () => reject(new Error("timeout ao juntar-se ao canal")));
     });

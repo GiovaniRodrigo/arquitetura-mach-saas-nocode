@@ -99,6 +99,32 @@ func (s *Store) Atualizar(ctx context.Context, d *designv1.Design) error {
 	})
 }
 
+// Listar devolve id/nome (sem a árvore) dos designs de um sistema, restrito ao
+// tenant corrente pela RLS.
+func (s *Store) Listar(ctx context.Context, sistemaID string) ([]*designv1.DesignResumo, error) {
+	var resumos []*designv1.DesignResumo
+	err := s.db.WithTenant(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(ctx,
+			`SELECT id, nome FROM designs WHERE sistema_id = $1 ORDER BY criado_em`, sistemaID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var r designv1.DesignResumo
+			if err := rows.Scan(&r.Id, &r.Nome); err != nil {
+				return err
+			}
+			resumos = append(resumos, &r)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, fmt.Errorf("store: listar designs: %w", err)
+	}
+	return resumos, nil
+}
+
 // Remover apaga um design do tenant corrente.
 func (s *Store) Remover(ctx context.Context, id string) error {
 	return s.db.WithTenant(ctx, func(ctx context.Context, tx pgx.Tx) error {

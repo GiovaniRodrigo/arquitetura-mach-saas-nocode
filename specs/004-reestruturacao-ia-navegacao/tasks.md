@@ -61,6 +61,7 @@ com `fetch` mockado nos testes até o backend expor os endpoints reais.
 - [x] 39. Implementar `AbaRegrasNegocio.tsx` — CRUD de regra de componente único; RF11 (multi-componente) como placeholder explícito ("em breve"), não como funcionalidade real (RF10, RN06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx`)
 - [x] 40. Escrever teste de `AbaTelas.test.tsx` cobrindo apenas a casca (layout de 3 colunas renderiza, estado vazio "nenhuma tela criada ainda") — sem simular drag-and-drop, que não existe nesta fase (RF09) (`player/src/pages/Dashboard/abas/AbaTelas.test.tsx`)
 - [x] 41. Implementar `AbaTelas.tsx` como casca de navegação (sidebar de telas vazia, área central com placeholder de canvas, painel de propriedades vazio) — o editor funcional fica para spec própria (ver `plan.md §2.3`/Riscos) (RF09) (`player/src/pages/Dashboard/abas/AbaTelas.tsx`)
+  - Editor funcional implementado em `specs/007-editor-visual-canvas` (fecha o RF09 por completo).
 
 ## Encerramento
 

@@ -36,7 +36,7 @@ própria conta; manter seus dados de cadastro; e consultar a documentação da p
 | RF06 | Dashboard | Card "Resumo Financeiro": exibir receita de assinatura/cobrança da plataforma pelos tenants vinculados. | Administrador (Dono/Parceiro) | Alta |
 | RF07 | Clientes | Listar tenants (clientes/negócios) vinculados ao usuário autenticado. | Administrador (Dono/Parceiro) | Alta |
 | RF08 | Clientes | Ao selecionar um tenant, listar os sistemas pertencentes a ele. | Administrador (Dono/Parceiro) | Alta |
-| RF09 | Clientes | Ao selecionar um sistema, abrir a aba "Telas": canvas infinito, sidebar esquerda com telas/componentes e painel direito de propriedades do componente selecionado, permitindo criar/atualizar telas e componentes. | Criador/Colaborador | Alta |
+| RF09 | Clientes | Ao selecionar um sistema, abrir a aba "Telas": canvas infinito, sidebar esquerda com telas/componentes e painel direito de propriedades do componente selecionado, permitindo criar/atualizar telas e componentes. Editor funcional detalhado em `specs/007-editor-visual-canvas`. | Criador/Colaborador | Alta |
 | RF10 | Clientes | Aba "Regras de Negócio": CRUD de regras de validação de estado de um componente (ex.: CPF somente números, 11 caracteres). | Criador/Colaborador | Alta |
 | RF11 | Clientes | Aba "Regras de Negócio": suportar regras que validam a combinação de múltiplos componentes. | Criador/Colaborador | Média |
 | RF12 | Clientes | Aba "Versão": listar as versões do sistema e permitir publicar uma nova versão ou reverter para uma anterior. | Criador | Alta |

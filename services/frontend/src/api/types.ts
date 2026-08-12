@@ -9,6 +9,20 @@ export interface Componente {
   componente_filhos?: Componente[];
 }
 
+/** Tela (Design) de um sistema: árvore Composite nomeada — RF09. */
+export interface Design {
+  id: string;
+  sistema_id: string;
+  nome: string;
+  arvore: Componente;
+}
+
+/** Forma leve de uma tela na listagem por sistema, sem a árvore (RF09). */
+export interface DesignResumo {
+  id: string;
+  nome: string;
+}
+
 /** Restrições de um campo do schema (coluna limites). */
 export interface Limites {
   min?: number;

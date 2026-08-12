@@ -50,6 +50,20 @@ describe('SistemaAbas (RF09-RF12)', () => {
     expect(screen.getByRole('link', { name: /versão/i })).toHaveAttribute('aria-current', 'page');
   });
 
+  it('as abas Telas e Regras de Negócio usam a largura total (editor e prévia precisam do espaço)', () => {
+    const telas = renderComRota('/dashboard/clientes/t1/sistemas/s1/telas');
+    expect(telas.getByTestId('conteudo-aba').parentElement).not.toHaveClass('max-w-5xl');
+    telas.unmount();
+
+    const regras = renderComRota('/dashboard/clientes/t1/sistemas/s1/regras');
+    expect(regras.getByTestId('conteudo-aba').parentElement).not.toHaveClass('max-w-5xl');
+  });
+
+  it('a aba Versão continua com largura limitada para leitura', () => {
+    const versao = renderComRota('/dashboard/clientes/t1/sistemas/s1/versao');
+    expect(versao.getByTestId('conteudo-aba').parentElement).toHaveClass('max-w-5xl');
+  });
+
   it('exibe o nome do sistema no cabeçalho', async () => {
     const client = fakeClient({
       listarSistemas: vi.fn().mockResolvedValue([

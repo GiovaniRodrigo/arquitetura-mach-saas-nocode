@@ -9,8 +9,8 @@ import (
 
 	commonv1 "github.com/machv4/platform/gen/go/construtor/common/v1"
 	designv1 "github.com/machv4/platform/gen/go/construtor/design/v1"
-	"github.com/machv4/platform/services/design/internal/store"
 	"github.com/machv4/platform/pkg/tenantctx"
+	"github.com/machv4/platform/services/design/internal/store"
 )
 
 // fakeStore registra chamadas e devolve respostas controladas.
@@ -24,6 +24,10 @@ type fakeStore struct {
 	sistemaID   string
 	sistemaNome string
 	listaSis    []*designv1.Sistema
+
+	listaDesigns           []*designv1.DesignResumo
+	listarDesignsErr       error
+	sistemaIDDesignsPedido string
 
 	listaSisTenant   []*designv1.Sistema
 	tenantIDPedido   string
@@ -39,8 +43,12 @@ func (f *fakeStore) Criar(_ context.Context, _ *designv1.Design) (string, error)
 func (f *fakeStore) Obter(_ context.Context, _ string) (*designv1.Design, error) {
 	return f.obterD, f.obterErr
 }
+func (f *fakeStore) Listar(_ context.Context, sistemaID string) ([]*designv1.DesignResumo, error) {
+	f.sistemaIDDesignsPedido = sistemaID
+	return f.listaDesigns, f.listarDesignsErr
+}
 func (f *fakeStore) Atualizar(_ context.Context, _ *designv1.Design) error { return nil }
-func (f *fakeStore) Remover(_ context.Context, _ string) error            { return nil }
+func (f *fakeStore) Remover(_ context.Context, _ string) error             { return nil }
 func (f *fakeStore) Salvar(_ context.Context, d *designv1.Design) error {
 	f.salvou = d
 	return f.salvarErr
@@ -136,6 +144,37 @@ func TestSalvarDesign_OK(t *testing.T) {
 	}
 	if !resp.GetSucesso() || fs.salvou.GetId() != "d-9" {
 		t.Fatalf("salvar não propagou o design: %+v", fs.salvou)
+	}
+}
+
+func TestListarDesigns_SemTenant_Unauthenticated(t *testing.T) {
+	s := New(&fakeStore{})
+	_, err := s.ListarDesigns(context.Background(), &designv1.ListarDesignsRequest{SistemaId: "s1"})
+	if code(err) != codes.Unauthenticated {
+		t.Fatalf("esperava Unauthenticated; got %v", err)
+	}
+}
+
+func TestListarDesigns_SemSistemaID_InvalidArgument(t *testing.T) {
+	s := New(&fakeStore{})
+	_, err := s.ListarDesigns(comTenant(), &designv1.ListarDesignsRequest{})
+	if code(err) != codes.InvalidArgument {
+		t.Fatalf("esperava InvalidArgument; got %v", err)
+	}
+}
+
+func TestListarDesigns_OK(t *testing.T) {
+	fs := &fakeStore{listaDesigns: []*designv1.DesignResumo{{Id: "d1", Nome: "Home"}, {Id: "d2", Nome: "Cadastro"}}}
+	s := New(fs)
+	out, err := s.ListarDesigns(comTenant(), &designv1.ListarDesignsRequest{SistemaId: "s1"})
+	if err != nil {
+		t.Fatalf("inesperado: %v", err)
+	}
+	if fs.sistemaIDDesignsPedido != "s1" {
+		t.Fatalf("sistema_id não propagado: %q", fs.sistemaIDDesignsPedido)
+	}
+	if len(out.GetDesigns()) != 2 || out.GetDesigns()[0].GetNome() != "Home" {
+		t.Fatalf("lista inesperada: %+v", out.GetDesigns())
 	}
 }
 

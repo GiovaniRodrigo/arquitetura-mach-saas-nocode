@@ -40,6 +40,22 @@ message RemoverResponse {
   bool sucesso = 1;
 }
 
+// DesignResumo é a forma leve de um Design usada na listagem por sistema
+// (RF09): apenas id/nome, sem a árvore inteira — a árvore é buscada sob
+// demanda via ObterDesign quando o utilizador abre a tela.
+message DesignResumo {
+  string id = 1;
+  string nome = 2;
+}
+
+message ListarDesignsRequest {
+  string sistema_id = 1;
+}
+
+message ListarDesignsResponse {
+  repeated DesignResumo designs = 1;
+}
+
 // Sistema criado pelo utilizador, isolado por tenant (RN01). É o contêiner ao
 // qual os designs e as versões publicadas pertencem.
 message Sistema {
@@ -87,6 +103,8 @@ service DesignEngineService {
   rpc ObterDesign(ObterDesignRequest) returns (Design);
   rpc AtualizarDesign(Design) returns (Design);
   rpc RemoverDesign(ObterDesignRequest) returns (RemoverResponse);
+  // Lista as telas (Designs) de um sistema, forma leve sem a árvore (RF09).
+  rpc ListarDesigns(ListarDesignsRequest) returns (ListarDesignsResponse);
   // Chamada única em lote da colaboração (write-behind).
   rpc SalvarDesign(SalvarDesignRequest) returns (SalvarDesignResponse);
   // Descoberta/criação de sistemas do tenant, consumida pelo seletor do Frontend

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
 import { useSistemas } from '../../systems/useSistemas';
 
@@ -7,6 +7,11 @@ import { useSistemas } from '../../systems/useSistemas';
 export function SistemaAbas() {
   const { tenantId, sistemaId } = useParams<{ tenantId: string; sistemaId: string }>();
   const base = `/dashboard/clientes/${tenantId}/sistemas/${sistemaId}`;
+  // Telas (canvas + painéis) e Regras de Negócio (lista de componentes +
+  // prévia da tela) precisam da largura total disponível; Versão é conteúdo
+  // textual/listas e continua com a largura de leitura limitada (max-w-5xl).
+  const pathname = useLocation().pathname;
+  const layoutCompleto = pathname.endsWith('/telas') || pathname.endsWith('/regras');
 
   // Não existe endpoint de "obter 1 sistema" — reaproveita a mesma listagem
   // já usada em ClienteSistemas (useSistemas) e localiza o sistema corrente
@@ -22,22 +27,26 @@ export function SistemaAbas() {
     }`;
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
-      <h2 className="text-2xl font-heading font-bold" aria-busy={estado.fase === 'carregando'}>
-        {nomeSistema}
-      </h2>
-      <nav className="flex gap-2 border-b border-border pb-2">
-        <NavLink to={`${base}/telas`} className={abaClasse}>
-          Telas
-        </NavLink>
-        <NavLink to={`${base}/regras`} className={abaClasse}>
-          Regras de Negócio
-        </NavLink>
-        <NavLink to={`${base}/versao`} className={abaClasse}>
-          Versão
-        </NavLink>
-      </nav>
-      <Outlet />
+    <div className={`flex flex-col gap-6 ${layoutCompleto ? 'h-full min-h-0' : 'pb-8'}`}>
+      <div className="max-w-5xl mx-auto w-full flex flex-col gap-6 shrink-0">
+        <h2 className="text-2xl font-heading font-bold" aria-busy={estado.fase === 'carregando'}>
+          {nomeSistema}
+        </h2>
+        <nav className="flex gap-2 border-b border-border pb-2">
+          <NavLink to={`${base}/telas`} className={abaClasse}>
+            Telas
+          </NavLink>
+          <NavLink to={`${base}/regras`} className={abaClasse}>
+            Regras de Negócio
+          </NavLink>
+          <NavLink to={`${base}/versao`} className={abaClasse}>
+            Versão
+          </NavLink>
+        </nav>
+      </div>
+      <div className={layoutCompleto ? 'flex-1 min-h-0' : 'max-w-5xl mx-auto w-full'}>
+        <Outlet />
+      </div>
     </div>
   );
 }

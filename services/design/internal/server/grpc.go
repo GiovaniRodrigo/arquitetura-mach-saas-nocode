@@ -20,6 +20,7 @@ import (
 type Persistencia interface {
 	Criar(ctx context.Context, d *designv1.Design) (string, error)
 	Obter(ctx context.Context, id string) (*designv1.Design, error)
+	Listar(ctx context.Context, sistemaID string) ([]*designv1.DesignResumo, error)
 	Atualizar(ctx context.Context, d *designv1.Design) error
 	Remover(ctx context.Context, id string) error
 	Salvar(ctx context.Context, d *designv1.Design) error
@@ -71,6 +72,22 @@ func (s *DesignServer) ObterDesign(ctx context.Context, req *designv1.ObterDesig
 		return nil, mapErr(err)
 	}
 	return d, nil
+}
+
+// ListarDesigns devolve as telas (Designs) de um sistema, forma leve sem a
+// árvore (RF09) — a árvore de cada uma é buscada sob demanda via ObterDesign.
+func (s *DesignServer) ListarDesigns(ctx context.Context, req *designv1.ListarDesignsRequest) (*designv1.ListarDesignsResponse, error) {
+	if err := exigirTenant(ctx); err != nil {
+		return nil, err
+	}
+	if req.GetSistemaId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "sistema_id obrigatório")
+	}
+	designs, err := s.store.Listar(ctx, req.GetSistemaId())
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	return &designv1.ListarDesignsResponse{Designs: designs}, nil
 }
 
 // AtualizarDesign revalida a árvore e sobrescreve um design existente.

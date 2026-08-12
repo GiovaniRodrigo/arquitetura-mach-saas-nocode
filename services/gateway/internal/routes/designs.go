@@ -20,6 +20,7 @@ type DesignCliente interface {
 	ObterDesign(ctx context.Context, in *designv1.ObterDesignRequest, opts ...grpc.CallOption) (*designv1.Design, error)
 	AtualizarDesign(ctx context.Context, in *designv1.Design, opts ...grpc.CallOption) (*designv1.Design, error)
 	RemoverDesign(ctx context.Context, in *designv1.ObterDesignRequest, opts ...grpc.CallOption) (*designv1.RemoverResponse, error)
+	ListarDesigns(ctx context.Context, in *designv1.ListarDesignsRequest, opts ...grpc.CallOption) (*designv1.ListarDesignsResponse, error)
 	CriarSistema(ctx context.Context, in *designv1.CriarSistemaRequest, opts ...grpc.CallOption) (*designv1.Sistema, error)
 	ListarSistemas(ctx context.Context, in *designv1.ListarSistemasRequest, opts ...grpc.CallOption) (*designv1.ListarSistemasResponse, error)
 	AtualizarWhiteLabel(ctx context.Context, in *designv1.AtualizarWhiteLabelRequest, opts ...grpc.CallOption) (*designv1.WhiteLabel, error)
@@ -107,6 +108,34 @@ func CriarDesign(design DesignCliente) http.HandlerFunc {
 			"design_id":  out.GetId(),
 			"sistema_id": out.GetSistemaId(),
 		})
+	}
+}
+
+// telaResumoResp espelha um DesignResumo no corpo JSON da listagem.
+type telaResumoResp struct {
+	ID   string `json:"id"`
+	Nome string `json:"nome"`
+}
+
+// ListarDesigns serve GET /api/v1/designs?sistema_id={id} (RF09): lista as
+// telas de um sistema, forma leve sem a árvore.
+func ListarDesigns(design DesignCliente) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sistemaID := r.URL.Query().Get("sistema_id")
+		if sistemaID == "" {
+			web.Error(w, http.StatusBadRequest, "MISSING_PARAM", "sistema_id obrigatório")
+			return
+		}
+		out, err := design.ListarDesigns(r.Context(), &designv1.ListarDesignsRequest{SistemaId: sistemaID})
+		if err != nil {
+			writeDesignError(w, err)
+			return
+		}
+		lista := make([]telaResumoResp, 0, len(out.GetDesigns()))
+		for _, d := range out.GetDesigns() {
+			lista = append(lista, telaResumoResp{ID: d.GetId(), Nome: d.GetNome()})
+		}
+		web.JSON(w, http.StatusOK, map[string]any{"telas": lista})
 	}
 }
 

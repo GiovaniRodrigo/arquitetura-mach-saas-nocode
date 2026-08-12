@@ -436,6 +436,53 @@ describe("ApiClient (RF03/RN08)", () => {
     expect(init.method).toBe("POST");
   });
 
+  it("listarTelas desembrulha o campo telas e envia sistema_id na query (RF09)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      respostaJSON(200, { telas: [{ id: "d1", nome: "Home" }, { id: "d2", nome: "Cadastro" }] }),
+    );
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const telas = await client.listarTelas("s1");
+    const [url] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/designs?sistema_id=s1");
+    expect(telas).toHaveLength(2);
+    expect(telas[0].nome).toBe("Home");
+  });
+
+  it("criarDesign faz POST com sistema_id/nome/arvore e devolve o id (RF09)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(201, { design_id: "d-9", sistema_id: "s1" }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+    const arvore = { blind_index: "root-1", tipo: "tela" };
+
+    const criado = await client.criarDesign({ sistemaId: "s1", nome: "Home", arvore });
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/designs");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ sistema_id: "s1", nome: "Home", arvore });
+    expect(criado.id).toBe("d-9");
+  });
+
+  it("obterDesign faz GET em /designs/{id} e devolve a árvore completa (RF09)", async () => {
+    const design = { id: "d1", sistema_id: "s1", nome: "Home", arvore: { blind_index: "root-1", tipo: "tela" } };
+    const fetchFn = vi.fn().mockResolvedValue(respostaJSON(200, design));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    const obtido = await client.obterDesign("d1");
+    const [url] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/designs/d1");
+    expect(obtido).toEqual(design);
+  });
+
+  it("removerDesign faz DELETE em /designs/{id} (RF09)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const client = new ApiClient("http://gw", "t", fetchFn as unknown as typeof fetch);
+
+    await client.removerDesign("d1");
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://gw/api/v1/designs/d1");
+    expect(init.method).toBe("DELETE");
+  });
+
   it("com o fetch padrão, invoca o fetch global sem quebrar o binding (this)", async () => {
     // Reproduz o "Illegal invocation": o fetch nativo exige this global. Sem
     // fetchFn injetado, o client deve chamá-lo como função livre (this global).

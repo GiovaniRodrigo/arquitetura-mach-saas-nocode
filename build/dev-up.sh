@@ -264,7 +264,7 @@ cat <<EOF
 EOF
 
 if [ "$WITH_FRONTEND" = "1" ]; then
-  echo "  ${C_BOLD}Frontend${C_RESET}  http://localhost:5173  (iniciando em foreground abaixo)"
+  echo "  ${C_BOLD}Frontend${C_RESET}  http://localhost:5183  (iniciando em foreground abaixo)"
   echo
   confirm "Abrir o frontend agora (npm run dev, foreground, Ctrl+C encerra tudo)?" && {
     cd services/frontend && exec npm run dev

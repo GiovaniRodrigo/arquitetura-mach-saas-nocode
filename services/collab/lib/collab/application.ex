@@ -15,7 +15,11 @@ defmodule Collab.Application do
         CollabWeb.Presence,
         # Um processo por ecrã, endereçado por screen_id, sob supervisão dinâmica.
         {Registry, keys: :unique, name: Collab.Session.Registry},
-        Collab.Session.ScreenSupervisor
+        Collab.Session.ScreenSupervisor,
+        # Exigido pelo cliente gRPC (GRPC.Stub.connect/2) usado no flush write-behind
+        # para o Design Engine — sem isso, todo flush levanta RuntimeError e derruba
+        # o ScreenServer, perdendo silenciosamente a persistência (RN06).
+        {GRPC.Client.Supervisor, []}
       ] ++
         redix_child() ++
         [

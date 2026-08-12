@@ -1,0 +1,142 @@
+
+> @machv4/frontend@0.1.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m97[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5183[22m/ui/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m11:33:14 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:33:26 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:33:34 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:33:40 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:33:47 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:33:52 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:33:58 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:34:12 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx, /src/index.css[22m
+[2m11:34:12 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx[22m Could not Fast Refresh ("LARGURA_DEVICE" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:34:12 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx, /src/pages/Dashboard/editor/PreviewOverlay.tsx[22m
+[2m11:34:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx, /src/index.css[22m
+[2m11:34:20 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx[22m Could not Fast Refresh ("LARGURA_DEVICE" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:34:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx, /src/pages/Dashboard/editor/PreviewOverlay.tsx[22m
+[2m11:34:27 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx, /src/index.css[22m
+[2m11:34:27 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx[22m Could not Fast Refresh ("LARGURA_DEVICE" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:34:27 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx, /src/pages/Dashboard/editor/PreviewOverlay.tsx[22m
+[2m11:34:35 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx, /src/index.css[22m
+[2m11:34:35 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx[22m Could not Fast Refresh ("LARGURA_DEVICE" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:34:35 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx, /src/pages/Dashboard/editor/PreviewOverlay.tsx[22m
+[2m11:34:54 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx, /src/index.css[22m
+[2m11:34:54 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx[22m Could not Fast Refresh ("LARGURA_DEVICE" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:34:54 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx, /src/pages/Dashboard/editor/PreviewOverlay.tsx[22m
+[2m11:35:37 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m11:35:46 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m11:39:12 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m11:39:25 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/PainelComponentes.tsx, /src/index.css[22m
+[2m11:39:37 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/PainelLayers.tsx, /src/index.css[22m
+[2m11:39:53 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Inspector.tsx, /src/index.css[22m
+[2m11:39:53 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/Inspector.tsx[22m Could not Fast Refresh ("parseMedida" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:39:53 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx[22m
+[2m11:40:56 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx, /src/index.css[22m
+[2m11:40:56 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/EditorTopbar.tsx[22m Could not Fast Refresh ("LARGURA_DEVICE" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:40:56 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx, /src/pages/Dashboard/editor/PreviewOverlay.tsx[22m
+[2m11:41:17 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m11:52:30 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:52:49 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:52:55 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:53:02 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:53:07 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:53:17 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:53:46 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:53:52 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:54:00 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:54:27 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:54:39 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:54:56 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:55:02 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m11:55:38 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/PreviewRenderer.tsx, /src/index.css[22m
+[2m11:55:50 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/PreviewRenderer.tsx, /src/index.css[22m
+[2m11:56:00 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/PreviewRenderer.tsx, /src/index.css[22m
+[2m11:56:19 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Inspector.tsx, /src/index.css[22m
+[2m11:56:19 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/Inspector.tsx[22m Could not Fast Refresh ("parseMedida" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:56:19 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx[22m
+[2m11:56:27 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Inspector.tsx, /src/index.css[22m
+[2m11:56:27 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/Inspector.tsx[22m Could not Fast Refresh ("parseMedida" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:56:27 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx[22m
+[2m11:56:45 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m11:58:06 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/editor/Canvas.tsx, /src/pages/Dashboard/editor/PreviewRenderer.tsx, /src/pages/Dashboard/editor/Inspector.tsx[22m
+[2m11:58:06 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/Inspector.tsx[22m Could not Fast Refresh ("parseMedida" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m11:58:06 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx[22m
+[2m11:58:14 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/systems/sanitizeHtml.test.ts[22m
+[2m11:59:09 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:24:47 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Inspector.tsx, /src/index.css[22m
+[2m12:24:47 AM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/Inspector.tsx[22m Could not Fast Refresh ("parseMedida" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m12:24:47 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx[22m
+[2m12:25:06 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:25:12 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:25:20 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:25:42 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:26:00 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:26:07 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:26:15 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:26:22 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/auth/Login.tsx, /src/index.css[22m
+[2m12:26:25 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/layout/DashboardLayout.tsx, /src/index.css[22m
+[2m12:26:30 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/layout/DashboardLayout.test.tsx[22m
+[2m12:26:32 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:26:43 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m12:26:49 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m12:27:35 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/editor/Inspector.test.tsx[22m
+[2m12:27:40 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/layout/DashboardLayout.tsx, /src/index.css[22m
+[2m12:27:47 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/layout/DashboardLayout.test.tsx[22m
+[2m12:28:02 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:28:31 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:29:17 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:33:09 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/layout/DashboardLayout.tsx, /src/index.css[22m
+[2m12:33:12 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/layout/DashboardLayout.tsx, /src/index.css[22m
+[2m12:33:15 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/layout/DashboardLayout.tsx, /src/index.css[22m
+[2m12:33:22 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/layout/DashboardLayout.test.tsx[22m
+[2m12:33:38 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/layout/DashboardLayout.test.tsx[22m
+[2m12:35:00 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/layout/DashboardLayout.tsx, /src/index.css[22m
+[2m12:35:03 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/layout/DashboardLayout.tsx, /src/index.css[22m
+[2m12:35:17 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/layout/DashboardLayout.tsx, /src/index.css[22m
+[2m12:39:24 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx, /src/pages/Dashboard/editor/Canvas.tsx, /src/pages/Dashboard/editor/Inspector.tsx, /src/pages/Dashboard/editor/PainelComponentes.tsx[22m
+[2m12:39:24 AM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/Inspector.tsx[22m Could not Fast Refresh ("parseMedida" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m12:39:24 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx[22m
+[2m12:39:42 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Inspector.tsx, /src/index.css[22m
+[2m12:39:42 AM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Dashboard/editor/Inspector.tsx[22m Could not Fast Refresh ("parseMedida" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m12:39:42 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaTelas.tsx[22m
+[2m12:40:00 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:47:29 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:47:33 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/Canvas.tsx, /src/index.css[22m
+[2m12:48:29 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:48:55 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:49:23 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:49:51 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:50:39 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m12:50:46 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m12:50:57 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaTelas.tsx, /src/index.css[22m
+[2m12:51:05 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaTelas.test.tsx[22m
+[2m12:51:05 AM[22m [31m[1m[vite][22m[39m [31mws proxy socket error:[39m
+Error: read ECONNRESET
+    at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+[2m12:52:46 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/PreviewRenderer.tsx, /src/index.css[22m
+[2m12:52:52 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/SistemaAbas.tsx, /src/index.css[22m
+[2m12:52:55 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/SistemaAbas.tsx, /src/index.css[22m
+[2m12:52:58 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/SistemaAbas.tsx, /src/index.css[22m
+[2m12:53:29 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx, /src/index.css[22m
+[2m12:53:32 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx, /src/index.css[22m
+[2m12:53:50 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaRegrasNegocio.test.tsx[22m
+[2m12:53:58 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/SistemaAbas.test.tsx[22m
+[2m12:54:08 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaRegrasNegocio.test.tsx[22m
+[2m1:04:21 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaRegrasNegocio.tsx[22m
+[2m1:04:28 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard/abas/AbaRegrasNegocio.tsx[22m
+[2m1:04:42 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx, /src/index.css[22m
+[2m1:05:00 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx, /src/index.css[22m
+[2m1:05:08 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx, /src/index.css[22m
+[2m1:06:33 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx, /src/index.css[22m
+[2m1:06:37 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx, /src/index.css[22m
+[2m1:06:40 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mplaywright-report/index.html[22m
+[2m1:06:43 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx, /src/index.css[22m
+[2m1:07:02 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard/editor/PreviewMiniatura.tsx, /src/index.css[22m
+[2m1:07:21 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaRegrasNegocio.test.tsx[22m
+[2m1:07:28 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Dashboard/abas/AbaRegrasNegocio.test.tsx[22m
