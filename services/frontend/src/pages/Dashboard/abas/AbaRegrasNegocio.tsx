@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Search } from 'lucide-react';
 import { Skeleton, ErrorState } from '../../../components/ui/StateViews';
 import { useApp } from '../../../app/AppContext';
@@ -17,6 +17,11 @@ import type { RegraNegocio, TipoRegraNegocio } from '../../../api/types';
 // regra logo abaixo. Regra envolvendo múltiplos componentes (RF11) é
 // modelagem de UI não trivial (seleção de N componentes + expressão) — fica
 // como placeholder nesta fase (ver plan.md/Riscos).
+
+const LARGURA_PREVIA_MIN = 260;
+const LARGURA_PREVIA_MAX = 560;
+const LARGURA_PREVIA_PADRAO = 320;
+
 export function AbaRegrasNegocio() {
   const { sistemaId = '' } = useParams<{ sistemaId: string }>();
   const { client } = useApp();
@@ -88,9 +93,51 @@ export function AbaRegrasNegocio() {
     setSelecionado(null);
   }
 
+  // Divisor arrastável entre Componentes e Prévia (largura da Prévia em px,
+  // persistida como o resto do layout do editor — ver comentário acima).
+  const [larguraPrevia, setLarguraPrevia] = useSessionStorageState<number>(
+    `mach:sistema:${sistemaId}:regra-largura-previa`,
+    LARGURA_PREVIA_PADRAO,
+  );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [arrastando, setArrastando] = useState(false);
+
+  function clampLarguraPrevia(v: number) {
+    return Math.min(LARGURA_PREVIA_MAX, Math.max(LARGURA_PREVIA_MIN, v));
+  }
+
+  function iniciarArraste(e: ReactPointerEvent) {
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    setArrastando(true);
+
+    function mover(ev: PointerEvent) {
+      const rect = container!.getBoundingClientRect();
+      setLarguraPrevia(clampLarguraPrevia(rect.right - ev.clientX));
+    }
+    function soltar() {
+      setArrastando(false);
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', soltar);
+    }
+    window.addEventListener('pointermove', mover);
+    window.addEventListener('pointerup', soltar);
+  }
+
+  function ajustarComTeclado(e: KeyboardEvent) {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setLarguraPrevia((l) => clampLarguraPrevia(l + 16));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setLarguraPrevia((l) => clampLarguraPrevia(l - 16));
+    }
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-4 flex-1 min-h-0">
-      <div className="bg-card border border-border rounded-2xl p-4 h-full flex flex-col gap-3 min-h-0">
+    <div ref={containerRef} className="flex flex-col md:flex-row flex-1 min-h-0 gap-4">
+      <div className="bg-card border border-border rounded-2xl p-4 h-full flex-1 min-w-0 flex flex-col gap-3 min-h-0">
         <h3 className="text-sm font-heading font-bold text-muted-foreground uppercase tracking-wide">Componentes</h3>
         {telas.length > 0 && (
           <div className="flex flex-col gap-1">
@@ -157,7 +204,29 @@ export function AbaRegrasNegocio() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 min-h-0 overflow-y-auto scrollbar-app">
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Ajustar largura entre Componentes e Prévia"
+        aria-valuenow={larguraPrevia}
+        aria-valuemin={LARGURA_PREVIA_MIN}
+        aria-valuemax={LARGURA_PREVIA_MAX}
+        tabIndex={0}
+        onPointerDown={iniciarArraste}
+        onKeyDown={ajustarComTeclado}
+        className="hidden md:flex w-3 shrink-0 cursor-col-resize items-center justify-center group focus:outline-none"
+      >
+        <div
+          className={`w-1 h-16 rounded-full transition-colors ${
+            arrastando ? 'bg-primary' : 'bg-border group-hover:bg-primary/60 group-focus-visible:bg-primary/60'
+          }`}
+        />
+      </div>
+
+      <div
+        className="w-full flex flex-col gap-4 min-h-0 overflow-y-auto scrollbar-app md:w-[var(--largura-previa)] md:shrink-0"
+        style={{ '--largura-previa': `${larguraPrevia}px` } as CSSProperties}
+      >
         <div className="bg-card border border-border rounded-2xl p-4">
           <h3 className="text-xs font-heading font-bold text-muted-foreground uppercase tracking-wide mb-3">
             {telaAtual ? `Prévia — ${telaAtual.nome}` : 'Prévia'}
