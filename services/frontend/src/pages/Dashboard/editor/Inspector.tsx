@@ -19,9 +19,18 @@ export interface InspectorProps {
   onAtualizar: (blindIndex: string, propriedades: Record<string, unknown>) => void;
   onRemover: (blindIndex: string) => void;
   onDuplicar: (blindIndex: string) => void;
+  onTrazerParaFrente: (blindIndex: string) => void;
+  onEnviarParaTras: (blindIndex: string) => void;
 }
 
-export function Inspector({ componente, onAtualizar, onRemover, onDuplicar }: InspectorProps) {
+export function Inspector({
+  componente,
+  onAtualizar,
+  onRemover,
+  onDuplicar,
+  onTrazerParaFrente,
+  onEnviarParaTras,
+}: InspectorProps) {
   if (!componente) {
     return (
       <section aria-label="Propriedades" className="bg-card border border-border rounded-2xl p-4 h-full">
@@ -168,6 +177,24 @@ export function Inspector({ componente, onAtualizar, onRemover, onDuplicar }: In
                 className={campoClasse}
               />
             </Campo>
+          </div>
+        )}
+        {estilos.posicao === 'absolute' && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onTrazerParaFrente(componente.blind_index)}
+              className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-border hover:bg-secondary"
+            >
+              Trazer para frente
+            </button>
+            <button
+              type="button"
+              onClick={() => onEnviarParaTras(componente.blind_index)}
+              className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-border hover:bg-secondary"
+            >
+              Enviar para trás
+            </button>
           </div>
         )}
         <CampoMedida label="Largura" valor={estilos.largura} onChange={(v) => aplicarEstilo('largura', v)} />

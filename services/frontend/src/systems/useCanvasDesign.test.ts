@@ -111,6 +111,75 @@ describe('useCanvasDesign (RF09/RF06)', () => {
     expect(mutarMock).toHaveBeenCalledWith({ tipo: 'move', blind_index: 'b1', novo_parent: 'root', index: 2 });
   });
 
+  it('duplicarComponente clona o nó logo depois do original e seleciona a cópia', async () => {
+    const arvore = {
+      ...arvoreVaziaBase,
+      componente_filhos: [{ blind_index: 'b1', tipo: 'botao', propriedades: { texto: 'Ok', estilos: {} } }],
+    };
+    const client = fakeClient({ obterDesign: vi.fn().mockResolvedValue(designFake(arvore)) });
+    const { result } = await montarPronto(client, arvore);
+
+    act(() => result.current.duplicarComponente('b1'));
+
+    const filhos = result.current.arvore?.componente_filhos ?? [];
+    expect(filhos).toHaveLength(2);
+    expect(filhos[1].blind_index).not.toBe('b1');
+    expect(filhos[1].propriedades?.estilos).toEqual({});
+    expect(result.current.selecionado).toBe(filhos[1].blind_index);
+  });
+
+  it('duplicarComponente desloca X/Y da cópia quando a posição é absolute (senão nasce invisível sob o original)', async () => {
+    const arvore = {
+      ...arvoreVaziaBase,
+      componente_filhos: [
+        { blind_index: 'b1', tipo: 'input', propriedades: { estilos: { posicao: 'absolute', x: 100, y: 50 } } },
+      ],
+    };
+    const client = fakeClient({ obterDesign: vi.fn().mockResolvedValue(designFake(arvore)) });
+    const { result } = await montarPronto(client, arvore);
+
+    act(() => result.current.duplicarComponente('b1'));
+
+    const copia = result.current.arvore?.componente_filhos?.[1];
+    expect(copia?.propriedades?.estilos).toMatchObject({ posicao: 'absolute', x: 120, y: 70 });
+  });
+
+  it('trazerParaFrente reordena o nó para o fim dos irmãos (fica visualmente por cima)', async () => {
+    const arvore = {
+      ...arvoreVaziaBase,
+      componente_filhos: [
+        { blind_index: 'b1', tipo: 'x' },
+        { blind_index: 'b2', tipo: 'x' },
+        { blind_index: 'b3', tipo: 'x' },
+      ],
+    };
+    const client = fakeClient({ obterDesign: vi.fn().mockResolvedValue(designFake(arvore)) });
+    const { result } = await montarPronto(client, arvore);
+
+    act(() => result.current.trazerParaFrente('b1'));
+
+    expect(result.current.arvore?.componente_filhos?.map((f) => f.blind_index)).toEqual(['b2', 'b3', 'b1']);
+    expect(mutarMock).toHaveBeenCalledWith({ tipo: 'move', blind_index: 'b1', novo_parent: 'root', index: undefined });
+  });
+
+  it('enviarParaTras reordena o nó para o início dos irmãos (fica visualmente por baixo)', async () => {
+    const arvore = {
+      ...arvoreVaziaBase,
+      componente_filhos: [
+        { blind_index: 'b1', tipo: 'x' },
+        { blind_index: 'b2', tipo: 'x' },
+        { blind_index: 'b3', tipo: 'x' },
+      ],
+    };
+    const client = fakeClient({ obterDesign: vi.fn().mockResolvedValue(designFake(arvore)) });
+    const { result } = await montarPronto(client, arvore);
+
+    act(() => result.current.enviarParaTras('b3'));
+
+    expect(result.current.arvore?.componente_filhos?.map((f) => f.blind_index)).toEqual(['b3', 'b1', 'b2']);
+    expect(mutarMock).toHaveBeenCalledWith({ tipo: 'move', blind_index: 'b3', novo_parent: 'root', index: 0 });
+  });
+
   it('removerComponente remove o nó e limpa a seleção se estava selecionado', async () => {
     const arvore = { ...arvoreVaziaBase, componente_filhos: [{ blind_index: 'b1', tipo: 'botao' }] };
     const client = fakeClient({ obterDesign: vi.fn().mockResolvedValue(designFake(arvore)) });

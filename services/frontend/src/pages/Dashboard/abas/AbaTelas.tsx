@@ -308,6 +308,8 @@ function TelaEditorArea({
             onAtualizar={canvas.atualizarPropriedades}
             onRemover={canvas.removerComponente}
             onDuplicar={canvas.duplicarComponente}
+            onTrazerParaFrente={canvas.trazerParaFrente}
+            onEnviarParaTras={canvas.enviarParaTras}
           />
         )}
       </div>

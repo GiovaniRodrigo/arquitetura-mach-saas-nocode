@@ -24,7 +24,7 @@ import {
   gerarBlindIndex,
   type Mutacao,
 } from '../collab/treeOps';
-import { registroDoTipo } from './componentRegistry';
+import { registroDoTipo, type Estilos } from './componentRegistry';
 import { useSessionStorageState } from './useSessionStorageState';
 
 export type EstadoCanvas =
@@ -36,6 +36,7 @@ export type StatusSalvamento = 'salvo' | 'salvando';
 
 const DEBOUNCE_FLUSH_MS = 5000;
 const MARGEM_STATUS_MS = 600;
+const DESLOCAMENTO_DUPLICATA = 20;
 
 export interface UseCanvasDesign {
   estado: EstadoCanvas;
@@ -47,6 +48,8 @@ export interface UseCanvasDesign {
   selecionar: (blindIndex: string | null) => void;
   adicionarComponente: (tipo: string, parentBlindIndex?: string, index?: number) => void;
   moverNo: (blindIndex: string, novoParent: string, index?: number) => void;
+  trazerParaFrente: (blindIndex: string) => void;
+  enviarParaTras: (blindIndex: string) => void;
   atualizarPropriedades: (blindIndex: string, propriedades: Record<string, unknown>) => void;
   removerComponente: (blindIndex: string) => void;
   duplicarComponente: (blindIndex: string) => void;
@@ -188,6 +191,31 @@ export function useCanvasDesign(
     [aplicarLocal],
   );
 
+  /** Reordena `blindIndex` para o fim da lista de irmãos (sem `index`, `move`
+   * anexa ao final — ver `inserirEm` em treeOps.ts): entre irmãos sobrepostos
+   * (`posicao: absolute`), o último do DOM é o que fica visualmente por cima. */
+  const trazerParaFrente = useCallback(
+    (blindIndex: string) => {
+      if (!arvore) return;
+      const pai = encontrarPai(arvore, blindIndex);
+      if (!pai) return;
+      aplicarLocal({ tipo: 'move', blind_index: blindIndex, novo_parent: pai.pai.blind_index });
+    },
+    [arvore, aplicarLocal],
+  );
+
+  /** Reordena `blindIndex` para o início da lista de irmãos — fica por baixo
+   * de qualquer irmão sobreposto. */
+  const enviarParaTras = useCallback(
+    (blindIndex: string) => {
+      if (!arvore) return;
+      const pai = encontrarPai(arvore, blindIndex);
+      if (!pai) return;
+      aplicarLocal({ tipo: 'move', blind_index: blindIndex, novo_parent: pai.pai.blind_index, index: 0 });
+    },
+    [arvore, aplicarLocal],
+  );
+
   const atualizarPropriedades = useCallback(
     (blindIndex: string, propriedades: Record<string, unknown>) => {
       aplicarLocal({ tipo: 'update_props', blind_index: blindIndex, propriedades });
@@ -210,6 +238,16 @@ export function useCanvasDesign(
       const pai = encontrarPai(arvore, blindIndex);
       if (!no || !pai) return;
       const clone = clonarComNovosIndices(no);
+      // Posicionamento livre (absolute): sem deslocar, a cópia nasce exatamente
+      // sobre o original (mesmo x/y) e fica invisível por baixo dele — parece
+      // que "duplicar não fez nada". Desloca só o nó de topo da cópia.
+      const estilos = clone.propriedades?.estilos as Estilos | undefined;
+      if (estilos?.posicao === 'absolute') {
+        clone.propriedades = {
+          ...clone.propriedades,
+          estilos: { ...estilos, x: (estilos.x ?? 0) + DESLOCAMENTO_DUPLICATA, y: (estilos.y ?? 0) + DESLOCAMENTO_DUPLICATA },
+        };
+      }
       aplicarLocal({ tipo: 'add_child', parent: pai.pai.blind_index, no: clone, index: pai.index + 1 });
       setSelecionado(clone.blind_index);
     },
@@ -250,6 +288,8 @@ export function useCanvasDesign(
     selecionar,
     adicionarComponente,
     moverNo,
+    trazerParaFrente,
+    enviarParaTras,
     atualizarPropriedades,
     removerComponente,
     duplicarComponente,
