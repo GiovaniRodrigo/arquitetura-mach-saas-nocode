@@ -58,8 +58,15 @@ describe('Template: DashboardLayout', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Clientes' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Configuração' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Cadastro/Perfil' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ajuda' })).toBeInTheDocument();
+  });
+
+  it('exibe o atalho fixo de Perfil/Cadastro no cabeçalho e navega ao clicar (RF17-RF19)', () => {
+    renderLayout();
+    const botao = screen.getByRole('button', { name: 'Perfil/Cadastro' });
+    expect(botao).toBeInTheDocument();
+    fireEvent.click(botao);
+    expect(screen.getByTestId('outlet-content')).toHaveTextContent('Perfil Content');
   });
 
   it('exibe a identidade real do usuário no cabeçalho (RF03)', () => {

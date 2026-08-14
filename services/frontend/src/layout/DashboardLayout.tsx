@@ -14,6 +14,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
   SidebarHeader,
+  SidebarFooter,
   SidebarInset,
   SidebarGroup,
   SidebarGroupContent,
@@ -88,22 +89,20 @@ export function DashboardLayout() {
                       <span>Configuração</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton render={<Link to="/dashboard/perfil" />} isActive={location.pathname.startsWith('/dashboard/perfil')}>
-                      <User />
-                      <span>Cadastro/Perfil</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton render={<Link to="/dashboard/ajuda" />} isActive={location.pathname.startsWith('/dashboard/ajuda')}>
-                      <HelpCircle />
-                      <span>Ajuda</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<Link to="/dashboard/ajuda" />} isActive={location.pathname.startsWith('/dashboard/ajuda')}>
+                  <HelpCircle />
+                  <span>Ajuda</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
         </Sidebar>
 
         <SidebarInset>
@@ -190,6 +189,21 @@ export function DashboardLayout() {
                   </div>
                 )}
               </div>
+
+              {/* Atalho fixo de Perfil/Cadastro, à direita do cabeçalho */}
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard/perfil')}
+                aria-label="Perfil/Cadastro"
+                className={`flex items-center px-4 py-2 text-sm font-medium border border-border rounded-full transition-colors ${
+                  location.pathname.startsWith('/dashboard/perfil')
+                    ? 'text-foreground bg-secondary'
+                    : 'text-muted-foreground hover:text-foreground bg-card hover:bg-secondary'
+                }`}
+              >
+                <User className="w-4 h-4 mr-2" />
+                Perfil/Cadastro
+              </button>
             </div>
           </header>
 
