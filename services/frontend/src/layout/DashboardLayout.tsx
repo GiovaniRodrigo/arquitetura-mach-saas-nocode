@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Settings, LogOut, User, Search, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut, User, Search, HelpCircle, Moon, Sun } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
 import { encerrarSessao } from '@/auth/session';
 import { useApp } from '@/app/AppContext';
+import { useTheme } from '@/theme/ThemeProvider';
 import { CommandPalette } from '@/dashboard/CommandPalette';
 import {
   SidebarProvider,
@@ -40,6 +42,7 @@ export function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { usuario } = useApp();
+  const { tema, alternarTema } = useTheme();
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -128,6 +131,17 @@ export function DashboardLayout() {
                 <span>Buscar…</span>
                 <kbd className="text-[11px] font-mono border border-border rounded px-1.5 py-0.5">Ctrl K</kbd>
               </button>
+
+              {/* Alternância de tema claro/escuro */}
+              <label className="flex items-center gap-2 px-1 cursor-pointer" aria-label="Alternar tema claro/escuro">
+                <Sun className="w-4 h-4 text-muted-foreground" />
+                <Switch
+                  checked={tema === 'escuro'}
+                  onCheckedChange={alternarTema}
+                />
+                <Moon className="w-4 h-4 text-muted-foreground" />
+              </label>
+
               <button
                 type="button"
                 onClick={sair}

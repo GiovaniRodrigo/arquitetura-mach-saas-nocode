@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DashboardLayout } from './DashboardLayout';
 import { AppProvider } from '../app/AppContext';
+import { ThemeProvider } from '../theme/ThemeProvider';
 import type { ApiClient } from '../api/client';
 import type { UsuarioAutenticado } from '../auth/jwt';
 
@@ -33,22 +34,24 @@ describe('Template: DashboardLayout', () => {
   const renderLayout = (initialRoute = '/dashboard') =>
     render(
       <MemoryRouter initialEntries={[initialRoute]}>
-        <Routes>
-          <Route
-            path="/dashboard"
-            element={
-              <AppProvider client={client} usuario={usuario}>
-                <DashboardLayout />
-              </AppProvider>
-            }
-          >
-            <Route index element={<div data-testid="outlet-content">Dashboard Content</div>} />
-            <Route path="clientes" element={<div data-testid="outlet-content">Clientes Content</div>} />
-            <Route path="configuracao" element={<div data-testid="outlet-content">Configuração Content</div>} />
-            <Route path="perfil" element={<div data-testid="outlet-content">Perfil Content</div>} />
-            <Route path="ajuda" element={<div data-testid="outlet-content">Ajuda Content</div>} />
-          </Route>
-        </Routes>
+        <ThemeProvider>
+          <Routes>
+            <Route
+              path="/dashboard"
+              element={
+                <AppProvider client={client} usuario={usuario}>
+                  <DashboardLayout />
+                </AppProvider>
+              }
+            >
+              <Route index element={<div data-testid="outlet-content">Dashboard Content</div>} />
+              <Route path="clientes" element={<div data-testid="outlet-content">Clientes Content</div>} />
+              <Route path="configuracao" element={<div data-testid="outlet-content">Configuração Content</div>} />
+              <Route path="perfil" element={<div data-testid="outlet-content">Perfil Content</div>} />
+              <Route path="ajuda" element={<div data-testid="outlet-content">Ajuda Content</div>} />
+            </Route>
+          </Routes>
+        </ThemeProvider>
       </MemoryRouter>,
     );
 
