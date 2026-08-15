@@ -53,8 +53,16 @@ confirm() {
     ok "$prompt -> assumindo 'sim' (--yes)"
     return 0
   fi
+  if [ ! -r /dev/tty ]; then
+    warn "$prompt -> sem tty interativo, assumindo 'não' (rode com --yes ou responda manualmente)"
+    return 1
+  fi
   local reply
-  read -r -p "  ${C_YELLOW}?${C_RESET} $prompt [s/N] " reply </dev/tty
+  # Prompt escrito direto em /dev/tty (não via `read -p`, que sai por stderr):
+  # em alguns terminais integrados essa mistura de canais some sem aviso,
+  # deixando o script parecendo travado sem nenhum feedback na tela.
+  printf "  %s?%s %s [s/N] " "$C_YELLOW" "$C_RESET" "$prompt" >/dev/tty
+  read -r reply </dev/tty
   case "$reply" in
     s|S|sim|y|Y|yes) return 0 ;;
     *) return 1 ;;
@@ -69,7 +77,13 @@ mkdir -p "$LOG_DIR"
 PIDS=()
 NAMES=()
 
+CLEANING_UP=0
 cleanup() {
+  # Guarda de reentrância: o EXIT trap dispara de novo quando chamamos
+  # `exit` dentro do handler de INT/TERM abaixo — sem isso, a limpeza roda
+  # em dobro.
+  [ "$CLEANING_UP" = "1" ] && return
+  CLEANING_UP=1
   if [ "${#PIDS[@]}" -gt 0 ]; then
     echo
     step "Encerrando processos iniciados por este script"
@@ -86,7 +100,12 @@ cleanup() {
     wait 2>/dev/null || true
   fi
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+# Ctrl+C (INT) num builtin bloqueante como `read` faz o bash rodar o trap e
+# depois RETENTAR o builtin interrompido — sem o `exit` explícito aqui, o
+# script nunca sai e o prompt de confirmação do frontend fica retomando pra
+# sempre a cada Ctrl+C, sem devolver o terminal.
+trap 'cleanup; exit 130' INT TERM
 
 run_bg() {
   local name="$1"; shift
