@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Componente } from '../../../api/types';
-import type { Estilos } from '../../../systems/componentRegistry';
+import { aceitaFilhos, type Estilos } from '../../../systems/componentRegistry';
 import { estilosParaCss } from '../../../systems/estilosCss';
 import { iconePorNome } from '../../../systems/iconePicker';
 import { paraEmbedUrl } from '../../../systems/videoEmbed';
@@ -15,6 +15,18 @@ import { sanitizarHtml } from '../../../systems/sanitizeHtml';
 export function PreviewRenderer({ no, selecionado }: { no: Componente; selecionado?: string }) {
   const estilos = (no.propriedades?.estilos as Estilos | undefined) ?? {};
   const estiloBase = estilosParaCss(estilos);
+  // Mesmo fallback do Canvas (editor/Canvas.tsx): sem `display` explícito nos
+  // estilos, um nó que aceita filhos ainda precisa virar flex, senão
+  // `direcao`/`justificar`/`alinhar`/`espacamento` (que só têm efeito em
+  // flex/grid) são ignorados e os filhos empilham em bloco, cada um a 100%
+  // de largura. O Canvas aplica esse default há muito tempo; aqui não
+  // aplicava — telas que nunca setam `display` (ex.: build/seed-demo-site.sh)
+  // pareciam corretas no modo Edição e quebravam em Visualização/publicado.
+  const podeReceberFilhos = aceitaFilhos(no.tipo);
+  if (podeReceberFilhos) {
+    estiloBase.display ??= 'flex';
+    estiloBase.flexDirection ??= 'column';
+  }
   // Destaque de "componente selecionado" (aba Regras de Negócio, RF10/RF11):
   // outline por fora do box em vez de border, pra não deslocar o layout do
   // preview ao selecionar/desselecionar um componente.
