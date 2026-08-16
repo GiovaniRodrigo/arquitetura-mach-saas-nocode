@@ -39,6 +39,8 @@ export function renderDashboard(
       listarUltimosAcessos: async () => [],
       listarFeedback: async () => [],
       resumoFinanceiro: async () => ({ receita_total_centavos: 0, moeda: 'BRL', competencia: '' }),
+      acessosPorMes: async () => [],
+      receitaPorMes: async () => ({ pontos: [], moeda: 'BRL' }),
     });
   const usuario = opts.usuario ?? usuarioFake;
   const rota = opts.rota ?? '/dashboard';

@@ -49,6 +49,8 @@ type Store interface {
 	ListarFeedback(ctx context.Context, tenantID string, status *string) ([]store.Feedback, error)
 	AtualizarStatusFeedback(ctx context.Context, id, novoStatus string) (store.Feedback, error)
 	ResumoFinanceiro(ctx context.Context, tenantID string) (store.ResumoFinanceiro, error)
+	AcessosPorMes(ctx context.Context, tenantID string) ([]store.PontoAcessosMensal, error)
+	ReceitaPorMes(ctx context.Context, tenantID string) ([]store.PontoReceitaMensal, error)
 
 	// Área "Conta/Configuração" (spec 004, RF14-RF18).
 	AtualizarPerfil(ctx context.Context, userID, nome, fotoURL string) error
@@ -709,4 +711,42 @@ func (s *IAMServer) ConfirmarTrocaEmail(ctx context.Context, req *iamv1.Confirma
 func (s *IAMServer) ComChaveMfa(chave [32]byte) *IAMServer {
 	s.mfaKey = chave
 	return s
+}
+
+// AcessosPorMes devolve a contagem de logins dos últimos 6 meses dos tenants
+// vinculados ao tenant do contexto, para o gráfico "Acessos por mês" do
+// Dashboard.
+func (s *IAMServer) AcessosPorMes(ctx context.Context, _ *iamv1.AcessosPorMesRequest) (*iamv1.AcessosPorMesResponse, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	pontos, err := s.store.AcessosPorMes(ctx, tc.GetTenantId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao calcular acessos por mês")
+	}
+	out := make([]*iamv1.PontoAcessosMensal, 0, len(pontos))
+	for _, p := range pontos {
+		out = append(out, &iamv1.PontoAcessosMensal{Competencia: p.Competencia, Total: p.Total})
+	}
+	return &iamv1.AcessosPorMesResponse{Pontos: out}, nil
+}
+
+// ReceitaPorMes devolve a receita de assinatura somada dos últimos 6 meses
+// dos tenants vinculados ao tenant do contexto, para o gráfico "Receita de
+// assinatura" do Dashboard.
+func (s *IAMServer) ReceitaPorMes(ctx context.Context, _ *iamv1.ReceitaPorMesRequest) (*iamv1.ReceitaPorMesResponse, error) {
+	tc, err := tenantctx.Require(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "contexto de tenant ausente")
+	}
+	pontos, err := s.store.ReceitaPorMes(ctx, tc.GetTenantId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "falha ao calcular receita por mês")
+	}
+	out := make([]*iamv1.PontoReceitaMensal, 0, len(pontos))
+	for _, p := range pontos {
+		out = append(out, &iamv1.PontoReceitaMensal{Competencia: p.Competencia, ValorCentavos: p.ValorCentavos})
+	}
+	return &iamv1.ReceitaPorMesResponse{Pontos: out, Moeda: "BRL"}, nil
 }

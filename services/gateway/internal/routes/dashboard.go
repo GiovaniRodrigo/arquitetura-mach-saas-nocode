@@ -21,6 +21,8 @@ type DashboardCliente interface {
 	ListarFeedback(ctx context.Context, in *iamv1.ListarFeedbackRequest, opts ...grpc.CallOption) (*iamv1.ListarFeedbackResponse, error)
 	AtualizarStatusFeedback(ctx context.Context, in *iamv1.AtualizarStatusFeedbackRequest, opts ...grpc.CallOption) (*iamv1.Feedback, error)
 	ResumoFinanceiro(ctx context.Context, in *iamv1.ResumoFinanceiroRequest, opts ...grpc.CallOption) (*iamv1.ResumoFinanceiroResponse, error)
+	AcessosPorMes(ctx context.Context, in *iamv1.AcessosPorMesRequest, opts ...grpc.CallOption) (*iamv1.AcessosPorMesResponse, error)
+	ReceitaPorMes(ctx context.Context, in *iamv1.ReceitaPorMesRequest, opts ...grpc.CallOption) (*iamv1.ReceitaPorMesResponse, error)
 }
 
 // eventoLoginResp espelha um EventoLogin no corpo JSON (services/frontend/src/api/types.ts:69-73).
@@ -49,6 +51,20 @@ type resumoFinanceiroResp struct {
 	ReceitaTotalCentavos int64  `json:"receita_total_centavos"`
 	Moeda                string `json:"moeda"`
 	Competencia          string `json:"competencia"`
+}
+
+// pontoAcessosMensalResp espelha PontoAcessosMensal no corpo JSON
+// (services/frontend/src/api/types.ts).
+type pontoAcessosMensalResp struct {
+	Competencia string `json:"competencia"`
+	Total       int32  `json:"total"`
+}
+
+// pontoReceitaMensalResp espelha PontoReceitaMensal no corpo JSON
+// (services/frontend/src/api/types.ts).
+type pontoReceitaMensalResp struct {
+	Competencia   string `json:"competencia"`
+	ValorCentavos int64  `json:"valor_centavos"`
 }
 
 // ListarUltimosAcessos serve GET /api/v1/dashboard/ultimos-acessos (spec 004,
@@ -138,6 +154,42 @@ func ResumoFinanceiro(iam DashboardCliente) http.HandlerFunc {
 			Moeda:                out.GetMoeda(),
 			Competencia:          out.GetCompetencia(),
 		})
+	}
+}
+
+// AcessosPorMes serve GET /api/v1/dashboard/acessos-por-mes: contagem de
+// logins dos últimos 6 meses dos tenants vinculados, para o gráfico
+// "Acessos por mês" do Dashboard.
+func AcessosPorMes(iam DashboardCliente) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		out, err := iam.AcessosPorMes(r.Context(), &iamv1.AcessosPorMesRequest{})
+		if err != nil {
+			writeDashboardError(w, err)
+			return
+		}
+		pontos := make([]pontoAcessosMensalResp, 0, len(out.GetPontos()))
+		for _, p := range out.GetPontos() {
+			pontos = append(pontos, pontoAcessosMensalResp{Competencia: p.GetCompetencia(), Total: p.GetTotal()})
+		}
+		web.JSON(w, http.StatusOK, map[string]any{"pontos": pontos})
+	}
+}
+
+// ReceitaPorMes serve GET /api/v1/dashboard/receita-por-mes: receita de
+// assinatura somada dos últimos 6 meses dos tenants vinculados, para o
+// gráfico "Receita de assinatura" do Dashboard.
+func ReceitaPorMes(iam DashboardCliente) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		out, err := iam.ReceitaPorMes(r.Context(), &iamv1.ReceitaPorMesRequest{})
+		if err != nil {
+			writeDashboardError(w, err)
+			return
+		}
+		pontos := make([]pontoReceitaMensalResp, 0, len(out.GetPontos()))
+		for _, p := range out.GetPontos() {
+			pontos = append(pontos, pontoReceitaMensalResp{Competencia: p.GetCompetencia(), ValorCentavos: p.GetValorCentavos()})
+		}
+		web.JSON(w, http.StatusOK, map[string]any{"pontos": pontos, "moeda": out.GetMoeda()})
 	}
 }
 

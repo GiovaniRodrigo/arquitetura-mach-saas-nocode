@@ -184,6 +184,39 @@ message ResumoFinanceiroResponse {
 
 message ResumoFinanceiroRequest {}
 
+// PontoAcessosMensal é a contagem de logins de um mês de competência, usada
+// pelo gráfico "Acessos por mês" do card home (RF04-bis). competencia no
+// formato "AAAA-MM".
+message PontoAcessosMensal {
+  string competencia = 1;
+  int32 total = 2;
+}
+
+message AcessosPorMesRequest {}
+
+message AcessosPorMesResponse {
+  // Os últimos 6 meses (incluindo o corrente), mais antigo primeiro,
+  // zero-preenchido para meses sem login.
+  repeated PontoAcessosMensal pontos = 1;
+}
+
+// PontoReceitaMensal é a receita de assinatura agregada de um mês de
+// competência, usada pelo gráfico "Receita de assinatura" do card home
+// (RF06-bis). competencia no formato "AAAA-MM".
+message PontoReceitaMensal {
+  string competencia = 1;
+  int64 valor_centavos = 2;
+}
+
+message ReceitaPorMesRequest {}
+
+message ReceitaPorMesResponse {
+  // Os últimos 6 meses (incluindo o corrente), mais antigo primeiro,
+  // zero-preenchido para meses sem assinatura registrada.
+  repeated PontoReceitaMensal pontos = 1;
+  string moeda = 2;
+}
+
 // Área "Conta/Configuração" (spec 004-reestruturacao-ia-navegacao, RF14-RF18):
 // perfil, troca de senha, MFA TOTP em duas etapas, exclusão de conta (LGPD,
 // anonimização) e troca de e-mail em duas etapas. Todas as rotas operam sobre
@@ -274,4 +307,6 @@ service IAMService {
   rpc ExcluirConta(ExcluirContaRequest) returns (ExcluirContaResponse);
   rpc SolicitarTrocaEmail(SolicitarTrocaEmailRequest) returns (SolicitarTrocaEmailResponse);
   rpc ConfirmarTrocaEmail(ConfirmarTrocaEmailRequest) returns (ConfirmarTrocaEmailResponse);
+  rpc AcessosPorMes(AcessosPorMesRequest) returns (AcessosPorMesResponse);
+  rpc ReceitaPorMes(ReceitaPorMesRequest) returns (ReceitaPorMesResponse);
 }

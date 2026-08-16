@@ -9,6 +9,8 @@ import type {
   EventoLogin,
   Feedback,
   MapaPermissoes,
+  PontoAcessosMensal,
+  PontoReceitaMensal,
   RegraNegocio,
   ResumoFinanceiro,
   RespostaFormulario,
@@ -345,6 +347,23 @@ export class ApiClient {
       headers: this.headers(),
     });
     return this.parse<ResumoFinanceiro>(resp);
+  }
+
+  /** Contagem de logins dos últimos 6 meses dos tenants vinculados, para o gráfico "Acessos por mês". */
+  async acessosPorMes(): Promise<PontoAcessosMensal[]> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/acessos-por-mes`, {
+      headers: this.headers(),
+    });
+    const corpo = await this.parse<{ pontos: PontoAcessosMensal[] }>(resp);
+    return corpo.pontos ?? [];
+  }
+
+  /** Receita de assinatura somada dos últimos 6 meses dos tenants vinculados, para o gráfico "Receita de assinatura". */
+  async receitaPorMes(): Promise<{ pontos: PontoReceitaMensal[]; moeda: string }> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/dashboard/receita-por-mes`, {
+      headers: this.headers(),
+    });
+    return this.parse<{ pontos: PontoReceitaMensal[]; moeda: string }>(resp);
   }
 
   /** Tenants (clientes/negócios) vinculados ao usuário autenticado (RF07). */

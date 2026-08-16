@@ -714,3 +714,113 @@ func (s *Store) ConfirmarTrocaEmail(ctx context.Context, tokenHash string) error
 	}
 	return nil
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Séries mensais do Dashboard (gráficos "Acessos por mês" e "Receita de
+// assinatura"): mesmo conjunto de "tenants vinculados" e mesma exclusão de
+// RLS dos 3 cards originais (comentário no topo deste arquivo). Cobrem
+// sempre os últimos 6 meses (incluindo o corrente), zero-preenchidos via
+// generate_series para não deixar buracos no eixo do gráfico quando não há
+// evento/assinatura em algum mês.
+// ─────────────────────────────────────────────────────────────────────────
+
+// PontoAcessosMensal é a contagem de logins de um mês de competência
+// ("AAAA-MM").
+type PontoAcessosMensal struct {
+	Competencia string
+	Total       int32
+}
+
+// PontoReceitaMensal é a receita de assinatura agregada de um mês de
+// competência ("AAAA-MM").
+type PontoReceitaMensal struct {
+	Competencia   string
+	ValorCentavos int64
+}
+
+// AcessosPorMes devolve a contagem de logins dos tenants vinculados a
+// tenantID, por mês, para os últimos 6 meses (mais antigo primeiro).
+func (s *Store) AcessosPorMes(ctx context.Context, tenantID string) ([]PontoAcessosMensal, error) {
+	vinculados, err := s.tenantsVinculados(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("store: acessos por mês: %w", err)
+	}
+
+	rows, err := s.db.Query(ctx,
+		`WITH meses AS (
+		   SELECT to_char(d, 'YYYY-MM') AS competencia
+		     FROM generate_series(date_trunc('month', now()) - interval '5 months',
+		                           date_trunc('month', now()), interval '1 month') AS d
+		 ),
+		 contagem AS (
+		   SELECT to_char(criado_em, 'YYYY-MM') AS competencia, count(*) AS total
+		     FROM eventos_login
+		    WHERE tenant_id = ANY($1)
+		      AND criado_em >= date_trunc('month', now()) - interval '5 months'
+		    GROUP BY 1
+		 )
+		 SELECT m.competencia, COALESCE(c.total, 0)
+		   FROM meses m
+		   LEFT JOIN contagem c ON c.competencia = m.competencia
+		  ORDER BY m.competencia`,
+		vinculados,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("store: acessos por mês: %w", err)
+	}
+	defer rows.Close()
+
+	var out []PontoAcessosMensal
+	for rows.Next() {
+		var p PontoAcessosMensal
+		if err := rows.Scan(&p.Competencia, &p.Total); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// ReceitaPorMes devolve a receita de assinatura somada dos tenants
+// vinculados a tenantID, por mês, para os últimos 6 meses (mais antigo
+// primeiro).
+func (s *Store) ReceitaPorMes(ctx context.Context, tenantID string) ([]PontoReceitaMensal, error) {
+	vinculados, err := s.tenantsVinculados(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("store: receita por mês: %w", err)
+	}
+
+	rows, err := s.db.Query(ctx,
+		`WITH meses AS (
+		   SELECT to_char(d, 'YYYY-MM') AS competencia
+		     FROM generate_series(date_trunc('month', now()) - interval '5 months',
+		                           date_trunc('month', now()), interval '1 month') AS d
+		 ),
+		 receita AS (
+		   SELECT to_char(competencia, 'YYYY-MM') AS competencia, SUM(valor_centavos) AS total
+		     FROM assinaturas_tenant
+		    WHERE tenant_id = ANY($1)
+		      AND competencia >= date_trunc('month', now()) - interval '5 months'
+		    GROUP BY 1
+		 )
+		 SELECT m.competencia, COALESCE(r.total, 0)
+		   FROM meses m
+		   LEFT JOIN receita r ON r.competencia = m.competencia
+		  ORDER BY m.competencia`,
+		vinculados,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("store: receita por mês: %w", err)
+	}
+	defer rows.Close()
+
+	var out []PontoReceitaMensal
+	for rows.Next() {
+		var p PontoReceitaMensal
+		if err := rows.Scan(&p.Competencia, &p.ValorCentavos); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}

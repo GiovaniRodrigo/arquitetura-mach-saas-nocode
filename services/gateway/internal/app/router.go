@@ -89,6 +89,8 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 		r.Get("/api/v1/dashboard/feedback", routes.ListarFeedback(iam))
 		r.Patch("/api/v1/dashboard/feedback/{id}", routes.AtualizarStatusFeedback(iam))
 		r.Get("/api/v1/dashboard/resumo-financeiro", routes.ResumoFinanceiro(iam))
+		r.Get("/api/v1/dashboard/acessos-por-mes", routes.AcessosPorMes(iam))
+		r.Get("/api/v1/dashboard/receita-por-mes", routes.ReceitaPorMes(iam))
 
 		// Conta/Configuração (spec 004, RF14-RF18): perfil, senha, MFA, exclusão
 		// de conta e troca de e-mail — todas sobre o usuário do TenantContext.

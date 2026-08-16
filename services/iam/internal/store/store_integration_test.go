@@ -787,3 +787,149 @@ func TestConfirmarTrocaEmail_TokenExpirado_ErroGenerico(t *testing.T) {
 		t.Fatalf("token expirado e token inexistente deveriam devolver o mesmo ErrNaoEncontrado; expirado=%v inexistente=%v", errExpirado, errInexistente)
 	}
 }
+
+// TestAcessosPorMes_ZeroPreenchidoEIncluiHierarquia cobre o gráfico "Acessos
+// por mês" do Dashboard: 6 meses (mais antigo primeiro), zero-preenchidos, com
+// eventos de fora da janela e de fora da hierarquia excluídos.
+func TestAcessosPorMes_ZeroPreenchidoEIncluiHierarquia(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+
+	dono, err := s.CriarTenant(ctx, "itg-acessosmes-dono", "dono", nil, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar dono: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, dono.ID) })
+
+	filho, err := s.CriarTenant(ctx, "itg-acessosmes-filho", "cliente", &dono.ID, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar filho: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, filho.ID) })
+
+	outro, err := s.CriarTenant(ctx, "itg-acessosmes-outro", "dono", nil, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar outro: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, outro.ID) })
+
+	userDono := inserirUsuarioDireto(t, p, "itg-acessosmes-dono@example.com", "Ana", dono.ID, "dono")
+	userFilho := inserirUsuarioDireto(t, p, "itg-acessosmes-filho@example.com", "Bia", filho.ID, "cliente")
+	userOutro := inserirUsuarioDireto(t, p, "itg-acessosmes-outro@example.com", "Carla", outro.ID, "dono")
+
+	inserirEvento := func(usuarioID, tenantID string, quando time.Time) {
+		_, err := p.Exec(ctx,
+			`INSERT INTO eventos_login (usuario_id, tenant_id, criado_em) VALUES ($1,$2,$3)`,
+			usuarioID, tenantID, quando)
+		if err != nil {
+			t.Fatalf("inserir evento de login: %v", err)
+		}
+	}
+	agora := time.Now()
+	inserirEvento(userDono, dono.ID, agora)                   // mês corrente
+	inserirEvento(userFilho, filho.ID, agora)                 // mês corrente (via filho)
+	inserirEvento(userDono, dono.ID, agora.AddDate(0, -5, 0)) // mês mais antigo da janela
+	inserirEvento(userDono, dono.ID, agora.AddDate(0, -7, 0)) // fora da janela de 6 meses
+	inserirEvento(userOutro, outro.ID, agora)                 // fora da hierarquia
+
+	pontos, err := s.AcessosPorMes(ctx, dono.ID)
+	if err != nil {
+		t.Fatalf("acessos por mês: %v", err)
+	}
+	if len(pontos) != 6 {
+		t.Fatalf("esperava 6 pontos (zero-preenchidos); got=%d (%+v)", len(pontos), pontos)
+	}
+
+	mesCorrente := agora.Format("2006-01")
+	mesMaisAntigo := agora.AddDate(0, -5, 0).Format("2006-01")
+	if pontos[0].Competencia != mesMaisAntigo {
+		t.Fatalf("primeiro ponto deveria ser o mês mais antigo da janela; got=%q want=%q", pontos[0].Competencia, mesMaisAntigo)
+	}
+	if pontos[len(pontos)-1].Competencia != mesCorrente {
+		t.Fatalf("último ponto deveria ser o mês corrente; got=%q want=%q", pontos[len(pontos)-1].Competencia, mesCorrente)
+	}
+
+	totais := map[string]int32{}
+	for _, p := range pontos {
+		totais[p.Competencia] = p.Total
+	}
+	if totais[mesCorrente] != 2 {
+		t.Fatalf("mês corrente deveria somar 2 (dono+filho); got=%d", totais[mesCorrente])
+	}
+	if totais[mesMaisAntigo] != 1 {
+		t.Fatalf("mês mais antigo da janela deveria somar 1; got=%d", totais[mesMaisAntigo])
+	}
+}
+
+// TestReceitaPorMes_ZeroPreenchidoEIncluiHierarquia cobre o gráfico "Receita
+// de assinatura" do Dashboard: 6 meses (mais antigo primeiro), zero-
+// preenchidos, com assinaturas de fora da janela e de fora da hierarquia
+// excluídas.
+func TestReceitaPorMes_ZeroPreenchidoEIncluiHierarquia(t *testing.T) {
+	p := pool(t)
+	s := New(p)
+	ctx := context.Background()
+
+	dono, err := s.CriarTenant(ctx, "itg-receitames-dono", "dono", nil, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar dono: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, dono.ID) })
+
+	filho, err := s.CriarTenant(ctx, "itg-receitames-filho", "cliente", &dono.ID, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar filho: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, filho.ID) })
+
+	outro, err := s.CriarTenant(ctx, "itg-receitames-outro", "dono", nil, []byte("k"))
+	if err != nil {
+		t.Fatalf("criar outro: %v", err)
+	}
+	t.Cleanup(func() { _, _ = p.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, outro.ID) })
+
+	inserirAssinatura := func(tenantID string, centavos int64, competencia string) {
+		_, err := p.Exec(ctx,
+			`INSERT INTO assinaturas_tenant (tenant_id, valor_centavos, competencia) VALUES ($1,$2,$3::date)`,
+			tenantID, centavos, competencia+"-01")
+		if err != nil {
+			t.Fatalf("inserir assinatura: %v", err)
+		}
+	}
+	agora := time.Now()
+	mesCorrente := agora.Format("2006-01")
+	mesMaisAntigo := agora.AddDate(0, -5, 0).Format("2006-01")
+	foraDaJanela := agora.AddDate(0, -7, 0).Format("2006-01")
+
+	inserirAssinatura(dono.ID, 10000, mesCorrente)
+	inserirAssinatura(filho.ID, 5000, mesCorrente)
+	inserirAssinatura(dono.ID, 3000, mesMaisAntigo)
+	inserirAssinatura(dono.ID, 999999, foraDaJanela)
+	inserirAssinatura(outro.ID, 888888, mesCorrente)
+
+	pontos, err := s.ReceitaPorMes(ctx, dono.ID)
+	if err != nil {
+		t.Fatalf("receita por mês: %v", err)
+	}
+	if len(pontos) != 6 {
+		t.Fatalf("esperava 6 pontos (zero-preenchidos); got=%d (%+v)", len(pontos), pontos)
+	}
+	if pontos[0].Competencia != mesMaisAntigo {
+		t.Fatalf("primeiro ponto deveria ser o mês mais antigo da janela; got=%q want=%q", pontos[0].Competencia, mesMaisAntigo)
+	}
+	if pontos[len(pontos)-1].Competencia != mesCorrente {
+		t.Fatalf("último ponto deveria ser o mês corrente; got=%q want=%q", pontos[len(pontos)-1].Competencia, mesCorrente)
+	}
+
+	totais := map[string]int64{}
+	for _, p := range pontos {
+		totais[p.Competencia] = p.ValorCentavos
+	}
+	if totais[mesCorrente] != 15000 {
+		t.Fatalf("mês corrente deveria somar 15000 (dono+filho); got=%d", totais[mesCorrente])
+	}
+	if totais[mesMaisAntigo] != 3000 {
+		t.Fatalf("mês mais antigo da janela deveria somar 3000; got=%d", totais[mesMaisAntigo])
+	}
+}

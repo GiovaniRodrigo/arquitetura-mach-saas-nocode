@@ -105,6 +105,18 @@ export interface ResumoFinanceiro {
   competencia: string;
 }
 
+/** Contagem de logins de um mês, para o gráfico "Acessos por mês". */
+export interface PontoAcessosMensal {
+  competencia: string;
+  total: number;
+}
+
+/** Receita de assinatura de um mês, para o gráfico "Receita de assinatura". */
+export interface PontoReceitaMensal {
+  competencia: string;
+  valor_centavos: number;
+}
+
 /** Tipos de validação suportados para uma regra de negócio de componente (RF10). */
 export type TipoRegraNegocio = "regex" | "tamanho" | "obrigatorio";
 

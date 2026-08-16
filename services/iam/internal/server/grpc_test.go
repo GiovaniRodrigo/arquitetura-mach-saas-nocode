@@ -72,6 +72,13 @@ type fakeStore struct {
 	resumoFinanceiro       store.ResumoFinanceiro
 	resumoFinanceiroErr    error
 	resumoFinanceiroTenant string
+	// Dashboard: gráficos mensais (AcessosPorMes/ReceitaPorMes)
+	acessosPorMes       []store.PontoAcessosMensal
+	acessosPorMesErr    error
+	acessosPorMesTenant string
+	receitaPorMes       []store.PontoReceitaMensal
+	receitaPorMesErr    error
+	receitaPorMesTenant string
 
 	// Conta/Configuração (spec 004, RF14-RF18)
 	perfilNome, perfilFotoURL, perfilUserIDChamado                         string
@@ -125,6 +132,16 @@ func (f *fakeStore) AtualizarStatusFeedback(_ context.Context, id, novoStatus st
 func (f *fakeStore) ResumoFinanceiro(_ context.Context, tenantID string) (store.ResumoFinanceiro, error) {
 	f.resumoFinanceiroTenant = tenantID
 	return f.resumoFinanceiro, f.resumoFinanceiroErr
+}
+
+func (f *fakeStore) AcessosPorMes(_ context.Context, tenantID string) ([]store.PontoAcessosMensal, error) {
+	f.acessosPorMesTenant = tenantID
+	return f.acessosPorMes, f.acessosPorMesErr
+}
+
+func (f *fakeStore) ReceitaPorMes(_ context.Context, tenantID string) ([]store.PontoReceitaMensal, error) {
+	f.receitaPorMesTenant = tenantID
+	return f.receitaPorMes, f.receitaPorMesErr
 }
 
 func (f *fakeStore) PermissoesDe(context.Context, []string) ([]permissions.Permissao, error) {
@@ -812,6 +829,58 @@ func TestResumoFinanceiro_DevolveValoresDoStore(t *testing.T) {
 	}
 	if fs.resumoFinanceiroTenant != "tenant-A" {
 		t.Fatalf("tenant inesperado: %q", fs.resumoFinanceiroTenant)
+	}
+}
+
+func TestAcessosPorMes_SemTenantContext(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	if _, err := srv.AcessosPorMes(context.Background(), &iamv1.AcessosPorMesRequest{}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("esperava Unauthenticated; got=%v", err)
+	}
+}
+
+func TestAcessosPorMes_DevolveValoresDoStore(t *testing.T) {
+	fs := &fakeStore{acessosPorMes: []store.PontoAcessosMensal{
+		{Competencia: "2026-03", Total: 20},
+		{Competencia: "2026-08", Total: 27},
+	}}
+	srv, _ := newServer(t, fs)
+
+	resp, err := srv.AcessosPorMes(tenantACtx(), &iamv1.AcessosPorMesRequest{})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if len(resp.GetPontos()) != 2 || resp.GetPontos()[0].GetCompetencia() != "2026-03" || resp.GetPontos()[1].GetTotal() != 27 {
+		t.Fatalf("resposta inesperada: %+v", resp)
+	}
+	if fs.acessosPorMesTenant != "tenant-A" {
+		t.Fatalf("tenant inesperado: %q", fs.acessosPorMesTenant)
+	}
+}
+
+func TestReceitaPorMes_SemTenantContext(t *testing.T) {
+	srv, _ := newServer(t, &fakeStore{})
+	if _, err := srv.ReceitaPorMes(context.Background(), &iamv1.ReceitaPorMesRequest{}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("esperava Unauthenticated; got=%v", err)
+	}
+}
+
+func TestReceitaPorMes_DevolveValoresDoStore(t *testing.T) {
+	fs := &fakeStore{receitaPorMes: []store.PontoReceitaMensal{
+		{Competencia: "2026-03", ValorCentavos: 100000},
+		{Competencia: "2026-08", ValorCentavos: 134000},
+	}}
+	srv, _ := newServer(t, fs)
+
+	resp, err := srv.ReceitaPorMes(tenantACtx(), &iamv1.ReceitaPorMesRequest{})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if len(resp.GetPontos()) != 2 || resp.GetPontos()[1].GetValorCentavos() != 134000 || resp.GetMoeda() != "BRL" {
+		t.Fatalf("resposta inesperada: %+v", resp)
+	}
+	if fs.receitaPorMesTenant != "tenant-A" {
+		t.Fatalf("tenant inesperado: %q", fs.receitaPorMesTenant)
 	}
 }
 

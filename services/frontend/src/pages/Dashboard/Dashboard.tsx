@@ -6,6 +6,8 @@ import { useMetricas } from '../../dashboard/useMetricas';
 import { CardUltimosAcessos } from '../../dashboard/CardUltimosAcessos';
 import { CardFeedback } from '../../dashboard/CardFeedback';
 import { CardResumoFinanceiro } from '../../dashboard/CardResumoFinanceiro';
+import { CardAcessosPorMes } from '../../dashboard/CardAcessosPorMes';
+import { CardReceitaPorMes } from '../../dashboard/CardReceitaPorMes';
 import { useNavigate } from 'react-router-dom';
 
 export function Dashboard() {
@@ -73,6 +75,12 @@ export function Dashboard() {
           <h3 className="text-sm font-medium text-muted-foreground mb-1">Rascunhos</h3>
           <p className="text-3xl font-heading font-bold text-muted-foreground/60">—</p>
         </ElevatedCard>
+      </div>
+
+      {/* Gráficos de tendência dos tenants vinculados (RF04-bis/RF06-bis) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <CardAcessosPorMes />
+        <CardReceitaPorMes />
       </div>
 
       {/* Resumo consolidado dos tenants vinculados (RF03-RF06, RN01) */}
