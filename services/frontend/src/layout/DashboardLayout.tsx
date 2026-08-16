@@ -7,6 +7,8 @@ import { encerrarSessao } from '@/auth/session';
 import { useApp } from '@/app/AppContext';
 import { useTheme } from '@/theme/ThemeProvider';
 import { CommandPalette } from '@/dashboard/CommandPalette';
+import { useOnboarding } from '@/onboarding/useOnboarding';
+import { OnboardingModal } from '@/onboarding/OnboardingModal';
 import {
   SidebarProvider,
   Sidebar,
@@ -45,6 +47,7 @@ export function DashboardLayout() {
   const { tema, alternarTema } = useTheme();
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const onboarding = useOnboarding();
 
   // Fecha o menu do avatar ao clicar fora (C7/RF14).
   useEffect(() => {
@@ -131,6 +134,18 @@ export function DashboardLayout() {
                 <span>Buscar…</span>
                 <kbd className="text-[11px] font-mono border border-border rounded px-1.5 py-0.5">Ctrl K</kbd>
               </button>
+
+              {/* Reabre o onboarding guiado da tela atual */}
+              {onboarding.tela && (
+                <button
+                  type="button"
+                  aria-label="Ajuda guiada desta tela"
+                  onClick={onboarding.abrirManual}
+                  className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground bg-card hover:bg-secondary border border-border rounded-full transition-colors"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </button>
+              )}
 
               {/* Alternância de tema claro/escuro */}
               <label className="flex items-center gap-2 px-1 cursor-pointer" aria-label="Alternar tema claro/escuro">
@@ -235,6 +250,9 @@ export function DashboardLayout() {
 
         {/* Command palette global (Cmd/Ctrl+K) */}
         <CommandPalette />
+
+        {/* Onboarding guiado: automático no primeiro acesso, reaberto pelo ícone de ajuda */}
+        <OnboardingModal tela={onboarding.tela} aberto={onboarding.aberto} onFechar={onboarding.fechar} />
       </SidebarProvider>
     </TooltipProvider>
   );

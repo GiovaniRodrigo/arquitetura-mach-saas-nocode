@@ -1,10 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DashboardLayout } from './DashboardLayout';
 import { AppProvider } from '../app/AppContext';
 import { ThemeProvider } from '../theme/ThemeProvider';
+import { CHAVE_STORAGE_ONBOARDING } from '../onboarding/useOnboarding';
+import { chavesOnboarding } from '../onboarding/conteudo';
 import type { ApiClient } from '../api/client';
 import type { UsuarioAutenticado } from '../auth/jwt';
 
@@ -31,6 +33,13 @@ const usuario: UsuarioAutenticado = {
 };
 
 describe('Template: DashboardLayout', () => {
+  // Testes deste describe cobrem navegação, não o onboarding guiado — simula um
+  // usuário que já viu o tour de todas as telas para o modal não interferir
+  // nas asserções (o onboarding em si é testado em onboarding.test.tsx).
+  beforeEach(() => {
+    window.localStorage.setItem(CHAVE_STORAGE_ONBOARDING, JSON.stringify(chavesOnboarding));
+  });
+
   const renderLayout = (initialRoute = '/dashboard') =>
     render(
       <MemoryRouter initialEntries={[initialRoute]}>
