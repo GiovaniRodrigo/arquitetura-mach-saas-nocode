@@ -59,8 +59,24 @@ if config_env() == :prod do
 
   config :collab, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # check_origin do Phoenix.Socket compara o header Origin contra `url: host`
+  # (aqui, PHX_HOST — o nome DNS interno do serviço, ex. "collab"). Isso
+  # rejeita a ligação WebSocket sempre que o browser acessa o Collab por um
+  # host diferente do interno (ex. via NodePort em "localhost:4000" durante
+  # dev/kind, com Origin "http://localhost:5183" do Vite) — o pedido nunca
+  # falha de forma visível no cliente, fica preso a tentar reconectar
+  # indefinidamente. PHX_CHECK_ORIGIN permite declarar essas origens extra
+  # sem enfraquecer o default (que continua a validar contra PHX_HOST).
+  check_origin =
+    case System.get_env("PHX_CHECK_ORIGIN") do
+      nil -> true
+      "false" -> false
+      origins -> String.split(origins, ",", trim: true)
+    end
+
   config :collab, CollabWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
+    check_origin: check_origin,
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
