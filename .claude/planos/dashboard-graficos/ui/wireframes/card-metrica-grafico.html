@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Componente CardMetricaGrafico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: 210 40% 98%; --foreground: 222 47% 11%;
+    --card: 0 0% 100%; --muted: 210 40% 96%; --muted-foreground: 215 16% 47%;
+    --primary: 239 84% 67%; --destructive: 0 84.2% 60.2%;
+    --success: 152 69% 31%; --warning: 38 92% 50%; --border: 214 32% 91%; --radius: 0.75rem;
+  }
+  html[data-theme="dark"] {
+    --background: 240 10% 4%; --foreground: 0 0% 98%;
+    --card: 240 7% 8%; --muted: 240 5% 26%; --muted-foreground: 240 5% 65%;
+    --primary: 239 84% 67%; --destructive: 0 62.8% 30.6%;
+    --success: 152 55% 42%; --warning: 38 92% 55%; --border: 240 5% 26%;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: 'Inter', sans-serif; padding: 32px; }
+  h1 { font-family: 'Outfit', sans-serif; font-size: 1.1rem; margin: 0 0 4px; }
+  p.lead { color: hsl(var(--muted-foreground)); font-size: 0.85rem; margin: 0 0 24px; max-width: 640px; }
+  .toggle { margin-bottom: 24px; padding: 6px 12px; border-radius: 999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); cursor: pointer; font-size: 0.8rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; max-width: 1000px; }
+  .cell { display: flex; flex-direction: column; gap: 8px; }
+  .cell > span.label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: hsl(var(--muted-foreground)); }
+  .card {
+    background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  h3 { font-family: 'Outfit', sans-serif; font-size: 0.8rem; font-weight: 500; color: hsl(var(--muted-foreground)); margin: 0 0 4px; }
+  .metric-value-row { display: flex; align-items: baseline; gap: 8px; }
+  .metric-value { font-family: 'Outfit', sans-serif; font-size: 1.875rem; font-weight: 700; margin: 0; }
+  .metric-empty { font-family: 'Outfit', sans-serif; font-size: 1.875rem; font-weight: 700; color: hsl(var(--muted-foreground) / 0.6); }
+  .delta { display: inline-flex; align-items: center; gap: 2px; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .delta.up { color: hsl(var(--success)); background: hsl(var(--success) / 0.12); }
+  .delta.down { color: hsl(var(--destructive)); background: hsl(var(--destructive) / 0.12); }
+  .sparkline-wrap { margin-top: 10px; height: 40px; }
+  .sparkline-wrap svg { width: 100%; height: 100%; display: block; }
+  .metric-note { font-size: 0.7rem; color: hsl(var(--muted-foreground)); margin-top: 30px; }
+  .skeleton-line { height: 22px; width: 70px; border-radius: 6px; background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+  .skeleton-block { height: 40px; margin-top: 10px; border-radius: 6px; background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .error-note { font-size: 0.8rem; color: hsl(var(--destructive)); display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .error-note button { font-size: 0.75rem; font-weight: 600; color: hsl(var(--primary)); background: none; border: none; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h1>Componente — Card de Métrica com Sparkline</h1>
+  <p class="lead">
+    Isolado dos cards de métrica no topo da Dashboard (Sistemas / Publicados / Rascunhos).
+    Cobre os 5 estados exigidos pelo contrato já usado em <code>components/ui/StateViews</code>:
+    tendência positiva, tendência negativa, carregando, sem histórico (vazio) e erro.
+  </p>
+  <button class="toggle" onclick="const h=document.documentElement; h.dataset.theme = h.dataset.theme==='dark' ? 'light' : 'dark';">☀︎ / ☾ alternar tema</button>
+
+  <div class="grid">
+    <div class="cell">
+      <span class="label">Default — tendência positiva</span>
+      <div class="card" title="Reversão Clara: gráfico é somente leitura, nenhuma ação a confirmar">
+        <h3>Sistemas</h3>
+        <div class="metric-value-row">
+          <p class="metric-value">24</p>
+          <span class="delta up">▲ 12%</span>
+        </div>
+        <div class="sparkline-wrap">
+          <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="hsl(152 69% 31% / 0.28)"/>
+                <stop offset="100%" stop-color="hsl(152 69% 31% / 0)"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,40 L0,36 18.2,34.1 36.4,38 54.5,31.2 72.7,26.3 90.9,28.3 109.1,21.5 127.3,16.6 145.5,18.5 163.6,11.7 181.8,6.9 200,2 L200,40 Z" fill="url(#g1)"/>
+            <polyline points="0,36 18.2,34.1 36.4,38 54.5,31.2 72.7,26.3 90.9,28.3 109.1,21.5 127.3,16.6 145.5,18.5 163.6,11.7 181.8,6.9 200,2" fill="none" stroke="hsl(152 69% 31%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="cell">
+      <span class="label">Default — tendência negativa</span>
+      <div class="card">
+        <h3>Publicados</h3>
+        <div class="metric-value-row">
+          <p class="metric-value">9</p>
+          <span class="delta down">▼ 8%</span>
+        </div>
+        <div class="sparkline-wrap">
+          <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="hsl(0 84.2% 60.2% / 0.22)"/>
+                <stop offset="100%" stop-color="hsl(0 84.2% 60.2% / 0)"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,40 L0,4 18.2,9 36.4,7 54.5,14 72.7,12 90.9,19 109.1,17 127.3,24 145.5,22 163.6,29 181.8,32 200,36 L200,40 Z" fill="url(#g2)"/>
+            <polyline points="0,4 18.2,9 36.4,7 54.5,14 72.7,12 90.9,19 109.1,17 127.3,24 145.5,22 163.6,29 181.8,32 200,36" fill="none" stroke="hsl(0 84.2% 60.2%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="cell">
+      <span class="label">Carregando (Skeleton)</span>
+      <div class="card" title="Feedback e Marcos: skeleton reserva a mesma altura final — sem layout shift ao carregar">
+        <h3>Sistemas</h3>
+        <div class="skeleton-line"></div>
+        <div class="skeleton-block"></div>
+      </div>
+    </div>
+
+    <div class="cell">
+      <span class="label">Vazio — sem histórico</span>
+      <div class="card" title="Feedback e Marcos: degrada para o formato atual do app (só número), nunca quebra o layout">
+        <h3>Rascunhos</h3>
+        <p class="metric-empty">—</p>
+        <p class="metric-note">Sem dado suficiente para tendência</p>
+      </div>
+    </div>
+
+    <div class="cell">
+      <span class="label">Erro ao carregar tendência</span>
+      <div class="card">
+        <h3>Sistemas</h3>
+        <p class="metric-value">24</p>
+        <div class="error-note">
+          Não foi possível carregar a tendência.
+          <button type="button">Tentar novamente</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
