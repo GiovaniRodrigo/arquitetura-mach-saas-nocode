@@ -54,6 +54,15 @@ describe('useSistemas', () => {
     expect(listarSistemas).toHaveBeenCalledWith('t1');
   });
 
+  it('com habilitado=false, nunca chama a rede e fica em carregando', async () => {
+    const listarSistemas = vi.fn();
+    const client = fakeClient({ listarSistemas });
+
+    const { result } = renderHook(() => useSistemas(client, undefined, false));
+    expect(result.current.estado.fase).toBe('carregando');
+    expect(listarSistemas).not.toHaveBeenCalled();
+  });
+
   it('criar delega para client.criarSistema', async () => {
     const novo: Sistema = { id: 'z', nome: 'Zeta' };
     const criarSistema = vi.fn().mockResolvedValue(novo);

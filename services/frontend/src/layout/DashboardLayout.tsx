@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LayoutDashboard, Users, Settings, LogOut, User, Search, HelpCircle, Moon, Sun } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
@@ -7,6 +7,8 @@ import { encerrarSessao } from '@/auth/session';
 import { useApp } from '@/app/AppContext';
 import { useTheme } from '@/theme/ThemeProvider';
 import { CommandPalette } from '@/dashboard/CommandPalette';
+import { AssistenteIA } from '@/ia/AssistenteIA';
+import { useSistemas } from '@/systems/useSistemas';
 import {
   SidebarProvider,
   Sidebar,
@@ -41,10 +43,22 @@ function tituloDaPagina(pathname: string): string {
 export function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { usuario } = useApp();
+  const { usuario, client } = useApp();
   const { tema, alternarTema } = useTheme();
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Assistente de Design (chat de IA/RAG): herda o nome do sistema em foco
+  // quando a rota atual está dentro de um sistema (/dashboard/clientes/:tenantId/sistemas/:sistemaId/*),
+  // sem exigir que o usuário redigite em qual sistema está trabalhando.
+  // useSistemas só busca a listagem quando há sistemaId na rota (habilitado) —
+  // não há endpoint de "obter 1 sistema", mesmo workaround usado em SistemaAbas.
+  const { tenantId, sistemaId } = useParams<{ tenantId?: string; sistemaId?: string }>();
+  const { estado: estadoSistemas } = useSistemas(client, tenantId, Boolean(sistemaId));
+  const sistemaNome =
+    sistemaId && estadoSistemas.fase === 'pronto'
+      ? estadoSistemas.sistemas.find((s) => s.id === sistemaId)?.nome
+      : undefined;
 
   // Fecha o menu do avatar ao clicar fora (C7/RF14).
   useEffect(() => {
@@ -235,6 +249,10 @@ export function DashboardLayout() {
 
         {/* Command palette global (Cmd/Ctrl+K) */}
         <CommandPalette />
+
+        {/* Assistente de Design (chat de IA/RAG) — gatilho global, disponível
+            em qualquer aba do Dashboard (spec chat-ia-rag). */}
+        <AssistenteIA client={client} sistemaNome={sistemaNome} />
       </SidebarProvider>
     </TooltipProvider>
   );

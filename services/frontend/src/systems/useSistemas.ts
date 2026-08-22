@@ -22,11 +22,16 @@ export interface UseSistemas {
   criar: (nome: string) => Promise<Sistema>;
 }
 
-export function useSistemas(client: ApiClient, tenantId?: string): UseSistemas {
+// `habilitado=false` pula a chamada de rede por completo (estado fica em
+// 'carregando' indefinidamente) — usado por consumidores globais como o
+// DashboardLayout, que só precisam da listagem quando a rota atual está
+// dentro de um sistema (RF09-RF12), evitando 1 GET supérfluo em toda página.
+export function useSistemas(client: ApiClient, tenantId?: string, habilitado = true): UseSistemas {
   const [estado, setEstado] = useState<EstadoSistemas>({ fase: 'carregando' });
   const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
+    if (!habilitado) return;
     let vivo = true;
     setEstado({ fase: 'carregando' });
     (async () => {
@@ -41,7 +46,7 @@ export function useSistemas(client: ApiClient, tenantId?: string): UseSistemas {
     return () => {
       vivo = false;
     };
-  }, [client, tenantId, tentativa]);
+  }, [client, tenantId, tentativa, habilitado]);
 
   const recarregar = useCallback(() => setTentativa((t) => t + 1), []);
   const criar = useCallback((nome: string) => client.criarSistema(nome), [client]);
