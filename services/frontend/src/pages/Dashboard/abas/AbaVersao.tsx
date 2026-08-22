@@ -81,7 +81,7 @@ export function AbaVersao() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-heading font-semibold">
-                    Versão {v.numero} {v.ativa && <span className="text-emerald-600 dark:text-emerald-400">· ativa</span>}
+                    Versão {v.numero} {v.ativa && <span className="text-success">· ativa</span>}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(v.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}

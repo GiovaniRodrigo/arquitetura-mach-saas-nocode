@@ -86,7 +86,7 @@ export function WhiteLabelForm() {
         {salvando ? 'Salvando…' : 'Salvar White Label'}
       </button>
       {salvo && !validandoDominio && (
-        <p role="status" className="text-sm text-emerald-600 dark:text-emerald-400">White Label atualizado.</p>
+        <p role="status" className="text-sm text-success">White Label atualizado.</p>
       )}
       {validandoDominio && (
         <p role="status" className="text-sm text-muted-foreground">

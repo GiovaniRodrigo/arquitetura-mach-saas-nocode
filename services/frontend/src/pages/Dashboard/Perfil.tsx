@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TonalCard } from '../../components/m3/TonalCard';
 import { ElevatedCard } from '../../components/m3/ElevatedCard';
+import { Input } from '../../components/ui/input';
 import { useApp } from '../../app/AppContext';
 import { Link } from 'react-router-dom';
 
@@ -65,23 +66,21 @@ export function Perfil() {
         <form onSubmit={salvarPerfil} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label htmlFor="perfil-nome" className="text-sm font-medium">Nome</label>
-            <input
+            <Input
               id="perfil-nome"
               type="text"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              className="px-3 py-2 text-sm bg-background border border-border rounded-lg"
             />
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="perfil-foto" className="text-sm font-medium">Foto (URL)</label>
-            <input
+            <Input
               id="perfil-foto"
               type="text"
               value={fotoUrl}
               onChange={(e) => setFotoUrl(e.target.value)}
               placeholder="https://…"
-              className="px-3 py-2 text-sm bg-background border border-border rounded-lg"
             />
           </div>
           <button
@@ -91,7 +90,7 @@ export function Perfil() {
           >
             {salvando ? 'Salvando…' : 'Salvar alterações'}
           </button>
-          {salvo && <p role="status" className="text-sm text-emerald-600 dark:text-emerald-400">Perfil atualizado.</p>}
+          {salvo && <p role="status" className="text-sm text-success">Perfil atualizado.</p>}
         </form>
       </ElevatedCard>
 
@@ -103,12 +102,11 @@ export function Perfil() {
         <form onSubmit={alterarEmail} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label htmlFor="perfil-novo-email" className="text-sm font-medium">Novo e-mail</label>
-            <input
+            <Input
               id="perfil-novo-email"
               type="email"
               value={novoEmail}
               onChange={(e) => setNovoEmail(e.target.value)}
-              className="px-3 py-2 text-sm bg-background border border-border rounded-lg"
             />
           </div>
           <button

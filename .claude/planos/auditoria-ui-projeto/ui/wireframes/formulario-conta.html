@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Formulário de Conta (Perfil / Segurança)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap');
+  :root {
+    --background: 210 40% 98%; --foreground: 222 47% 11%;
+    --card: 0 0% 100%; --card-foreground: 222 47% 11%;
+    --secondary: 210 40% 96%; --muted: 210 40% 96%; --muted-foreground: 215 16% 47%;
+    --primary: 239 84% 67%; --primary-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%; --border: 214 32% 91%; --input: 214 32% 91%;
+    --success: 152 69% 31%; --success-foreground: 0 0% 100%;
+  }
+  body.dark {
+    --background: 240 10% 4%; --foreground: 0 0% 98%;
+    --card: 240 7% 8%; --card-foreground: 0 0% 98%;
+    --secondary: 240 5% 26%; --muted: 240 5% 26%; --muted-foreground: 240 5% 65%;
+    --primary: 239 84% 67%; --destructive: 0 62.8% 45%; --border: 240 5% 26%; --input: 240 5% 26%;
+    --success: 152 55% 42%; --success-foreground: 0 0% 100%;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: 'Inter', sans-serif; padding: 32px; }
+  h1 { font-family: 'Outfit', sans-serif; font-size: 18px; margin: 0 0 4px; }
+  p.sub { font-size: 13px; color: hsl(var(--muted-foreground)); margin: 0 0 24px; max-width: 640px; }
+  .toggle { margin-bottom: 24px; display: flex; gap: 8px; }
+  .toggle button { font-size: 13px; padding: 8px 14px; border-radius: 999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); cursor: pointer; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; max-width: 900px; }
+
+  .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 24px; padding: 24px; }
+  .card h3 { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 4px; }
+  .card p.hint { font-size: 13px; color: hsl(var(--muted-foreground)); margin: 0 0 16px; }
+
+  form { display: flex; flex-direction: column; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 13px; font-weight: 500; }
+  input {
+    padding: 10px 12px; font-size: 14px; border-radius: 10px;
+    border: 1px solid hsl(var(--input)); background: hsl(var(--background)); color: hsl(var(--foreground));
+    outline: none; transition: box-shadow .15s, border-color .15s;
+  }
+  input:focus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .15); }
+
+  button.primary { align-self: flex-start; font-size: 13px; padding: 10px 18px; border-radius: 10px; border: none; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 500; cursor: pointer; }
+  button.secondary { align-self: flex-start; font-size: 13px; padding: 10px 18px; border-radius: 10px; border: 1px solid hsl(var(--border)); background: hsl(var(--secondary)); color: hsl(var(--foreground)); font-weight: 500; cursor: pointer; }
+  button.danger { align-self: flex-start; font-size: 13px; padding: 10px 18px; border-radius: 10px; border: none; background: hsl(var(--destructive)); color: white; font-weight: 500; cursor: pointer; }
+
+  .status-ok { display: flex; align-items: center; gap: 6px; font-size: 13px; color: hsl(var(--success)); font-weight: 500; }
+  .status-err { font-size: 13px; color: hsl(var(--destructive)); }
+
+  .danger-zone { border-color: hsl(var(--destructive) / .3); background: hsl(var(--destructive) / .04); }
+  .danger-zone h3 { color: hsl(var(--destructive)); }
+
+  .annot { display: block; margin-top: 16px; font-size: 11px; color: hsl(var(--muted-foreground)); border: 1px dashed hsl(var(--border)); border-radius: 8px; padding: 8px 12px; }
+  section.note { max-width: 900px; margin-top: 24px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+</style>
+</head>
+<body>
+
+<h1>Padrão — Formulário de Conta</h1>
+<p class="sub">Une o padrão visto em <code>Perfil.tsx</code> e <code>SegurancaForm.tsx</code>: um único tamanho de campo (<code>components/ui/input.tsx</code>, 10px/12px de padding, raio 10px) em vez dos dois tamanhos hoje divergentes entre formulários "primários" (Clientes) e "de conta" (Perfil/Segurança). Mensagem de sucesso usa o token <code>--success</code> proposto em <code>04-sistema-cores-tipografia.md</code>, não mais <code>emerald-600</code> hardcoded.</p>
+
+<div class="toggle">
+  <button id="theme-toggle">🌙 Alternar tema</button>
+</div>
+
+<div class="grid">
+
+  <div class="card">
+    <h3>Perfil</h3>
+    <p class="hint">Suas informações de identidade nesta plataforma.</p>
+    <form onsubmit="return false">
+      <div class="field">
+        <label for="nome">Nome</label>
+        <input id="nome" type="text" value="Giovani Fernandes">
+      </div>
+      <div class="field">
+        <label for="foto">Foto (URL)</label>
+        <input id="foto" type="text" placeholder="https://…">
+      </div>
+      <button class="primary" type="submit">Salvar alterações</button>
+      <span class="status-ok" data-principle="logica-consistente" title="Mesmo token --success usado em todo mensagem de confirmação do app">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+        Perfil atualizado.
+      </span>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Senha</h3>
+    <p class="hint">Atualize a senha usada para entrar na plataforma.</p>
+    <form onsubmit="return false">
+      <div class="field">
+        <label for="senha-atual">Senha atual</label>
+        <input id="senha-atual" type="password">
+      </div>
+      <div class="field">
+        <label for="senha-nova">Nova senha</label>
+        <input id="senha-nova" type="password">
+      </div>
+      <button class="secondary" type="submit">Atualizar senha</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Autenticação em duas etapas (MFA)</h3>
+    <p class="hint">Adicione uma camada extra de segurança com um app autenticador.</p>
+    <button class="primary" type="button">Ativar MFA</button>
+  </div>
+
+  <div class="card danger-zone">
+    <h3>Excluir conta</h3>
+    <p class="hint">Esta ação é permanente. Se você for dono de tenants ativos, transfira ou desative-os antes.</p>
+    <form onsubmit="return false">
+      <div class="field">
+        <label for="senha-exclusao">Senha atual (excluir conta)</label>
+        <input id="senha-exclusao" type="password">
+      </div>
+      <button class="danger" type="submit">Excluir conta</button>
+    </form>
+  </div>
+
+</div>
+
+<section class="note">
+  <span class="annot" data-principle="convencao" title="Observar Convenções: campo de senha usa o mesmo padrão de rótulo + input em toda a app, reforçando reconhecimento">
+    Todos os campos desta página usam o mesmo componente <code>&lt;Input&gt;</code> — hoje <code>Perfil.tsx</code>/<code>SegurancaForm.tsx</code> reescrevem a <code>className</code> em cada <code>&lt;input&gt;</code> em vez de importar <code>components/ui/input.tsx</code>, que já existe no projeto mas não é usado por nenhuma dessas telas.
+  </span>
+</section>
+
+<script>
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.body.classList.add('dark');
+  document.getElementById('theme-toggle').addEventListener('click', () => document.body.classList.toggle('dark'));
+</script>
+
+</body>
+</html>

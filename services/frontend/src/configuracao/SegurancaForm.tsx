@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Input } from '../components/ui/input';
 import { useApp } from '../app/AppContext';
 import { ApiError } from '../api/client';
 
@@ -98,22 +99,20 @@ export function SegurancaForm() {
         <h4 className="font-heading font-semibold">Senha</h4>
         <div className="flex flex-col gap-1">
           <label htmlFor="seg-senha-atual" className="text-sm font-medium">Senha atual</label>
-          <input
+          <Input
             id="seg-senha-atual"
             type="password"
             value={senhaAtual}
             onChange={(e) => setSenhaAtual(e.target.value)}
-            className="px-3 py-2 text-sm bg-background border border-border rounded-lg"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="seg-senha-nova" className="text-sm font-medium">Nova senha</label>
-          <input
+          <Input
             id="seg-senha-nova"
             type="password"
             value={novaSenha}
             onChange={(e) => setNovaSenha(e.target.value)}
-            className="px-3 py-2 text-sm bg-background border border-border rounded-lg"
           />
         </div>
         <button
@@ -124,7 +123,7 @@ export function SegurancaForm() {
           {senhaSalvando ? 'Atualizando…' : 'Atualizar senha'}
         </button>
         {senhaAtualizada && (
-          <p role="status" className="text-sm text-emerald-600 dark:text-emerald-400">Senha atualizada.</p>
+          <p role="status" className="text-sm text-success">Senha atualizada.</p>
         )}
       </form>
 
@@ -135,12 +134,11 @@ export function SegurancaForm() {
             <p className="text-sm text-muted-foreground">MFA ativo nesta conta.</p>
             <div className="flex flex-col gap-1">
               <label htmlFor="seg-mfa-senha" className="text-sm font-medium">Senha atual (desativar MFA)</label>
-              <input
+              <Input
                 id="seg-mfa-senha"
                 type="password"
                 value={senhaDesativarMfa}
                 onChange={(e) => setSenhaDesativarMfa(e.target.value)}
-                className="px-3 py-2 text-sm bg-background border border-border rounded-lg"
               />
             </div>
             <button
@@ -158,13 +156,12 @@ export function SegurancaForm() {
             </p>
             <div className="flex flex-col gap-1">
               <label htmlFor="seg-mfa-codigo" className="text-sm font-medium">Código do aplicativo</label>
-              <input
+              <Input
                 id="seg-mfa-codigo"
                 type="text"
                 inputMode="numeric"
                 value={codigoMfa}
                 onChange={(e) => setCodigoMfa(e.target.value)}
-                className="px-3 py-2 text-sm bg-background border border-border rounded-lg"
               />
             </div>
             <button
@@ -194,12 +191,11 @@ export function SegurancaForm() {
         </p>
         <div className="flex flex-col gap-1">
           <label htmlFor="seg-exclusao-senha" className="text-sm font-medium">Senha atual (excluir conta)</label>
-          <input
+          <Input
             id="seg-exclusao-senha"
             type="password"
             value={senhaExclusao}
             onChange={(e) => setSenhaExclusao(e.target.value)}
-            className="px-3 py-2 text-sm bg-background border border-border rounded-lg"
           />
         </div>
         <button

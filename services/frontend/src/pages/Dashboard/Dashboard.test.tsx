@@ -9,8 +9,8 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 describe('Page: Dashboard Dashboard', () => {
   it('renderiza o Hero Card (RF03)', () => {
     renderDashboard(<Dashboard />);
-    expect(screen.getByText('Build your Next Flow')).toBeTruthy();
-    expect(screen.getByText('Get Started')).toBeTruthy();
+    expect(screen.getByText('Construa seu próximo sistema')).toBeTruthy();
+    expect(screen.getByText('Criar sistema')).toBeTruthy();
   });
 
   it('renderiza os cards de métricas (RF04)', () => {
@@ -34,13 +34,13 @@ describe('Page: Dashboard Dashboard', () => {
 
   it('renderiza o FAB (RF05)', () => {
     renderDashboard(<Dashboard />);
-    expect(screen.getByText('Create')).toBeTruthy();
+    expect(screen.getByText('Criar')).toBeTruthy();
   });
 
-  it('oculta "Get Started" e o FAB "Create" para usuário sem permissão de criação (RN10)', () => {
+  it('oculta "Criar sistema" e o FAB "Criar" para usuário sem permissão de criação (RN10)', () => {
     renderDashboard(<Dashboard />, { usuario: usuarioClienteFake });
-    expect(screen.queryByText('Get Started')).toBeNull();
-    expect(screen.queryByText('Create')).toBeNull();
+    expect(screen.queryByText('Criar sistema')).toBeNull();
+    expect(screen.queryByText('Criar')).toBeNull();
   });
 
   it('renderiza os cards de resumo consolidado (RF03-RF06)', () => {

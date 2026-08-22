@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Tabela de Dados (Sistemas do Cliente)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap');
+  :root {
+    --background: 210 40% 98%; --foreground: 222 47% 11%;
+    --card: 0 0% 100%; --card-foreground: 222 47% 11%;
+    --secondary: 210 40% 96%; --muted: 210 40% 96%; --muted-foreground: 215 16% 47%;
+    --primary: 239 84% 67%; --primary-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%; --border: 214 32% 91%;
+  }
+  body.dark {
+    --background: 240 10% 4%; --foreground: 0 0% 98%;
+    --card: 240 7% 8%; --card-foreground: 0 0% 98%;
+    --secondary: 240 5% 26%; --muted: 240 5% 26%; --muted-foreground: 240 5% 65%;
+    --primary: 239 84% 67%; --destructive: 0 62.8% 45%; --border: 240 5% 26%;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: 'Inter', sans-serif; padding: 32px; }
+  h1 { font-family: 'Outfit', sans-serif; font-size: 18px; margin: 0 0 4px; }
+  p.sub { font-size: 13px; color: hsl(var(--muted-foreground)); margin: 0 0 24px; max-width: 640px; }
+  .toggle { margin-bottom: 24px; }
+  .toggle button { font-size: 13px; padding: 8px 14px; border-radius: 999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); cursor: pointer; }
+
+  .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 24px; padding: 24px; max-width: 760px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .card-head h3 { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; margin: 0; }
+  .danger-btn { font-size: 13px; padding: 8px 16px; border-radius: 8px; border: none; background: hsl(var(--destructive)); color: white; cursor: pointer; font-weight: 500; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); font-weight: 600; padding: 12px 8px; border-bottom: 1px solid hsl(var(--border)); }
+  thead th.right { text-align: right; }
+  tbody tr { border-bottom: 1px solid hsl(var(--border)); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: hsl(var(--secondary) / .5); }
+  tbody td { padding: 14px 8px; }
+  tbody td.right { text-align: right; }
+  .nome-cell { font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .row-icon { width: 28px; height: 28px; border-radius: 8px; background: hsl(var(--primary)/.12); color: hsl(var(--primary)); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .open-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: 999px; background: hsl(var(--primary)/.1); color: hsl(var(--primary)); text-decoration: none; }
+
+  .annot { display: block; margin-top: 16px; font-size: 11px; color: hsl(var(--muted-foreground)); border: 1px dashed hsl(var(--border)); border-radius: 8px; padding: 8px 12px; max-width: 760px; }
+
+  .empty { text-align: center; padding: 48px 16px; color: hsl(var(--muted-foreground)); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h1>Padrão — Tabela de Dados</h1>
+<p class="sub">Único uso real de <code>&lt;table&gt;</code> no dashboard hoje (<code>ClienteSistemas.tsx</code>). Este wireframe propõe reforço de escaneabilidade (hover de linha, ícone por item) sem mudar a estrutura já correta (thead uppercase, <code>divide-y</code>, ação alinhada à direita).</p>
+
+<div class="toggle"><button id="theme-toggle">🌙 Alternar tema</button></div>
+
+<div class="card" data-principle="feedback-marcos" title="Hover de linha reforça que a tabela é navegável, mesmo antes do usuário passar sobre o link 'Abrir sistema'">
+  <div class="card-head">
+    <h3>Sistemas</h3>
+    <button class="danger-btn">Excluir cliente</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Nome</th>
+        <th scope="col" class="right">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="nome-cell">
+            <span class="row-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span>
+            Loja de Roupas — Catálogo
+          </div>
+        </td>
+        <td class="right"><a class="open-link" href="#">Abrir sistema →</a></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="nome-cell">
+            <span class="row-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span>
+            Agendamento de Consultas
+          </div>
+        </td>
+        <td class="right"><a class="open-link" href="#">Abrir sistema →</a></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="nome-cell">
+            <span class="row-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span>
+            Gestão de Estoque
+          </div>
+        </td>
+        <td class="right"><a class="open-link" href="#">Abrir sistema →</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="annot" data-principle="reversao-clara" title="Excluir cliente deveria abrir um dialog de confirmação (components/ui/dialog.tsx já existe no projeto) em vez de agir no primeiro clique — hoje só tem um title de tooltip explicando a irreversibilidade">
+    Reversão Clara: "Excluir cliente" hoje age no primeiro clique (só um <code>title</code> de tooltip avisa). Recomendado abrir <code>Dialog</code> de confirmação nomeando o cliente antes de excluir.
+  </span>
+</div>
+
+<div class="card" style="margin-top:24px">
+  <div class="card-head"><h3>Estado vazio (referência — já implementado em StateViews.tsx)</h3></div>
+  <div class="empty">Nenhum sistema para este cliente ainda.</div>
+</div>
+
+<script>
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.body.classList.add('dark');
+  document.getElementById('theme-toggle').addEventListener('click', () => document.body.classList.toggle('dark'));
+</script>
+
+</body>
+</html>

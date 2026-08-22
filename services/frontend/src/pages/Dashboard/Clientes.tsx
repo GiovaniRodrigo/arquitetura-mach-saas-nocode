@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, RefreshCcw } from 'lucide-react';
 import { TonalCard } from '../../components/m3/TonalCard';
 import { ElevatedCard } from '../../components/m3/ElevatedCard';
+import { Input } from '../../components/ui/input';
 import { Skeleton, EmptyState, ErrorState } from '../../components/ui/StateViews';
 import { useApp } from '../../app/AppContext';
 import { useTenants } from '../../clientes/useTenants';
@@ -88,12 +89,12 @@ export function Clientes() {
               Criar novo cliente
             </label>
             <div className="flex flex-col sm:flex-row gap-3">
-              <input
+              <Input
                 id="novo-cliente"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Nome do cliente/negócio"
-                className="flex-1 px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                className="flex-1"
               />
               <button
                 type="submit"

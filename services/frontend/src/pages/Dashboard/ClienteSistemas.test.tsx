@@ -89,14 +89,28 @@ describe('Page: ClienteSistemas (RF07/RF08, RN05)', () => {
     expect(await screen.findByRole('heading', { name: 'Acme Renomeada' })).toBeInTheDocument();
   });
 
-  it('excluir: remove o cliente e navega de volta para a lista (RF07)', async () => {
+  it('excluir: pede confirmação antes de remover o cliente e navega de volta para a lista (RF07)', async () => {
     const excluirTenant = vi.fn().mockResolvedValue(undefined);
     renderPagina({ excluirTenant });
 
     await screen.findByRole('heading', { name: 'Acme' });
-    fireEvent.click(screen.getByRole('button', { name: /excluir cliente/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^excluir cliente$/i }));
+    expect(excluirTenant).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole('button', { name: /confirmar exclusão/i }));
 
     await waitFor(() => expect(excluirTenant).toHaveBeenCalledWith('t1'));
+  });
+
+  it('excluir: cancelar o diálogo de confirmação não remove o cliente', async () => {
+    const excluirTenant = vi.fn().mockResolvedValue(undefined);
+    renderPagina({ excluirTenant });
+
+    await screen.findByRole('heading', { name: 'Acme' });
+    fireEvent.click(screen.getByRole('button', { name: /^excluir cliente$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /cancelar/i }));
+
+    expect(excluirTenant).not.toHaveBeenCalled();
   });
 
   it('excluir: mostra erro sem navegar quando a exclusão falha', async () => {
@@ -104,7 +118,8 @@ describe('Page: ClienteSistemas (RF07/RF08, RN05)', () => {
     renderPagina({ excluirTenant });
 
     await screen.findByRole('heading', { name: 'Acme' });
-    fireEvent.click(screen.getByRole('button', { name: /excluir cliente/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^excluir cliente$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /confirmar exclusão/i }));
 
     expect(await screen.findByText('sem permissão')).toBeInTheDocument();
   });

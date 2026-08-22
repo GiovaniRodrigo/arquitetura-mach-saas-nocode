@@ -4,6 +4,17 @@ import { ArrowRight } from 'lucide-react';
 import { TonalCard } from '../../components/m3/TonalCard';
 import { ElevatedCard } from '../../components/m3/ElevatedCard';
 import { Skeleton, EmptyState, ErrorState } from '../../components/ui/StateViews';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '../../components/ui/dialog';
 import { useApp } from '../../app/AppContext';
 import { useSistemas } from '../../systems/useSistemas';
 import { ApiError } from '../../api/client';
@@ -30,6 +41,7 @@ export function ClienteSistemas() {
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   const [excluindo, setExcluindo] = useState(false);
   const [erroExcluir, setErroExcluir] = useState<string | null>(null);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
   const carregarTenant = useCallback(() => {
     let vivo = true;
@@ -78,6 +90,7 @@ export function ClienteSistemas() {
     } catch (err) {
       setErroExcluir(err instanceof ApiError ? err.message : String(err));
       setExcluindo(false);
+      setConfirmandoExclusao(false);
     }
   }
 
@@ -103,11 +116,11 @@ export function ClienteSistemas() {
               Nome do cliente
             </label>
             <div className="flex flex-col sm:flex-row gap-3">
-              <input
+              <Input
                 id="cliente-nome"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="flex-1 px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                className="flex-1"
               />
               <button
                 type="submit"
@@ -118,7 +131,7 @@ export function ClienteSistemas() {
               </button>
             </div>
             {salvo && (
-              <p role="status" className="text-sm text-emerald-600 dark:text-emerald-400">
+              <p role="status" className="text-sm text-success">
                 Nome atualizado.
               </p>
             )}
@@ -137,9 +150,8 @@ export function ClienteSistemas() {
           {estadoTenant.fase === 'pronto' && (
             <button
               type="button"
-              onClick={excluir}
+              onClick={() => setConfirmandoExclusao(true)}
               disabled={excluindo}
-              title="Esta ação é permanente e exclui todos os sistemas e dados deste cliente."
               className="shrink-0 text-sm bg-destructive text-destructive-foreground px-4 py-2 rounded-lg font-medium hover:bg-destructive/90 disabled:opacity-60"
             >
               {excluindo ? 'Excluindo…' : 'Excluir cliente'}
@@ -150,6 +162,25 @@ export function ClienteSistemas() {
           <p role="alert" className="text-sm text-destructive mb-4">
             {erroExcluir}
           </p>
+        )}
+
+        {estadoTenant.fase === 'pronto' && (
+          <Dialog open={confirmandoExclusao} onOpenChange={setConfirmandoExclusao}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Excluir {estadoTenant.tenant.nome}?</DialogTitle>
+                <DialogDescription>
+                  Esta ação é permanente e exclui todos os sistemas e dados deste cliente.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose render={<Button type="button" variant="outline" />}>Cancelar</DialogClose>
+                <Button type="button" variant="destructive" onClick={excluir} disabled={excluindo}>
+                  {excluindo ? 'Excluindo…' : 'Confirmar exclusão'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
 
         {estado.fase === 'erro' ? (
