@@ -12,6 +12,7 @@ import (
 	exportv1 "github.com/machv4/platform/gen/go/construtor/export/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
+	"github.com/machv4/platform/services/gateway/internal/ia"
 	"github.com/machv4/platform/services/gateway/internal/meshmetrics"
 	"github.com/machv4/platform/services/gateway/internal/middleware"
 	"github.com/machv4/platform/services/gateway/internal/routes"
@@ -22,7 +23,7 @@ import (
 // Ordem: Tracing (span raiz) é o mais externo; dentro do grupo autenticado,
 // Auth valida o JWT e injeta o TenantContext, e só então o RateLimiter aplica a
 // cota por tenant. /health fica fora da autenticação.
-func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceClient, logic logicv1.LogicEngineServiceClient, deploy deployv1.DeployEngineServiceClient, export exportv1.ExportEngineServiceClient, recursos *meshmetrics.Client, rl *middleware.RateLimiter, oauth *routes.OAuthHandler) http.Handler {
+func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceClient, logic logicv1.LogicEngineServiceClient, deploy deployv1.DeployEngineServiceClient, export exportv1.ExportEngineServiceClient, recursos *meshmetrics.Client, rl *middleware.RateLimiter, oauth *routes.OAuthHandler, iaCliente ia.Cliente) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Tracing)
 
@@ -94,6 +95,11 @@ func NewRouter(iam iamv1.IAMServiceClient, design designv1.DesignEngineServiceCl
 		// Monitor de Recursos (spec 008, RF05/RNF05): autenticado, mesmo grupo
 		// Auth+RateLimiter das demais rotas — não expõe topologia interna anônima.
 		r.Get("/api/v1/monitor/recursos", routes.ObterRecursos(recursos))
+
+		// Assistente de Design (chat de IA/RAG): iaCliente nil (sem
+		// ANTHROPIC_API_KEY no ambiente) ainda registra a rota — ela responde
+		// 502 IA_INDISPONIVEL em vez de deixar o Gateway inteiro fora do ar.
+		r.Post("/api/v1/ia/chat", routes.ChatIA(iaCliente))
 
 		// Conta/Configuração (spec 004, RF14-RF18): perfil, senha, MFA, exclusão
 		// de conta e troca de e-mail — todas sobre o usuário do TenantContext.

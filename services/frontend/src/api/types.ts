@@ -148,3 +148,12 @@ export interface RecursosResponse {
   servicos: ServicoStatus[];
   coletado_em_unix: number;
 }
+
+/** Papel de uma mensagem no chat do Assistente de Design (RAG). */
+export type PapelChatIA = "usuario" | "assistente";
+
+/** Mensagem trocada com o Assistente de Design — histórico enviado a cada turno. */
+export interface MensagemChatIA {
+  papel: PapelChatIA;
+  conteudo: string;
+}

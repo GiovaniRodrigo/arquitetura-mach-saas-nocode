@@ -124,7 +124,7 @@ func sistemasHarness(t *testing.T) (http.Handler, *auth.Issuer, string, string) 
 		iamv1.NewIAMServiceClient(conn),
 		designv1.NewDesignEngineServiceClient(conn),
 		nil, nil, nil, nil,
-		middleware.NewRateLimiter(1000, 1000), nil,
+		middleware.NewRateLimiter(1000, 1000), nil, nil,
 	)
 	return handler, auth.NewIssuer(priv, time.Hour), idA, idB
 }
