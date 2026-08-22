@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/machv4/platform/services/gateway/internal/web"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
+	"github.com/machv4/platform/services/gateway/internal/web"
 )
 
 // AuthCliente é o subconjunto do IAMServiceClient usado por estas rotas.

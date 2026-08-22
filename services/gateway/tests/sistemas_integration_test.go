@@ -27,10 +27,10 @@ import (
 
 	designv1 "github.com/machv4/platform/gen/go/construtor/design/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
-	gatewayapp "github.com/machv4/platform/services/gateway/internal/app"
-	"github.com/machv4/platform/services/gateway/internal/middleware"
 	"github.com/machv4/platform/pkg/tenantctx"
 	designapp "github.com/machv4/platform/services/design/app"
+	gatewayapp "github.com/machv4/platform/services/gateway/internal/app"
+	"github.com/machv4/platform/services/gateway/internal/middleware"
 	iamapp "github.com/machv4/platform/services/iam/app"
 	"github.com/machv4/platform/services/iam/auth"
 )
@@ -123,7 +123,7 @@ func sistemasHarness(t *testing.T) (http.Handler, *auth.Issuer, string, string) 
 	handler := gatewayapp.NewRouter(
 		iamv1.NewIAMServiceClient(conn),
 		designv1.NewDesignEngineServiceClient(conn),
-		nil, nil, nil,
+		nil, nil, nil, nil,
 		middleware.NewRateLimiter(1000, 1000), nil,
 	)
 	return handler, auth.NewIssuer(priv, time.Hour), idA, idB

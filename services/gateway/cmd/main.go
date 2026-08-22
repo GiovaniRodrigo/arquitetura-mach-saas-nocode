@@ -16,11 +16,12 @@ import (
 	exportv1 "github.com/machv4/platform/gen/go/construtor/export/v1"
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
-	"github.com/machv4/platform/services/gateway/internal/app"
-	"github.com/machv4/platform/services/gateway/internal/middleware"
-	"github.com/machv4/platform/services/gateway/internal/routes"
 	"github.com/machv4/platform/pkg/telemetry"
 	"github.com/machv4/platform/pkg/tenantctx"
+	"github.com/machv4/platform/services/gateway/internal/app"
+	"github.com/machv4/platform/services/gateway/internal/meshmetrics"
+	"github.com/machv4/platform/services/gateway/internal/middleware"
+	"github.com/machv4/platform/services/gateway/internal/routes"
 )
 
 func env(k, def string) string {
@@ -39,6 +40,11 @@ func main() {
 	logicAddr := env("LOGIC_GRPC_ADDR", "localhost:50053")
 	deployAddr := env("DEPLOY_GRPC_ADDR", "localhost:50054")
 	exportAddr := env("EXPORT_GRPC_ADDR", "localhost:50055")
+	// spec 009: recursos (CPU/memória/RPS/latência/sucesso) vêm direto do
+	// Kubernetes (metrics-server) e do Prometheus do linkerd-viz — não há
+	// mais um serviço "monitor" gRPC próprio nem MONITOR_GRPC_ADDR.
+	k8sNamespace := env("K8S_NAMESPACE", "machv4")
+	prometheusURL := env("LINKERD_PROMETHEUS_URL", "http://prometheus.linkerd-viz.svc.cluster.local:9090")
 	otlp := env("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
 	appURL := env("APP_URL", "http://localhost:8080")
 
@@ -86,6 +92,16 @@ func main() {
 	export := exportv1.NewExportEngineServiceClient(exportConn)
 	rl := middleware.NewRateLimiter(50, 100) // 50 req/s, burst 100 por tenant
 
+	// K8sClient exige rodar dentro do cluster (lê o ServiceAccount montado no
+	// pod) — sem isso, o Gateway ainda sobe, mas /api/v1/monitor/recursos
+	// responde 502 (RNF02: erro de tela única, não derruba o resto do Gateway).
+	var recursos *meshmetrics.Client
+	if k8s, err := meshmetrics.NewK8sClient(k8sNamespace); err != nil {
+		log.Printf("AVISO: meshmetrics desabilitado (%v) — /api/v1/monitor/recursos responderá 502", err)
+	} else {
+		recursos = meshmetrics.NewClient(k8s, meshmetrics.NewPrometheusClient(prometheusURL, k8sNamespace))
+	}
+
 	// Login social (Google/GitHub) — credenciais e allowlist por ambiente. Sem
 	// GOOGLE_/GITHUB_CLIENT_* configurados, oauth é nil e as rotas ficam desligadas.
 	oauth := routes.NewOAuthHandler(
@@ -98,9 +114,9 @@ func main() {
 		log.Println("login social habilitado (/auth/{provedor})")
 	}
 
-	handler := app.NewRouter(iam, design, logic, deploy, export, rl, oauth)
+	handler := app.NewRouter(iam, design, logic, deploy, export, recursos, rl, oauth)
 
-	log.Printf("Gateway ouvindo em %s (IAM %s, Design %s, Logic %s, Deploy %s, Export %s)", httpAddr, iamAddr, designAddr, logicAddr, deployAddr, exportAddr)
+	log.Printf("Gateway ouvindo em %s (IAM %s, Design %s, Logic %s, Deploy %s, Export %s, recursos via k8s/prometheus ns=%s)", httpAddr, iamAddr, designAddr, logicAddr, deployAddr, exportAddr, k8sNamespace)
 	if err := http.ListenAndServe(httpAddr, handler); err != nil {
 		log.Fatalf("http: %v", err)
 	}

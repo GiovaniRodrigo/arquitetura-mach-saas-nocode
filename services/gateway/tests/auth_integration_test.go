@@ -23,9 +23,9 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
+	"github.com/machv4/platform/pkg/tenantctx"
 	gatewayapp "github.com/machv4/platform/services/gateway/internal/app"
 	"github.com/machv4/platform/services/gateway/internal/middleware"
-	"github.com/machv4/platform/pkg/tenantctx"
 	iamapp "github.com/machv4/platform/services/iam/app"
 	"github.com/machv4/platform/services/iam/auth"
 )
@@ -93,7 +93,7 @@ func harness(t *testing.T) (handler http.Handler, iss *auth.Issuer, tenantA, ten
 	t.Cleanup(func() { _ = conn.Close() })
 
 	// Este teste exercita apenas /permissoes; os demais serviços não são dialados aqui.
-	handler = gatewayapp.NewRouter(iamv1.NewIAMServiceClient(conn), nil, nil, nil, nil, middleware.NewRateLimiter(1000, 1000), nil)
+	handler = gatewayapp.NewRouter(iamv1.NewIAMServiceClient(conn), nil, nil, nil, nil, nil, middleware.NewRateLimiter(1000, 1000), nil)
 	return handler, auth.NewIssuer(priv, time.Hour), idA, idB
 }
 
