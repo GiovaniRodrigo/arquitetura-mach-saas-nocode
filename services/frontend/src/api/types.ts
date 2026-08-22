@@ -123,3 +123,28 @@ export interface Versao {
   ativa: boolean;
   criado_em: string;
 }
+
+/** Status possíveis de um serviço monitorado (RF06, RN01). */
+export type StatusServico = "servindo" | "indisponivel";
+
+/**
+ * Snapshot de recursos de um serviço da plataforma: CPU/memória vêm do
+ * metrics-server do Kubernetes, requisições/taxa de sucesso/latência vêm do
+ * Prometheus do Linkerd (service mesh) — nenhum serviço se auto-instrumenta,
+ * o sidecar do mesh captura tudo (spec 009).
+ */
+export interface ServicoStatus {
+  nome: string;
+  status: StatusServico;
+  cpu_millicores: number;
+  memoria_bytes: number;
+  requisicoes_por_segundo: number;
+  taxa_sucesso_percent: number;
+  latencia_p99_ms: number;
+}
+
+/** Resposta de GET /api/v1/monitor/recursos: os 8 serviços fixos da plataforma (RF06). */
+export interface RecursosResponse {
+  servicos: ServicoStatus[];
+  coletado_em_unix: number;
+}

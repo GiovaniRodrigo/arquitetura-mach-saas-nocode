@@ -9,6 +9,7 @@ import type {
   EventoLogin,
   Feedback,
   MapaPermissoes,
+  RecursosResponse,
   RegraNegocio,
   ResumoFinanceiro,
   RespostaFormulario,
@@ -441,6 +442,14 @@ export class ApiClient {
       { method: "POST", headers: this.headers() },
     );
     await this.parse<unknown>(resp);
+  }
+
+  /** Status de recursos (uptime/memória) dos 8 serviços da plataforma (RF06). */
+  async obterRecursos(): Promise<RecursosResponse> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/monitor/recursos`, {
+      headers: this.headers(),
+    });
+    return this.parse<RecursosResponse>(resp);
   }
 
   private async parseIgnorandoStatus<T>(resp: Response): Promise<T> {

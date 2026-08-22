@@ -20,6 +20,7 @@ import { AbaTelas } from "./pages/Dashboard/abas/AbaTelas";
 import { AbaRegrasNegocio } from "./pages/Dashboard/abas/AbaRegrasNegocio";
 import { AbaVersao } from "./pages/Dashboard/abas/AbaVersao";
 import { Configuracao } from "./pages/Dashboard/Configuracao";
+import { Monitor } from "./pages/Dashboard/Monitor";
 import { Perfil } from "./pages/Dashboard/Perfil";
 import { Ajuda } from "./pages/Dashboard/Ajuda";
 import { AppProvider } from "./app/AppContext";
@@ -91,30 +92,32 @@ export function App({ config, client: injetado }: { config: FrontendConfig; clie
       <Routes>
         {/* Casca M3: tela de entrada pós-autenticação, independente de sistema.
             A sidebar do DashboardLayout é a navegação; o AppProvider injeta
-            client + identidade do usuário (RF01-RF03). */}
+            client + identidade do usuário (RF01-RF03). Rota-pai sem path
+            (layout route) para que /sistemas compartilhe o mesmo header/sidebar
+            do dashboard sem ficar aninhada sob /dashboard na URL. */}
         <Route
-          path="/dashboard"
           element={
             <AppProvider client={client} usuario={usuario}>
               <DashboardLayout />
             </AppProvider>
           }
         >
-          <Route index element={<Dashboard />} />
-          <Route path="clientes" element={<Clientes />} />
-          <Route path="clientes/:tenantId" element={<ClienteSistemas />} />
-          <Route path="clientes/:tenantId/sistemas/:sistemaId" element={<SistemaAbas />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/clientes" element={<Clientes />} />
+          <Route path="/dashboard/clientes/:tenantId" element={<ClienteSistemas />} />
+          <Route path="/dashboard/clientes/:tenantId/sistemas/:sistemaId" element={<SistemaAbas />}>
             <Route index element={<Navigate to="telas" replace />} />
             <Route path="telas" element={<AbaTelas />} />
             <Route path="regras" element={<AbaRegrasNegocio />} />
             <Route path="versao" element={<AbaVersao />} />
           </Route>
-          <Route path="configuracao" element={<Configuracao />} />
-          <Route path="perfil" element={<Perfil />} />
-          <Route path="ajuda" element={<Ajuda />} />
+          <Route path="/dashboard/configuracao" element={<Configuracao />} />
+          <Route path="/dashboard/monitor" element={<Monitor />} />
+          <Route path="/dashboard/perfil" element={<Perfil />} />
+          <Route path="/dashboard/ajuda" element={<Ajuda />} />
+          {/* Seleção/criação de sistema (antes era o gate pós-login). */}
+          <Route path="/sistemas" element={<SeletorSistemas client={client} usuario={usuario} />} />
         </Route>
-        {/* Seleção/criação de sistema (antes era o gate pós-login). */}
-        <Route path="/sistemas" element={<SeletorSistemas client={client} usuario={usuario} />} />
         {/* Telas dinâmicas do sistema ativo. */}
         {rotas.map((r) => (
           <Route

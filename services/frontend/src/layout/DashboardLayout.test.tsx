@@ -47,6 +47,7 @@ describe('Template: DashboardLayout', () => {
               <Route index element={<div data-testid="outlet-content">Dashboard Content</div>} />
               <Route path="clientes" element={<div data-testid="outlet-content">Clientes Content</div>} />
               <Route path="configuracao" element={<div data-testid="outlet-content">Configuração Content</div>} />
+              <Route path="monitor" element={<div data-testid="outlet-content">Monitor Content</div>} />
               <Route path="perfil" element={<div data-testid="outlet-content">Perfil Content</div>} />
               <Route path="ajuda" element={<div data-testid="outlet-content">Ajuda Content</div>} />
             </Route>
@@ -61,7 +62,14 @@ describe('Template: DashboardLayout', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Clientes' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Configuração' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Monitor' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ajuda' })).toBeInTheDocument();
+  });
+
+  it('o link "Monitor" navega para /dashboard/monitor', () => {
+    renderLayout();
+    fireEvent.click(screen.getByRole('link', { name: 'Monitor' }));
+    expect(screen.getByTestId('outlet-content')).toHaveTextContent('Monitor Content');
   });
 
   it('exibe o atalho fixo de Perfil/Cadastro no cabeçalho e navega ao clicar (RF17-RF19)', () => {

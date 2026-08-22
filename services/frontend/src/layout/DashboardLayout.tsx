@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Settings, LogOut, User, Search, HelpCircle, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut, User, Search, HelpCircle, Moon, Sun, Activity } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { encerrarSessao } from '@/auth/session';
@@ -33,8 +33,10 @@ function tituloDaPagina(pathname: string): string {
   if (pathname === '/dashboard') return 'Dashboard';
   if (pathname.startsWith('/dashboard/clientes')) return 'Clientes';
   if (pathname.startsWith('/dashboard/configuracao')) return 'Configuração';
+  if (pathname.startsWith('/dashboard/monitor')) return 'Monitor de Recursos';
   if (pathname.startsWith('/dashboard/perfil')) return 'Cadastro/Perfil';
   if (pathname.startsWith('/dashboard/ajuda')) return 'Ajuda';
+  if (pathname.startsWith('/sistemas')) return 'Seus sistemas';
   return 'Dashboard';
 }
 
@@ -90,6 +92,12 @@ export function DashboardLayout() {
                     <SidebarMenuButton render={<Link to="/dashboard/configuracao" />} isActive={location.pathname.startsWith('/dashboard/configuracao')}>
                       <Settings />
                       <span>Configuração</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton render={<Link to="/dashboard/monitor" />} isActive={location.pathname.startsWith('/dashboard/monitor')}>
+                      <Activity />
+                      <span>Monitor</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
