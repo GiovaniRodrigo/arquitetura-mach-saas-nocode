@@ -533,3 +533,17 @@ export function registroDoTipo(tipo: string): RegistroComponente | undefined {
 export function aceitaFilhos(tipo: string): boolean {
   return registroDoTipo(tipo)?.aceitaFilhos ?? false;
 }
+
+/**
+ * Tipos que o site publicado renderiza com uma tag HTML inline — `badge` vira
+ * `<span>` e `link` vira `<a>` (ver PreviewRenderer.tsx), ambos encolhendo até
+ * o conteúdo. O Canvas desenha todo nó como `<div>`, então precisa saber
+ * disto para não achatar um badge/link em bloco de largura total e mostrar no
+ * editor algo diferente do que será publicado. Manter em sincronia com as
+ * tags usadas no PreviewRenderer.
+ */
+const TIPOS_INLINE = new Set(['badge', 'link']);
+
+export function ehInline(tipo: string): boolean {
+  return TIPOS_INLINE.has(tipo);
+}

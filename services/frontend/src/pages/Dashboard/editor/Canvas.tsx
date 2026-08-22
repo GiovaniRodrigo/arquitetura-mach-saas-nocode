@@ -6,7 +6,7 @@
 
 import { useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Componente } from '../../../api/types';
-import { aceitaFilhos, registroDoTipo, type Estilos } from '../../../systems/componentRegistry';
+import { aceitaFilhos, ehInline, registroDoTipo, type Estilos } from '../../../systems/componentRegistry';
 import { estilosParaCss } from '../../../systems/estilosCss';
 import { iconePorNome } from '../../../systems/iconePicker';
 import { paraEmbedUrl } from '../../../systems/videoEmbed';
@@ -267,7 +267,9 @@ function NoRenderizado({
         } ${no.tipo === 'skeleton' ? 'animate-pulse' : ''} ${ehAbsoluto ? 'cursor-move' : ''}`}
         style={{
           ...estiloFinal,
-          display: estiloFinal.display ?? (podeReceberFilhos ? 'flex' : 'block'),
+          display:
+            estiloFinal.display ??
+            (podeReceberFilhos ? 'flex' : ehInline(no.tipo) ? 'inline-block' : 'block'),
           flexDirection: estiloFinal.flexDirection ?? (podeReceberFilhos ? 'column' : undefined),
           minHeight: podeReceberFilhos ? 40 : undefined,
           border: estiloFinal.borderWidth ? undefined : '1px dashed var(--color-border)',

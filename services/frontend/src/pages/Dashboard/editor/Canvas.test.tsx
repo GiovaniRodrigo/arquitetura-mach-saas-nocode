@@ -184,3 +184,44 @@ describe('Canvas — posicionamento livre dos componentes (RF09, posicao: absolu
     expect(screen.getByRole('button', { name: 'imagem' })).toHaveAttribute('draggable', 'false');
   });
 });
+
+describe('Canvas — paridade de display com o site publicado', () => {
+  // Regressão: o Canvas desenha todo nó como <div> e forçava display:block em
+  // tudo que não aceita filhos. Um `badge` (que o PreviewRenderer publica como
+  // <span>, inline) virava então uma barra de largura total no editor — ex.: o
+  // "MAIS POPULAR" da home demo, pílula no publicado e barra na edição.
+  function displayDe(blindIndex: string): string {
+    const el = screen
+      .getByTestId(`layer-${blindIndex}`)
+      .querySelector('[role="button"]') as HTMLElement;
+    return el.style.display;
+  }
+
+  it('desenha badge como inline-block, para encolher até o conteúdo igual ao publicado', () => {
+    const arvore = raiz([
+      no({
+        blind_index: 'selo',
+        tipo: 'badge',
+        propriedades: { texto: 'MAIS POPULAR', estilos: { padding: '4px 12px', bordaRaio: '999px' } },
+      }),
+    ]);
+    render(<Canvas {...propsPadrao({ arvore })} />);
+    expect(displayDe('selo')).toBe('inline-block');
+  });
+
+  it('mantém block em componentes que o publicado renderiza como bloco', () => {
+    const arvore = raiz([
+      no({ blind_index: 'texto', tipo: 'paragrafo', propriedades: { texto: 'Olá', estilos: {} } }),
+    ]);
+    render(<Canvas {...propsPadrao({ arvore })} />);
+    expect(displayDe('texto')).toBe('block');
+  });
+
+  it('respeita um display explícito em vez do fallback por tipo', () => {
+    const arvore = raiz([
+      no({ blind_index: 'selo', tipo: 'badge', propriedades: { texto: 'X', estilos: { display: 'block' } } }),
+    ]);
+    render(<Canvas {...propsPadrao({ arvore })} />);
+    expect(displayDe('selo')).toBe('block');
+  });
+});

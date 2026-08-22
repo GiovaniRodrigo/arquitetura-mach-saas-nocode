@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Home (Brillance) com recomendações aplicadas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primaria: #4f46e5;
+    --primaria-escura: #4338ca;
+    --primaria-clara: #eef2ff;
+    --texto: #111827;
+    --mutado: #6b7280;
+    --borda: #e5e7eb;
+    --fundo-claro: #f9fafb;
+    --branco: #ffffff;
+    --escuro: #111827;
+    --mutado-escuro: #9ca3af;
+    --divisor-escuro: #374151;
+    --raio-sm: 8px;
+    --raio-md: 16px;
+    --raio-lg: 20px;
+    --sombra-elevada: 0 1px 2px rgba(17,24,39,.06), 0 24px 48px -12px rgba(17,24,39,.18);
+    --sombra-marca: 0 1px 2px rgba(79,70,229,.15), 0 20px 40px -8px rgba(79,70,229,.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', sans-serif; color: var(--texto); background: var(--branco); }
+  h1, h2, h3 { font-family: 'Outfit', sans-serif; margin: 0; }
+  p { margin: 0; }
+  .anotacao { position: relative; }
+  .anotacao::before {
+    content: attr(data-principio);
+    position: absolute; top: -10px; left: 8px;
+    background: #fef08a; color: #713f12; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px; z-index: 5; letter-spacing: .02em;
+    font-family: 'Inter', sans-serif; text-transform: uppercase;
+    opacity: 0; pointer-events: none; transition: opacity .15s;
+  }
+  .anotacao:hover::before { opacity: 1; }
+
+  /* Header */
+  header { background: var(--branco); padding: 18px 40px; border-bottom: 1px solid var(--borda); box-shadow: 0 1px 2px rgba(0,0,0,.04); display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 22px; font-weight: 700; color: var(--primaria); }
+  nav { display: flex; gap: 24px; }
+  nav a { color: var(--mutado); font-size: 14px; font-weight: 500; text-decoration: none; }
+  .header-botoes { display: flex; align-items: center; gap: 12px; }
+  .btn { border: none; cursor: pointer; font-family: inherit; }
+  .btn-ghost { background: transparent; color: var(--mutado); font-size: 14px; font-weight: 500; padding: 8px 12px; }
+  .btn-primario { background: var(--primaria); color: var(--branco); padding: 8px 18px; border-radius: var(--raio-sm); font-weight: 500; font-size: 14px; }
+
+  /* Hero */
+  .hero { display: flex; flex-direction: column; align-items: center; gap: 28px; padding: 88px 40px 64px; background: var(--fundo-claro); text-align: center; }
+  .badge { display: inline-flex; background: var(--primaria-clara); color: var(--primaria); font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 999px; }
+  .hero h1 { font-size: 44px; font-weight: 700; max-width: 720px; }
+  .hero p.lead { font-size: 17px; color: var(--mutado); max-width: 620px; }
+  .hero-botoes { display: flex; gap: 12px; align-items: center; }
+  .btn-hero-primario { background: var(--primaria); color: var(--branco); padding: 14px 28px; border-radius: var(--raio-sm); font-weight: 500; box-shadow: var(--sombra-marca); }
+  .btn-hero-secundario { background: var(--branco); color: var(--primaria); border: 1px solid var(--primaria); padding: 14px 28px; border-radius: var(--raio-sm); font-weight: 500; }
+  .trust { font-size: 13px; color: var(--mutado); }
+  .hero-imagem-wrap { position: relative; width: 860px; max-width: 100%; padding-top: 12px; }
+  .hero-imagem { width: 100%; height: 480px; border-radius: var(--raio-lg); border: 1px solid var(--borda); box-shadow: var(--sombra-elevada); background: linear-gradient(135deg, #ffffff 0%, var(--primaria-clara) 100%); display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-size: 40px; font-weight: 700; color: var(--primaria); }
+  .hero-badge-flutuante { position: absolute; left: 24px; bottom: 24px; background: var(--branco); color: var(--primaria); border: 1px solid var(--borda); padding: 10px 18px; border-radius: 999px; box-shadow: var(--sombra-elevada); font-weight: 500; font-size: 14px; }
+
+  /* Logos */
+  .logos { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px; }
+  .logos-label { font-size: 13px; font-weight: 500; color: var(--mutado); }
+  .logos-linha { display: flex; gap: 40px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .logos-linha span { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: var(--mutado); }
+
+  /* Features */
+  .features { display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 64px 40px; background: var(--fundo-claro); }
+  .features-cabecalho { max-width: 560px; text-align: center; display: flex; flex-direction: column; gap: 8px; }
+  .features h2 { font-size: 30px; }
+  .features .sub { font-size: 15px; color: var(--mutado); }
+  .features-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 24px; max-width: 1080px; }
+  .card { background: var(--branco); border: 1px solid var(--borda); border-radius: var(--raio-md); padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+  .icone-avatar { width: 44px; height: 44px; border-radius: var(--raio-lg); background: var(--primaria-clara); color: var(--primaria); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .card h3 { font-size: 16px; }
+  .card p { font-size: 14px; color: var(--mutado); }
+
+  /* Showcase */
+  .showcase { display: flex; justify-content: space-between; align-items: center; gap: 48px; padding: 64px 40px; }
+  .showcase-texto { display: flex; flex-direction: column; gap: 16px; max-width: 460px; }
+  .showcase h2 { font-size: 28px; }
+  .showcase p.corpo { font-size: 15px; color: var(--mutado); }
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+  .checklist span { font-size: 14px; font-weight: 500; }
+  .showcase-imagem { width: 460px; max-width: 100%; height: 320px; border-radius: var(--raio-lg); box-shadow: var(--sombra-elevada); background: linear-gradient(135deg, var(--primaria-clara), #ffffff); display: flex; align-items: center; justify-content: center; color: var(--primaria); font-family: 'Outfit', sans-serif; font-weight: 700; }
+
+  /* Stats */
+  .stats { display: flex; justify-content: center; gap: 64px; padding: 56px 40px; background: var(--primaria-escura); flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .stat .numero { font-size: 36px; font-weight: 700; color: var(--branco); font-family: 'Outfit', sans-serif; }
+  .stat .rotulo { font-size: 14px; color: var(--primaria-clara); }
+
+  /* Depoimentos */
+  .depoimentos { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 64px 40px; background: var(--branco); }
+  .depoimentos h2 { font-size: 28px; text-align: center; }
+  .rating-agregado { display: flex; align-items: center; gap: 8px; background: var(--fundo-claro); border: 1px solid var(--borda); border-radius: 999px; padding: 8px 18px; font-size: 13px; }
+  .rating-agregado strong { color: var(--texto); font-weight: 700; }
+  .rating-agregado .estrelas { color: #f59e0b; }
+  .depoimentos-linha { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+  .testemunho { width: 300px; padding: 24px; border-radius: var(--raio-md); border: 1px solid var(--borda); background: var(--branco); box-shadow: var(--sombra-elevada); display: flex; flex-direction: column; gap: 14px; }
+  .testemunho .estrelas { color: #f59e0b; font-size: 13px; }
+  .testemunho blockquote { margin: 0; font-size: 14px; color: var(--mutado); font-style: normal; }
+  .autor { display: flex; align-items: center; gap: 10px; }
+  .autor .foto { width: 36px; height: 36px; border-radius: 999px; background-size: cover; background-position: center; flex-shrink: 0; }
+  .autor .nome { font-size: 13px; font-weight: 500; color: var(--texto); }
+  .autor .cargo { font-size: 12px; color: var(--mutado); }
+
+  /* Pricing */
+  .planos { display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 64px 40px; background: var(--fundo-claro); }
+  .planos h2 { font-size: 30px; }
+  .planos-linha { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .plano { width: 300px; padding: 32px; border-radius: var(--raio-md); background: var(--branco); border: 1px solid var(--borda); display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .plano.destaque { border: 2px solid var(--primaria); box-shadow: var(--sombra-marca); }
+  .plano .badge-popular { align-self: flex-start; background: var(--primaria); color: var(--branco); font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
+  .plano h3 { font-size: 20px; }
+  .preco-linha { display: flex; align-items: flex-end; gap: 4px; }
+  .preco { font-size: 32px; font-weight: 700; font-family: 'Outfit', sans-serif; }
+  .sufixo { font-size: 14px; color: var(--mutado); }
+  .plano .descricao { font-size: 14px; color: var(--mutado); }
+  .feats { display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+  .plano .cta { padding: 12px 20px; border-radius: var(--raio-sm); font-weight: 500; text-align: center; }
+  .cta-primaria { background: var(--primaria); color: var(--branco); }
+  .cta-secundaria { background: var(--branco); color: var(--primaria); border: 1px solid var(--primaria); }
+
+  /* FAQ */
+  .faq { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 64px 40px; }
+  .faq h2 { font-size: 28px; }
+  .faq-wrap { width: 640px; max-width: 100%; display: flex; flex-direction: column; gap: 4px; }
+  details { border-bottom: 1px solid var(--borda); padding: 14px 4px; }
+  summary { font-size: 14px; font-weight: 500; cursor: pointer; }
+  details p { margin-top: 10px; font-size: 14px; color: var(--mutado); }
+
+  /* CTA final */
+  .cta-final { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 64px 40px; background: var(--primaria); text-align: center; }
+  .cta-final h2 { color: var(--branco); font-size: 30px; }
+  .cta-final p { color: var(--primaria-clara); font-size: 16px; max-width: 480px; }
+  .btn-cta-final { background: var(--branco); color: var(--primaria); padding: 14px 32px; border-radius: var(--raio-sm); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 20px 40px -10px rgba(0,0,0,.25); }
+  .cta-final .fine { color: var(--primaria-clara); font-size: 12px; }
+
+  /* Footer */
+  footer { background: var(--escuro); padding: 56px 40px 24px; display: flex; flex-direction: column; gap: 32px; }
+  .footer-colunas { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 32px; }
+  .footer-col { display: flex; flex-direction: column; gap: 10px; min-width: 140px; }
+  .footer-col h4 { color: var(--branco); font-size: 13px; font-family: 'Inter', sans-serif; }
+  .footer-col a, .footer-col p { color: var(--mutado-escuro); font-size: 13px; text-decoration: none; }
+  .footer-divisor { height: 1px; background: var(--divisor-escuro); width: 100%; }
+  .footer-copy-linha { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .footer-copy-linha p, .footer-copy-linha a { color: var(--mutado-escuro); font-size: 12px; text-decoration: none; }
+  .footer-social { display: flex; gap: 16px; }
+
+  @media (max-width: 900px) {
+    .features-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .showcase { flex-direction: column; }
+    header { flex-wrap: wrap; gap: 12px; }
+  }
+  @media (max-width: 600px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Legenda: passe o mouse sobre blocos com contorno tracejado amarelo para ver a anotação de princípio aplicado -->
+
+<header>
+  <div class="logo">Brillance</div>
+  <nav aria-label="Produto">
+    <a href="#">Produto</a><a href="#">Recursos</a><a href="#">Preços</a><a href="#">FAQ</a>
+  </nav>
+  <div class="header-botoes">
+    <button class="btn btn-ghost">Entrar</button>
+    <button class="btn btn-primario">Começar grátis</button>
+  </div>
+</header>
+
+<section class="hero anotacao" data-principio="Início óbvio">
+  <span class="badge">✨ Novidade: automação com IA</span>
+  <h1>Gerencie sua equipe com clareza e velocidade</h1>
+  <p class="lead">Brillance centraliza tarefas, métricas e comunicação em um único painel — para times que querem entregar mais, com menos ruído.</p>
+  <div class="hero-botoes">
+    <button class="btn btn-hero-primario">Começar grátis</button>
+    <button class="btn btn-hero-secundario">Ver demonstração</button>
+  </div>
+  <p class="trust">Sem cartão de crédito · Cancele quando quiser · Suporte em português</p>
+  <div class="hero-imagem-wrap anotacao" data-principio="Sombra em camadas (novo)">
+    <div class="hero-imagem">Brillance</div>
+    <div class="hero-badge-flutuante">🚀 +2.400 times ativos</div>
+  </div>
+</section>
+
+<section class="logos anotacao" data-principio="Prova social logo abaixo do hero (NN/g)">
+  <p class="logos-label">Empresas que confiam na Brillance</p>
+  <div class="logos-linha">
+    <span>Acme</span><span>Globex</span><span>Initech</span><span>Umbrella</span><span>Soylent</span>
+  </div>
+</section>
+
+<section class="features">
+  <div class="features-cabecalho">
+    <h2>Tudo que sua equipe precisa em um só lugar</h2>
+    <p class="sub">Ferramentas simples por fora, poderosas por dentro.</p>
+  </div>
+  <div class="features-grid anotacao" data-principio="Radio unificado 16px (era 12px)">
+    <div class="card"><div class="icone-avatar">📋</div><h3>Gestão de tarefas</h3><p>Organize projetos com quadros, listas e prazos claros.</p></div>
+    <div class="card"><div class="icone-avatar">📊</div><h3>Analytics em tempo real</h3><p>Acompanhe métricas de performance sem esforço.</p></div>
+    <div class="card"><div class="icone-avatar">🤝</div><h3>Colaboração fluida</h3><p>Comente, mencione e decida tudo no mesmo lugar.</p></div>
+    <div class="card"><div class="icone-avatar">🔔</div><h3>Notificações inteligentes</h3><p>Só o que importa, na hora certa.</p></div>
+    <div class="card"><div class="icone-avatar">🔗</div><h3>Integrações nativas</h3><p>Conecte com as ferramentas que sua equipe já usa.</p></div>
+    <div class="card"><div class="icone-avatar">🔒</div><h3>Segurança de ponta</h3><p>Criptografia de ponta a ponta e backups automáticos.</p></div>
+  </div>
+</section>
+
+<section class="showcase">
+  <div class="showcase-texto">
+    <span class="badge">PRODUTIVIDADE</span>
+    <h2>Veja o progresso da sua equipe em segundos</h2>
+    <p class="corpo">Dashboards visuais que mostram exatamente onde cada projeto está — sem precisar perguntar.</p>
+    <div class="checklist">
+      <span>✓ Painéis personalizáveis por equipe</span>
+      <span>✓ Relatórios automáticos toda semana</span>
+      <span>✓ Metas e OKRs conectados às tarefas</span>
+    </div>
+  </div>
+  <div class="showcase-imagem">Dashboard</div>
+</section>
+
+<section class="stats">
+  <div class="stat"><span class="numero">10K+</span><span class="rotulo">Times ativos</span></div>
+  <div class="stat"><span class="numero">99.9%</span><span class="rotulo">Uptime garantido</span></div>
+  <div class="stat"><span class="numero">40%</span><span class="rotulo">Menos retrabalho</span></div>
+  <div class="stat"><span class="numero">24/7</span><span class="rotulo">Suporte especializado</span></div>
+</section>
+
+<section class="depoimentos">
+  <h2>Amado por times de todos os tamanhos</h2>
+  <div class="rating-agregado anotacao" data-principio="Badge de rating agregado (novo, NN/g)">
+    <span class="estrelas">★★★★★</span>
+    <span><strong>4.9/5</strong> · avaliado por 2.400+ times</span>
+  </div>
+  <div class="depoimentos-linha anotacao" data-principio="Foto real em vez de iniciais (novo, NN/g)">
+    <div class="testemunho">
+      <div class="estrelas">★★★★★</div>
+      <blockquote>"Finalmente um painel que a equipe toda realmente usa."</blockquote>
+      <div class="autor">
+        <div class="foto" style="background-image:url('https://i.pravatar.cc/72?img=47')"></div>
+        <div><div class="nome">Mariana Costa</div><div class="cargo">Head de Operações</div></div>
+      </div>
+    </div>
+    <div class="testemunho">
+      <div class="estrelas">★★★★★</div>
+      <blockquote>"Reduzimos reuniões de status em 70% depois da Brillance."</blockquote>
+      <div class="autor">
+        <div class="foto" style="background-image:url('https://i.pravatar.cc/72?img=12')"></div>
+        <div><div class="nome">Rafael Andrade</div><div class="cargo">Gerente de Produto</div></div>
+      </div>
+    </div>
+    <div class="testemunho">
+      <div class="estrelas">★★★★★</div>
+      <blockquote>"Implementação em um dia, adoção em uma semana."</blockquote>
+      <div class="autor">
+        <div class="foto" style="background-image:url('https://i.pravatar.cc/72?img=32')"></div>
+        <div><div class="nome">Camila Souza</div><div class="cargo">CTO</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="planos">
+  <h2>Planos para cada estágio da sua empresa</h2>
+  <div class="planos-linha">
+    <div class="plano">
+      <h3>Starter</h3>
+      <div class="preco-linha"><span class="preco">R$ 0</span><span class="sufixo">/mês</span></div>
+      <p class="descricao">Para times pequenos começando agora</p>
+      <div class="feats"><span>✓ Até 5 usuários</span><span>✓ Tarefas ilimitadas</span><span>✓ Integrações básicas</span><span>✓ Suporte por e-mail</span></div>
+      <button class="btn cta cta-secundaria">Começar grátis</button>
+    </div>
+    <div class="plano destaque anotacao" data-principio="Sombra colorida em camadas (era sombra única)">
+      <span class="badge-popular">MAIS POPULAR</span>
+      <h3>Pro</h3>
+      <div class="preco-linha"><span class="preco">R$ 49</span><span class="sufixo">/mês</span></div>
+      <p class="descricao">Para times que querem escalar</p>
+      <div class="feats"><span>✓ Até 50 usuários</span><span>✓ Analytics avançado</span><span>✓ Automações com IA</span><span>✓ Suporte prioritário</span></div>
+      <button class="btn cta cta-primaria">Assinar Pro</button>
+    </div>
+    <div class="plano">
+      <h3>Enterprise</h3>
+      <div class="preco-linha"><span class="preco">Sob consulta</span></div>
+      <p class="descricao">Para operações grandes e complexas</p>
+      <div class="feats"><span>✓ Usuários ilimitados</span><span>✓ SSO e segurança avançada</span><span>✓ Gerente de conta dedicado</span><span>✓ SLA garantido</span></div>
+      <button class="btn cta cta-secundaria">Falar com vendas</button>
+    </div>
+  </div>
+</section>
+
+<section class="faq">
+  <h2>Perguntas frequentes</h2>
+  <div class="faq-wrap">
+    <details open><summary>Preciso de cartão de crédito para testar?</summary><p>Não. O plano Starter é gratuito e os planos pagos têm 14 dias de teste sem cobrança.</p></details>
+    <details><summary>Posso cancelar quando quiser?</summary><p>Sim, o cancelamento é imediato e sem multas, direto no painel.</p></details>
+    <details><summary>A Brillance integra com outras ferramentas?</summary><p>Sim, temos integrações nativas com as principais ferramentas de comunicação e produtividade.</p></details>
+    <details><summary>Como funciona o suporte?</summary><p>Suporte por e-mail para todos os planos e suporte prioritário por chat nos planos Pro e Enterprise.</p></details>
+    <details><summary>Meus dados estão seguros?</summary><p>Sim, usamos criptografia de ponta a ponta e backups automáticos diários.</p></details>
+  </div>
+</section>
+
+<section class="cta-final">
+  <h2>Pronto para trabalhar com mais clareza?</h2>
+  <p>Junte-se a milhares de times que já organizaram o caos com a Brillance.</p>
+  <button class="btn btn-cta-final anotacao" data-principio="Sombra de paridade com o CTA do hero (novo)">Começar grátis agora</button>
+  <p class="fine">Sem cartão de crédito necessário</p>
+</section>
+
+<footer>
+  <div class="footer-colunas">
+    <div class="footer-col" style="min-width:220px">
+      <h4 style="color:#fff;font-weight:700;font-size:18px">Brillance</h4>
+      <p>O painel que organiza tarefas, métricas e comunicação da sua equipe.</p>
+    </div>
+    <div class="footer-col"><h4>Produto</h4><a href="#">Recursos</a><a href="#">Preços</a><a href="#">Integrações</a></div>
+    <div class="footer-col"><h4>Empresa</h4><a href="#">Sobre</a><a href="#">Carreiras</a><a href="#">Blog</a></div>
+    <div class="footer-col"><h4>Recursos</h4><a href="#">Central de ajuda</a><a href="#">Documentação</a><a href="#">Comunidade</a></div>
+    <div class="footer-col"><h4>Legal</h4><a href="#">Termos de uso</a><a href="#">Privacidade</a><a href="#">Cookies</a></div>
+  </div>
+  <div class="footer-divisor"></div>
+  <div class="footer-copy-linha">
+    <p>© 2026 Brillance. Todos os direitos reservados.</p>
+    <div class="footer-social"><a href="#">Twitter</a><a href="#">LinkedIn</a><a href="#">GitHub</a></div>
+  </div>
+</footer>
+
+</body>
+</html>
