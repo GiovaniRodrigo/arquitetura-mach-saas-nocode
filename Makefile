@@ -40,6 +40,10 @@ dev-no-frontend: ## Como 'dev', mas sem subir o frontend (útil se ele já roda 
 migrate: ## Aplica as migrações SQL no Postgres local
 	docker compose run --rm migrate
 
+.PHONY: seed
+seed: ## Popula o stack local com um site de demonstração (requer stack no ar: make dev). Vars: SEED_EMAIL, SEED_SENHA, SEED_SISTEMA_ID
+	./build/seed-demo-site.sh
+
 .PHONY: test
 test: ## Executa a suíte de testes Go
 	go test ./...
