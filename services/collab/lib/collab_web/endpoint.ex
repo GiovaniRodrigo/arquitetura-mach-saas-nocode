@@ -49,8 +49,32 @@ defmodule CollabWeb.Endpoint do
   plug :healthz
   plug CollabWeb.Router
 
+  # RF02/RN02 (specs/008-monitor-recursos): o corpo passa a incluir uptime e
+  # memória da VM para o Monitor agregar (contracts/api.md, seção /healthz),
+  # mantendo o status HTTP 200 já usado pelo smoke test pós-deploy (spec 002).
+  #
+  # Uptime via :erlang.statistics(:wall_clock) — tempo decorrido desde o boot
+  # da VM, em ms — em vez de guardar um timestamp em Application.put_env no
+  # start/2 do Application: evita tocar em código estrutural só para isso e é
+  # a forma mais idiomática de obter esse dado no BEAM (plan.md §3.5).
+  #
+  # Memória via :erlang.memory(:total) (bytes). Não há equivalente direto a
+  # "memória de sistema" (Go .Sys) nem a goroutines na BEAM, então esses dois
+  # campos simplesmente não são incluídos (RN02, plan.md §4.3) — nunca inventados.
   defp healthz(%Plug.Conn{request_path: "/healthz"} = conn, _opts) do
-    conn |> Plug.Conn.send_resp(200, "ok") |> Plug.Conn.halt()
+    {uptime_ms, _} = :erlang.statistics(:wall_clock)
+
+    corpo =
+      Jason.encode!(%{
+        status: "servindo",
+        uptime_segundos: div(uptime_ms, 1000),
+        memoria_alocada_bytes: :erlang.memory(:total)
+      })
+
+    conn
+    |> Plug.Conn.put_resp_content_type("application/json")
+    |> Plug.Conn.send_resp(200, corpo)
+    |> Plug.Conn.halt()
   end
 
   defp healthz(conn, _opts), do: conn

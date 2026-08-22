@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
+	"github.com/machv4/platform/pkg/health"
 	"github.com/machv4/platform/pkg/telemetry"
 	"github.com/machv4/platform/pkg/tenantctx"
 	"github.com/machv4/platform/services/iam/app"
@@ -32,6 +33,7 @@ func env(k, def string) string {
 }
 
 func main() {
+	inicio := time.Now()
 	ctx := context.Background()
 
 	addr := env("IAM_GRPC_ADDR", ":50051")
@@ -68,6 +70,7 @@ func main() {
 		grpc.ChainUnaryInterceptor(tenantctx.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenantctx.StreamServerInterceptor()),
 	)
+	health.Registrar(grpcServer, "iam", inicio)
 	iamv1.RegisterIAMServiceServer(grpcServer, iam)
 
 	lis, err := net.Listen("tcp", addr)

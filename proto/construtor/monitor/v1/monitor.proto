@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package construtor.monitor.v1;
+
+import "construtor/health/v1/health.proto";
+
+option go_package = "github.com/machv4/platform/gen/go/construtor/monitor/v1;monitorv1";
+
+// MonitorService é o contrato de "como estão todos": implementado só pelo
+// serviço services/monitor, que agrega o RecursosService (construtor.health.v1)
+// dos serviços gRPC e o /health(z) HTTP dos demais (spec 008-monitor-recursos,
+// RF04). Consumido pelo Gateway via fachada REST (GET /api/v1/monitor/recursos).
+
+message ObterRecursosRequest {}
+
+message ObterRecursosResponse {
+  repeated construtor.health.v1.ServicoStatus servicos = 1;
+  // Timestamp Unix da coleta, para o Frontend saber "há quanto tempo".
+  int64 coletado_em_unix = 2;
+}
+
+service MonitorService {
+  rpc ObterRecursos(ObterRecursosRequest) returns (ObterRecursosResponse);
+}

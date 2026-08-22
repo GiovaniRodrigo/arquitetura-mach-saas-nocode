@@ -6,12 +6,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 
 	deployv1 "github.com/machv4/platform/gen/go/construtor/deploy/v1"
+	"github.com/machv4/platform/pkg/health"
 	"github.com/machv4/platform/pkg/telemetry"
 	"github.com/machv4/platform/pkg/tenantctx"
 	"github.com/machv4/platform/services/deploy/app"
@@ -25,6 +27,7 @@ func env(k, def string) string {
 }
 
 func main() {
+	inicio := time.Now()
 	ctx := context.Background()
 
 	addr := env("DEPLOY_GRPC_ADDR", ":50054")
@@ -50,6 +53,7 @@ func main() {
 		grpc.ChainUnaryInterceptor(tenantctx.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenantctx.StreamServerInterceptor()),
 	)
+	health.Registrar(grpcServer, "deploy", inicio)
 	deployv1.RegisterDeployEngineServiceServer(grpcServer, deploy)
 
 	lis, err := net.Listen("tcp", addr)

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package construtor.health.v1;
+
+option go_package = "github.com/machv4/platform/gen/go/construtor/health/v1;healthv1";
+
+// RecursosService é o contrato de "como estou eu": implementado por cada
+// serviço gRPC da plataforma (IAM, Design, Logic, Deploy, Export) via
+// pkg/health, para que o Monitor (construtor.monitor.v1) possa consultar
+// status/uptime/memória de forma uniforme (spec 008-monitor-recursos, RF01).
+
+message ObterStatusRequest {}
+
+message ServicoStatus {
+  string nome = 1;                     // ex.: "iam", "design"
+  string tipo = 2;                     // "grpc" | "http"
+  string status = 3;                   // "servindo" | "indisponivel"
+  int64 uptime_segundos = 4;
+  // Heap em uso (Go: runtime.MemStats.Alloc / Elixir: erlang.memory(:total)).
+  int64 memoria_alocada_bytes = 5;
+  // Memória total obtida do SO (Go: runtime.MemStats.Sys). Ausente (0) para
+  // runtimes que não expõem esse número (ex.: Elixir/BEAM, RN02).
+  int64 memoria_sistema_bytes = 6;
+  // Goroutines (Go). Ausente (0) para runtimes sem esse conceito.
+  int32 goroutines = 7;
+  // Preenchido só quando status = "indisponivel".
+  string mensagem_erro = 8;
+}
+
+service RecursosService {
+  rpc ObterStatus(ObterStatusRequest) returns (ServicoStatus);
+}

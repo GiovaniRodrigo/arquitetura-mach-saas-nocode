@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc"
 
 	exportv1 "github.com/machv4/platform/gen/go/construtor/export/v1"
+	"github.com/machv4/platform/pkg/health"
 	"github.com/machv4/platform/pkg/telemetry"
 	"github.com/machv4/platform/pkg/tenantctx"
 	"github.com/machv4/platform/services/export/app"
@@ -28,6 +29,7 @@ func env(k, def string) string {
 }
 
 func main() {
+	inicio := time.Now()
 	ctx := context.Background()
 
 	addr := env("EXPORT_GRPC_ADDR", ":50055")
@@ -66,6 +68,7 @@ func main() {
 		grpc.ChainUnaryInterceptor(tenantctx.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenantctx.StreamServerInterceptor()),
 	)
+	health.Registrar(grpcServer, "export", inicio)
 	exportv1.RegisterExportEngineServiceServer(grpcServer, exportSrv)
 
 	lis, err := net.Listen("tcp", addr)

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -14,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
+	"github.com/machv4/platform/pkg/health"
 	"github.com/machv4/platform/pkg/telemetry"
 	"github.com/machv4/platform/pkg/tenantctx"
 	"github.com/machv4/platform/services/logic/app"
@@ -27,6 +29,7 @@ func env(k, def string) string {
 }
 
 func main() {
+	inicio := time.Now()
 	ctx := context.Background()
 
 	addr := env("LOGIC_GRPC_ADDR", ":50053")
@@ -65,6 +68,7 @@ func main() {
 		grpc.ChainUnaryInterceptor(tenantctx.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenantctx.StreamServerInterceptor()),
 	)
+	health.Registrar(grpcServer, "logic", inicio)
 	logicv1.RegisterLogicEngineServiceServer(grpcServer, logic)
 
 	lis, err := net.Listen("tcp", addr)

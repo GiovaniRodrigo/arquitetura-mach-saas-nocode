@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -25,6 +26,7 @@ import (
 	"github.com/machv4/platform/services/workers/internal/consumer"
 	"github.com/machv4/platform/services/workers/internal/dlq"
 	"github.com/machv4/platform/services/workers/internal/handlers"
+	workershealth "github.com/machv4/platform/services/workers/internal/health"
 )
 
 const (
@@ -40,10 +42,12 @@ func env(k, def string) string {
 }
 
 func main() {
+	inicio := time.Now()
 	ctx := context.Background()
 
 	amqpURL := env("RABBITMQ_URL", "amqp://mach:mach@localhost:5672/")
 	otlp := env("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+	httpAddr := env("WORKERS_HTTP_ADDR", ":8081")
 
 	shutdown, err := telemetry.Init(ctx, telemetry.Config{ServiceName: "workers", OTLPEndpoint: otlp})
 	if err != nil {
@@ -75,6 +79,14 @@ func main() {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	httpServer := &http.Server{Addr: httpAddr, Handler: workershealth.NovoHandler(inicio)}
+	go func() {
+		log.Printf("workers health HTTP ouvindo em %s", httpAddr)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("health HTTP encerrado: %v", err)
+		}
+	}()
+
 	filas := append(eventbus.FilasDe(eventbus.TipoWebhook), eventbus.FilasDe(eventbus.TipoNotificacao)...)
 
 	var wg sync.WaitGroup
@@ -91,6 +103,12 @@ func main() {
 	log.Printf("workers consumindo %d filas-shard: %v", len(filas), filas)
 	<-ctx.Done()
 	wg.Wait()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown do health HTTP: %v", err)
+	}
 }
 
 func consumir(ctx context.Context, ch *amqp.Channel, roteador *consumer.Roteador, fila string) error {
