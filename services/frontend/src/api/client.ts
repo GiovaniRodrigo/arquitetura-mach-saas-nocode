@@ -9,6 +9,7 @@ import type {
   EventoLogin,
   Feedback,
   MapaPermissoes,
+  MensagemChatIA,
   RegraNegocio,
   ResumoFinanceiro,
   RespostaFormulario,
@@ -435,6 +436,22 @@ export class ApiClient {
   }
 
   /** Reverte para uma versão anterior (RF12, RN05 de 001). */
+  /**
+   * Envia o histórico da conversa (última mensagem é sempre do usuário) ao
+   * Assistente de Design (chat de IA/RAG) e devolve o texto da resposta.
+   * `sistemaNome`, quando presente, dá ao assistente o foco/descrição do
+   * sistema que o usuário está construindo (herdado da rota atual).
+   */
+  async enviarMensagemChatIA(historico: MensagemChatIA[], sistemaNome?: string): Promise<string> {
+    const resp = await this.fetchFn(`${this.baseUrl}/api/v1/ia/chat`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ sistema_nome: sistemaNome, historico }),
+    });
+    const corpo = await this.parse<{ resposta: string }>(resp);
+    return corpo.resposta;
+  }
+
   async reverterVersao(sistemaId: string, versaoId: string): Promise<void> {
     const resp = await this.fetchFn(
       `${this.baseUrl}/api/v1/sistemas/${encodeURIComponent(sistemaId)}/versoes/${encodeURIComponent(versaoId)}/reverter`,
