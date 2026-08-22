@@ -17,6 +17,7 @@ import (
 	iamv1 "github.com/machv4/platform/gen/go/construtor/iam/v1"
 	logicv1 "github.com/machv4/platform/gen/go/construtor/logic/v1"
 	"github.com/machv4/platform/services/gateway/internal/app"
+	"github.com/machv4/platform/services/gateway/internal/ia"
 	"github.com/machv4/platform/services/gateway/internal/middleware"
 	"github.com/machv4/platform/services/gateway/internal/routes"
 	"github.com/machv4/platform/pkg/telemetry"
@@ -98,7 +99,18 @@ func main() {
 		log.Println("login social habilitado (/auth/{provedor})")
 	}
 
-	handler := app.NewRouter(iam, design, logic, deploy, export, rl, oauth)
+	// Assistente de Design (chat de IA/RAG): sem ANTHROPIC_API_KEY, sobe com
+	// iaCliente nil — a rota /api/v1/ia/chat responde 502 em vez de derrubar
+	// o Gateway inteiro (mesmo padrão de degradação graciosa do login social).
+	var iaCliente ia.Cliente
+	if chave := os.Getenv("ANTHROPIC_API_KEY"); chave != "" {
+		iaCliente = ia.NovoAnthropicCliente(chave)
+		log.Println("assistente de design habilitado (/api/v1/ia/chat)")
+	} else {
+		log.Println("AVISO: ANTHROPIC_API_KEY ausente — /api/v1/ia/chat responderá 502")
+	}
+
+	handler := app.NewRouter(iam, design, logic, deploy, export, rl, oauth, iaCliente)
 
 	log.Printf("Gateway ouvindo em %s (IAM %s, Design %s, Logic %s, Deploy %s, Export %s)", httpAddr, iamAddr, designAddr, logicAddr, deployAddr, exportAddr)
 	if err := http.ListenAndServe(httpAddr, handler); err != nil {
