@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Componente CardServicoStatus</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --secondary: 210 40% 96%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 173 80% 40%;
+    --destructive: 0 84.2% 60.2%;
+    --warning: 38 92% 50%;
+    --border: 214 32% 91%;
+    --radius-card: 24px;
+  }
+  body.dark {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 7% 8%;
+    --card-foreground: 0 0% 98%;
+    --secondary: 240 5% 26%;
+    --muted: 240 5% 26%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 173 70% 45%;
+    --destructive: 0 62.8% 45%;
+    --warning: 38 92% 55%;
+    --border: 240 5% 26%;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: 'Inter', sans-serif; padding: 32px; }
+  h1 { font-family: 'Outfit', sans-serif; font-size: 18px; margin: 0 0 4px; }
+  p.sub { font-size: 13px; color: hsl(var(--muted-foreground)); margin: 0 0 24px; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .toggle { margin-bottom: 24px; }
+  .toggle button { font-size: 13px; padding: 8px 14px; border-radius: 999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); cursor: pointer; }
+
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; max-width: 900px; }
+  .state-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); margin-bottom: 8px; font-weight: 600; }
+
+  .servico-card {
+    background: hsl(var(--card)); color: hsl(var(--card-foreground));
+    border-radius: var(--radius-card); padding: 20px 20px 20px 18px;
+    border: 1px solid hsl(var(--border)); border-left: 4px solid hsl(var(--accent));
+    box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: box-shadow .2s, transform .2s;
+  }
+  .servico-card.hover-sim { box-shadow: 0 4px 14px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .servico-card.indisponivel { border-left-color: hsl(var(--destructive)); }
+
+  .servico-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .servico-nome { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; font-family: 'Outfit', sans-serif; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: hsl(var(--accent)); box-shadow: 0 0 0 3px hsl(var(--accent) / .18); }
+  .status-dot.off { background: hsl(var(--destructive)); box-shadow: 0 0 0 3px hsl(var(--destructive) / .18); }
+
+  .metric-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); margin: 10px 0 6px; font-weight: 600; }
+  .metric-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 6px; gap: 8px; }
+  .metric-row .label { color: hsl(var(--muted-foreground)); }
+  .metric-row .value { font-weight: 500; }
+
+  .bar-track { flex: 1; height: 6px; border-radius: 999px; background: hsl(var(--muted)); overflow: hidden; margin: 0 8px; }
+  .bar-fill { height: 100%; border-radius: 999px; background: hsl(var(--accent)); }
+  .bar-fill.crit { background: hsl(var(--destructive)); }
+  .bar-row { display: flex; align-items: center; font-size: 13px; margin-bottom: 8px; }
+  .bar-row .label { width: 64px; color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+  .bar-row .value { width: 68px; text-align: right; font-weight: 500; flex-shrink: 0; }
+
+  .indisponivel-msg {
+    font-size: 13px; color: hsl(var(--destructive)); background: hsl(var(--destructive) / .08);
+    border-radius: 10px; padding: 10px 12px; display: flex; gap: 8px; align-items: flex-start;
+  }
+  .annot { display: block; margin-top: 10px; font-size: 11px; color: hsl(var(--muted-foreground)); border: 1px dashed hsl(var(--border)); border-radius: 8px; padding: 6px 10px; }
+</style>
+</head>
+<body>
+
+<h1>Componente — CardServicoStatus</h1>
+<p class="sub">Estados isolados do card individual usado na grade de <code>Monitor.tsx</code>. Compare com a implementação atual em <code>src/dashboard/CardServicoStatus.tsx</code>.</p>
+
+<div class="toggle"><button id="theme-toggle">🌙 Alternar tema</button></div>
+
+<div class="row">
+  <div>
+    <div class="state-label">Default — servindo</div>
+    <div class="servico-card">
+      <div class="servico-head">
+        <div class="servico-nome">IAM</div>
+        <span class="status-dot" title="Servindo"></span>
+      </div>
+      <div class="bar-row"><span class="label">CPU</span><div class="bar-track"><div class="bar-fill" style="width:22%"></div></div><span class="value">220m</span></div>
+      <div class="bar-row"><span class="label">Memória</span><div class="bar-track"><div class="bar-fill" style="width:38%"></div></div><span class="value mono">38.4 MB</span></div>
+      <div class="metric-group-label">Tráfego (mesh)</div>
+      <div class="metric-row"><span class="label">Requisições/s</span><span class="value mono">12.40</span></div>
+      <div class="metric-row"><span class="label">Taxa de sucesso</span><span class="value mono">99.8%</span></div>
+      <div class="metric-row"><span class="label">Latência p99</span><span class="value mono">18.2 ms</span></div>
+    </div>
+    <span class="annot">Borda esquerda + dot verde = mesma semântica de cor (Observar Convenções); barra substitui número solto de CPU/memória (Visualização de dados adequada)</span>
+  </div>
+
+  <div>
+    <div class="state-label">Hover</div>
+    <div class="servico-card hover-sim">
+      <div class="servico-head">
+        <div class="servico-nome">Design</div>
+        <span class="status-dot" title="Servindo"></span>
+      </div>
+      <div class="bar-row"><span class="label">CPU</span><div class="bar-track"><div class="bar-fill" style="width:15%"></div></div><span class="value">150m</span></div>
+      <div class="bar-row"><span class="label">Memória</span><div class="bar-track"><div class="bar-fill" style="width:29%"></div></div><span class="value mono">29.1 MB</span></div>
+      <div class="metric-group-label">Tráfego (mesh)</div>
+      <div class="metric-row"><span class="label">Requisições/s</span><span class="value mono">6.02</span></div>
+      <div class="metric-row"><span class="label">Taxa de sucesso</span><span class="value mono">100.0%</span></div>
+      <div class="metric-row"><span class="label">Latência p99</span><span class="value mono">9.7 ms</span></div>
+    </div>
+    <span class="annot">Elevação sutil (sombra + translateY) — mesmo padrão de transição já usado em ElevatedCard.tsx</span>
+  </div>
+
+  <div>
+    <div class="state-label">Indisponível (RN01)</div>
+    <div class="servico-card indisponivel">
+      <div class="servico-head">
+        <div class="servico-nome">Logic</div>
+        <span class="status-dot off" title="Indisponível"></span>
+      </div>
+      <div class="indisponivel-msg">
+        <span>Indisponível — pod não encontrado no cluster.</span>
+      </div>
+    </div>
+    <span class="annot">Métricas somem por completo (nada a mostrar) — mensagem curta de causa, card não quebra o layout do grid (RN01/RNF02)</span>
+  </div>
+
+  <div>
+    <div class="state-label">Alerta de uso (CPU alto)</div>
+    <div class="servico-card">
+      <div class="servico-head">
+        <div class="servico-nome">Export</div>
+        <span class="status-dot" title="Servindo"></span>
+      </div>
+      <div class="bar-row"><span class="label">CPU</span><div class="bar-track"><div class="bar-fill crit" style="width:96%"></div></div><span class="value">1.92</span></div>
+      <div class="bar-row"><span class="label">Memória</span><div class="bar-track"><div class="bar-fill" style="width:44%"></div></div><span class="value mono">180 MB</span></div>
+      <div class="metric-group-label">Tráfego (mesh)</div>
+      <div class="metric-row"><span class="label">Requisições/s</span><span class="value mono">88.30</span></div>
+      <div class="metric-row"><span class="label">Taxa de sucesso</span><span class="value mono">94.2%</span></div>
+      <div class="metric-row"><span class="label">Latência p99</span><span class="value mono">142.0 ms</span></div>
+    </div>
+    <span class="annot">Serviço está "servindo" (RN01 é binário), mas a barra sinaliza uso crítico de CPU — informação extra que o dot verde/vermelho sozinho não comunica</span>
+  </div>
+</div>
+
+<script>
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.body.classList.add('dark');
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    document.body.classList.toggle('dark');
+  });
+</script>
+
+</body>
+</html>

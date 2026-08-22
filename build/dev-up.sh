@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 # Startup guiado do stack MACH V4 para desenvolvimento local.
-# Ordem: pré-checagens -> infra -> proto -> services Go -> workers -> gateway -> collab -> frontend.
+# Ordem: pré-checagens -> infra (Docker Compose) -> proto -> cluster
+# Kubernetes (kind + Linkerd + metrics-server) -> build de imagens -> deploy
+# dos 8 serviços no cluster -> frontend.
+#
+# Os 8 serviços da plataforma (IAM, Design, Logic, Deploy, Export, Workers,
+# Collab, Gateway) rodam dentro de um cluster kind local, com sidecar
+# Linkerd injetado — é o que alimenta a tela Monitor de Recursos
+# (specs/008-monitor-recursos, specs/009 nota de arquitetura) com CPU/memória
+# (metrics-server) e RPS/taxa de sucesso/latência (Prometheus do linkerd-viz)
+# reais, sem instrumentar cada serviço. Não rodam mais como processo solto
+# (`go run`) — só o Frontend (Vite) continua fora do cluster.
 #
 # Uso:
 #   ./build/dev-up.sh                # sobe tudo, com prompts de confirmação
@@ -8,7 +18,10 @@
 #   ./build/dev-up.sh --yes          # não pergunta nada, assume "sim" em todos os prompts
 #
 # Logs de cada processo em background: .dev-logs/<nome>.log
-# Ctrl+C encerra todos os processos que este script iniciou.
+# Ctrl+C encerra os processos que este script iniciou em foreground/background
+# (frontend). O cluster kind e os pods continuam no ar entre execuções — não
+# é derrubado por Ctrl+C nem ao final do script (reaproveitado na próxima
+# vez; `kind delete cluster --name machv4` derruba de vez).
 
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -99,6 +112,7 @@ cleanup() {
     done
     wait 2>/dev/null || true
   fi
+  info "cluster kind 'machv4' continua no ar (kind delete cluster --name machv4 para derrubar)"
 }
 trap cleanup EXIT
 # Ctrl+C (INT) num builtin bloqueante como `read` faz o bash rodar o trap e
@@ -114,15 +128,6 @@ run_bg() {
   PIDS+=("$pid")
   NAMES+=("$name")
   info "log: $LOG_DIR/$name.log (pid $pid)"
-}
-
-# Roda um comando síncrono, mostra a saída na tela e também grava em
-# $LOG_DIR/<name>.log, para que todos os logs (background ou não) fiquem
-# concentrados na mesma pasta.
-run_logged() {
-  local name="$1"; shift
-  info "log: $LOG_DIR/$name.log"
-  "$@" > >(tee "$LOG_DIR/$name.log") 2> >(tee -a "$LOG_DIR/$name.log" >&2)
 }
 
 port_in_use() {
@@ -150,9 +155,9 @@ wait_for_port() {
 }
 
 # =============================================================================
-step "0/7  Pré-checagens de ferramentas"
+step "0/6  Pré-checagens de ferramentas"
 
-export PATH="$HOME/.local/go/bin:$HOME/.local/elixir1.17/bin:$HOME/.mix/escripts:$PATH"
+export PATH="$HOME/.local/go/bin:$HOME/.local/elixir1.17/bin:$HOME/.mix/escripts:$HOME/.local/bin:$HOME/.linkerd2/bin:$PATH"
 export MIX_HOME="${MIX_HOME:-$HOME/.mix}"
 export HEX_HOME="${HEX_HOME:-$HOME/.hex}"
 if command -v go >/dev/null 2>&1; then
@@ -180,6 +185,8 @@ if [ "$MISSING" = "1" ]; then
   abort "ferramentas faltando — resolva os itens marcados com ✗ acima e rode de novo."
 fi
 
+docker info >/dev/null 2>&1 || abort "Docker daemon não está acessível — inicie o Docker e rode de novo."
+
 step "Verificando versão do Go"
 GO_VER="$(go version | grep -oE 'go[0-9]+\.[0-9]+' | tr -d 'go')"
 GO_MAJOR="${GO_VER%%.*}"; GO_MINOR="${GO_VER##*.}"
@@ -190,8 +197,44 @@ else
   ok "Go $GO_VER"
 fi
 
+# kind/kubectl/linkerd não são pré-requisitos "traga você mesmo" como
+# Go/Node/Elixir — instala automaticamente em $HOME/.local/bin (kind,
+# kubectl) e $HOME/.linkerd2/bin (linkerd CLI) se ausentes, mesma ideia do
+# `make tools` para o buf. Hardcoded para linux/amd64 (ambiente documentado
+# do projeto, igual aos caminhos de Go/Elixir acima).
+ensure_tool_kind() {
+  command -v kind >/dev/null 2>&1 && { ok "kind  ${C_DIM}($(command -v kind))${C_RESET}"; return; }
+  info "instalando kind em \$HOME/.local/bin"
+  mkdir -p "$HOME/.local/bin"
+  curl -sLo "$HOME/.local/bin/kind" "https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64" \
+    && chmod +x "$HOME/.local/bin/kind" || abort "download do kind falhou"
+  ok "kind instalado"
+}
+ensure_tool_kubectl() {
+  command -v kubectl >/dev/null 2>&1 && { ok "kubectl  ${C_DIM}($(command -v kubectl))${C_RESET}"; return; }
+  info "instalando kubectl em \$HOME/.local/bin"
+  mkdir -p "$HOME/.local/bin"
+  local ver; ver="$(curl -sL https://dl.k8s.io/release/stable.txt)"
+  curl -sLo "$HOME/.local/bin/kubectl" "https://dl.k8s.io/release/$ver/bin/linux/amd64/kubectl" \
+    && chmod +x "$HOME/.local/bin/kubectl" || abort "download do kubectl falhou"
+  ok "kubectl instalado"
+}
+ensure_tool_linkerd() {
+  command -v linkerd >/dev/null 2>&1 && { ok "linkerd  ${C_DIM}($(command -v linkerd))${C_RESET}"; return; }
+  info "instalando linkerd CLI em \$HOME/.linkerd2/bin"
+  curl -sL https://run.linkerd.io/install | sh >/dev/null 2>&1 || abort "instalação do linkerd CLI falhou"
+  ok "linkerd instalado"
+}
+ensure_tool_kind
+ensure_tool_kubectl
+ensure_tool_linkerd
+
 # =============================================================================
-step "1/7  Infraestrutura (Docker Compose)"
+step "1/6  Infraestrutura (Docker Compose)"
+info "Traz Jaeger/OTel Collector para tracing; Postgres/Redis/RabbitMQ/MinIO"
+info "aqui não são usados pelos 8 serviços (que rodam no cluster k8s com sua"
+info "própria cópia, passo 5/6) — mantidos por compatibilidade com quem ainda"
+info "roda algum serviço solto (go run) manualmente."
 
 for p in 5432 6379 5672 15672 4317 4318 "$MINIO_HOST_PORT" "$MINIO_CONSOLE_HOST_PORT" 16686; do
   if port_in_use "$p"; then
@@ -206,19 +249,12 @@ if ! make up; then
   fail "docker compose up falhou"
   confirm "Tentar continuar assim mesmo?" || abort "resolva o erro acima do compose."
 fi
-info "make migrate"
-if ! make migrate; then
-  fail "migrações falharam"
-  confirm "Continuar mesmo assim (dados podem estar desatualizados)?" || abort "corrija as migrações."
-fi
 
-wait_for_port localhost 5432 postgres || abort "postgres não subiu"
-wait_for_port localhost 5672 rabbitmq || abort "rabbitmq não subiu"
-wait_for_port localhost "$MINIO_HOST_PORT" minio || abort "minio não subiu"
+wait_for_port localhost 4317 otel-collector || abort "otel-collector não subiu"
 ok "Infra no ar (postgres, redis, rabbitmq, jaeger, otel-collector, minio)"
 
 # =============================================================================
-step "2/7  Contratos proto (buf generate)"
+step "2/6  Contratos proto (buf generate)"
 if make proto; then
   ok "gen/go, gen/elixir, gen/ts regenerados"
 else
@@ -226,43 +262,195 @@ else
 fi
 
 # =============================================================================
-step "3/7  Services gRPC (Go)"
-run_bg iam    go run ./services/iam/cmd
-run_bg design go run ./services/design/cmd
-run_bg logic  go run ./services/logic/cmd
-run_bg deploy go run ./services/deploy/cmd
-run_bg export env "S3_ENDPOINT=localhost:$MINIO_HOST_PORT" go run ./services/export/cmd
+step "3/6  Cluster Kubernetes (kind + Linkerd + metrics-server)"
 
-wait_for_port localhost 50051 iam    || abort "iam não subiu"
-wait_for_port localhost 50052 design || abort "design não subiu"
-wait_for_port localhost 50053 logic  || abort "logic não subiu"
-wait_for_port localhost 50054 deploy || abort "deploy não subiu"
-wait_for_port localhost 50055 export || abort "export não subiu"
-ok "5 services gRPC no ar"
+for p in 8080 4000; do
+  if port_in_use "$p"; then
+    warn "porta $p já em uso — precisa estar livre para o Gateway (8080) / Collab (4000) do cluster"
+    warn "se for um dev-up.sh antigo (processo solto), pare-o antes de continuar"
+    confirm "Continuar mesmo assim (o kind pode falhar ao mapear essa porta)?" || \
+      abort "libere a porta $p e rode de novo."
+  fi
+done
+
+if kind get clusters 2>/dev/null | grep -qx machv4; then
+  ok "cluster kind 'machv4' já existe — reaproveitando"
+else
+  info "kind create cluster (baixa a imagem do node na 1ª vez, pode demorar)"
+  kind create cluster --config infra/k8s/kind-config.yaml || abort "kind create cluster falhou"
+fi
+kubectl config use-context kind-machv4 >/dev/null || abort "kubectl config use-context kind-machv4 falhou"
+kubectl wait --for=condition=Ready node --all --timeout=120s >/dev/null || abort "node do cluster não ficou Ready"
+
+info "Gateway API CRDs (pré-requisito do Linkerd)"
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml >/dev/null 2>&1
+
+if kubectl get ns linkerd >/dev/null 2>&1; then
+  ok "Linkerd control plane já instalado"
+else
+  info "linkerd install --crds"
+  linkerd install --crds >"$LOG_DIR/linkerd-crds.yaml" 2>"$LOG_DIR/linkerd-crds.err" \
+    || abort "linkerd install --crds falhou — veja $LOG_DIR/linkerd-crds.err"
+  kubectl apply -f "$LOG_DIR/linkerd-crds.yaml" >/dev/null || abort "kubectl apply (linkerd CRDs) falhou"
+  info "linkerd install"
+  linkerd install >"$LOG_DIR/linkerd-install.yaml" 2>"$LOG_DIR/linkerd-install.err" \
+    || abort "linkerd install falhou — veja $LOG_DIR/linkerd-install.err"
+  kubectl apply -f "$LOG_DIR/linkerd-install.yaml" >/dev/null || abort "kubectl apply (linkerd control plane) falhou"
+  kubectl -n linkerd rollout status deploy --timeout=180s >/dev/null || abort "Linkerd control plane não ficou pronto"
+fi
+
+if kubectl get ns linkerd-viz >/dev/null 2>&1; then
+  ok "linkerd-viz (Prometheus/dashboard) já instalado"
+else
+  info "linkerd viz install"
+  linkerd viz install >"$LOG_DIR/linkerd-viz.yaml" 2>"$LOG_DIR/linkerd-viz.err" \
+    || abort "linkerd viz install falhou — veja $LOG_DIR/linkerd-viz.err"
+  kubectl apply -f "$LOG_DIR/linkerd-viz.yaml" >/dev/null || abort "kubectl apply (linkerd-viz) falhou"
+  kubectl -n linkerd-viz rollout status deploy --timeout=180s >/dev/null || abort "linkerd-viz não ficou pronto"
+fi
+
+if kubectl -n kube-system get deploy metrics-server >/dev/null 2>&1; then
+  ok "metrics-server já instalado"
+else
+  info "metrics-server (CPU/memória por pod — kubectl top)"
+  kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml >/dev/null \
+    || abort "kubectl apply (metrics-server) falhou"
+  # kind usa certificados internos que o metrics-server padrão não reconhece.
+  kubectl -n kube-system patch deployment metrics-server --type=json \
+    -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]' >/dev/null
+  kubectl -n kube-system rollout status deploy/metrics-server --timeout=120s >/dev/null || abort "metrics-server não ficou pronto"
+fi
+ok "Cluster k8s + service mesh prontos (linkerd viz check para diagnóstico)"
 
 # =============================================================================
-step "4/7  Workers (consumidores RabbitMQ)"
-run_bg workers go run ./services/workers/cmd
-sleep 1
-ok "workers iniciado (sem porta própria — acompanhe $LOG_DIR/workers.log)"
+step "4/6  Build de artefatos + imagens Docker"
+
+SHA="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
+mkdir -p dist/release/bin
+
+declare -A GO_UNITS=(
+  [iam]=./services/iam/cmd
+  [design]=./services/design/cmd
+  [logic]=./services/logic/cmd
+  [deploy]=./services/deploy/cmd
+  [export]=./services/export/cmd
+  [workers]=./services/workers/cmd
+  [gateway]=./services/gateway/cmd
+)
+for name in "${!GO_UNITS[@]}"; do
+  info "go build $name"
+  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags "-s -w -X main.version=$SHA" -o "dist/release/bin/$name" "${GO_UNITS[$name]}" \
+    || abort "go build $name falhou"
+done
+
+info "mix release collab"
+(
+  cd services/collab
+  export MIX_ENV=prod
+  mix deps.get --only prod >/dev/null 2>&1 && mix release collab --overwrite >/dev/null
+) || abort "mix release collab falhou — veja o erro acima"
+rm -rf dist/release/collab
+cp -a services/collab/_build/prod/rel/collab dist/release/collab
+find dist/release/collab -type d -path '*/priv/templates' -prune -exec rm -rf {} +
+
+info "docker build (8 imagens machv4/<serviço>:dev)"
+for name in iam design logic deploy export workers gateway; do
+  docker build -q -f infra/docker/go-service.Dockerfile --build-arg BINARY="$name" -t "machv4/$name:dev" . >/dev/null \
+    || abort "docker build $name falhou"
+done
+docker build -q -f infra/docker/collab.Dockerfile -t machv4/collab:dev . >/dev/null || abort "docker build collab falhou"
+
+info "kind load docker-image (carregando as 8 imagens no cluster)"
+kind load docker-image machv4/iam:dev machv4/design:dev machv4/logic:dev machv4/deploy:dev \
+  machv4/export:dev machv4/workers:dev machv4/gateway:dev machv4/collab:dev --name machv4 >/dev/null \
+  || abort "kind load docker-image falhou"
+ok "8 imagens buildadas e carregadas no cluster"
+
+# O kind tem seu próprio cache de imagens, separado do Docker do host: sem
+# isso, postgres/redis/rabbitmq/minio seriam baixados de novo dentro do
+# cluster mesmo o Docker Compose (passo 1/6) já tendo acabado de puxar
+# exatamente essas imagens — pull duplicado e lento o bastante para estourar
+# o timeout do rollout logo abaixo.
+info "kind load docker-image (reaproveitando postgres/redis/rabbitmq/minio já baixados pelo compose)"
+kind load docker-image postgres:16 redis:7 rabbitmq:3.13-management minio/minio:latest --name machv4 >/dev/null \
+  || warn "kind load docker-image (infra) falhou — vão ser baixados de novo dentro do cluster, mais devagar"
 
 # =============================================================================
-step "5/7  Gateway HTTP"
-run_bg gateway go run ./services/gateway/cmd
-wait_for_port localhost 8080 gateway || abort "gateway não subiu"
-ok "Gateway em http://localhost:8080"
+step "5/6  Deploy no Kubernetes"
 
-# =============================================================================
-step "6/7  Collab (Phoenix)"
-info "mix deps.get"
-(cd services/collab && mix deps.get >/dev/null 2>&1) || warn "mix deps.get retornou erro — verifique $LOG_DIR ou rode manualmente"
-run_bg collab bash -c "cd services/collab && mix phx.server"
-wait_for_port localhost 4000 collab || abort "collab não subiu"
-ok "Collab em http://localhost:4000"
+kubectl apply -f infra/k8s/00-namespace.yaml >/dev/null
+
+# Segredos gerados sob demanda (nunca gravados em arquivo versionado) — só na
+# 1ª vez, para não invalidar sessões/MFA a cada re-execução deste script.
+ensure_secret() {
+  local name="$1"; shift
+  if kubectl -n machv4 get secret "$name" >/dev/null 2>&1; then
+    info "secret $name já existe — mantendo"
+  else
+    kubectl -n machv4 create secret generic "$name" "$@" >/dev/null || abort "criar secret $name falhou"
+    ok "secret $name criado"
+  fi
+}
+ensure_secret iam-secrets --from-literal="IAM_MFA_ENCRYPTION_KEY=$(openssl rand -base64 32)"
+ensure_secret collab-secrets --from-literal="SECRET_KEY_BASE=$(openssl rand -base64 48)"
+
+# Par de chaves RS256 do IAM, compartilhado com o Collab (que, ao contrário
+# do Gateway, verifica o JWT localmente em vez de delegar ao IAM via gRPC).
+# Sem isto, o IAM cai no fallback de dev (gera um par efêmero a cada boot,
+# nunca exposto a mais ninguém) e o Collab nunca consegue autenticar nenhuma
+# ligação WebSocket (lib/collab/auth/token.ex) — gerado só na 1ª vez, pelo
+# mesmo motivo dos outros secrets acima.
+if kubectl -n machv4 get secret jwt-keys >/dev/null 2>&1; then
+  info "secret jwt-keys já existe — mantendo"
+else
+  jwt_tmp="$(mktemp -d)"
+  openssl genrsa -out "$jwt_tmp/private.pem" 2048 >/dev/null 2>&1
+  openssl rsa -in "$jwt_tmp/private.pem" -pubout -out "$jwt_tmp/public.pem" >/dev/null 2>&1
+  kubectl -n machv4 create secret generic jwt-keys \
+    --from-file=private.pem="$jwt_tmp/private.pem" \
+    --from-file=public.pem="$jwt_tmp/public.pem" >/dev/null || abort "criar secret jwt-keys falhou"
+  rm -rf "$jwt_tmp"
+  ok "secret jwt-keys criado"
+fi
+
+kubectl apply \
+  -f infra/k8s/02-migrations-configmap.yaml \
+  -f infra/k8s/03a-rabbitmq-definitions.yaml \
+  -f infra/k8s/03b-rabbitmq-conf.yaml \
+  -f infra/k8s/03-infra.yaml >/dev/null || abort "kubectl apply (infra k8s) falhou"
+
+kubectl -n machv4 rollout status deploy/postgres --timeout=240s >/dev/null || abort "postgres (k8s) não subiu"
+kubectl -n machv4 rollout status deploy/redis --timeout=240s >/dev/null || abort "redis (k8s) não subiu"
+kubectl -n machv4 rollout status deploy/rabbitmq --timeout=240s >/dev/null || abort "rabbitmq (k8s) não subiu"
+kubectl -n machv4 rollout status deploy/minio --timeout=240s >/dev/null || abort "minio (k8s) não subiu"
+
+info "aplicando migrações (Job, idempotente — apagado e recriado a cada execução)"
+kubectl -n machv4 delete job migrate --ignore-not-found >/dev/null
+kubectl apply -f infra/k8s/03-infra.yaml >/dev/null # reaplica só o Job (o resto já está sem mudanças)
+kubectl -n machv4 wait --for=condition=complete job/migrate --timeout=90s >/dev/null \
+  || abort "migrações falharam — veja: kubectl -n machv4 logs job/migrate"
+ok "migrações aplicadas"
+
+kubectl apply -f infra/k8s/05-gateway-rbac.yaml -f infra/k8s/04-services.yaml >/dev/null \
+  || abort "kubectl apply (serviços da plataforma) falhou"
+
+# imagePullPolicy IfNotPresent não detecta sozinho que a tag ":dev" mudou de
+# conteúdo — reinicia os 8 deployments para pegar a imagem recém-carregada.
+for svc in iam design logic deploy export workers collab gateway; do
+  kubectl -n machv4 rollout restart deploy/"$svc" >/dev/null
+done
+for svc in iam design logic deploy export workers collab gateway; do
+  kubectl -n machv4 rollout status deploy/"$svc" --timeout=120s >/dev/null || abort "$svc (k8s) não subiu"
+done
+ok "8 serviços da plataforma no ar, com sidecar Linkerd"
+
+wait_for_port localhost 8080 gateway || abort "gateway (NodePort 8080) não respondeu"
+wait_for_port localhost 4000 collab  || abort "collab (NodePort 4000) não respondeu"
 
 # =============================================================================
 if [ "$WITH_FRONTEND" = "1" ]; then
-  step "7/7  Frontend (Vite)"
+  step "6/6  Frontend (Vite)"
   if [ ! -d services/frontend/node_modules ]; then
     info "services/frontend/node_modules ausente — rodando npm install"
     (cd services/frontend && npm install) || abort "npm install falhou"
@@ -273,24 +461,29 @@ fi
 # =============================================================================
 step "Stack no ar"
 cat <<EOF
-  ${C_BOLD}Gateway${C_RESET}   http://localhost:8080
-  ${C_BOLD}Collab${C_RESET}    http://localhost:4000
+  ${C_BOLD}Gateway${C_RESET}   http://localhost:8080  ${C_DIM}(cluster kind 'machv4', NodePort)${C_RESET}
+  ${C_BOLD}Collab${C_RESET}    http://localhost:4000  ${C_DIM}(cluster kind 'machv4', NodePort)${C_RESET}
   ${C_BOLD}Jaeger${C_RESET}    http://localhost:16686
   ${C_BOLD}RabbitMQ${C_RESET}  http://localhost:15672  (mach/mach)
   ${C_BOLD}MinIO${C_RESET}     http://localhost:$MINIO_CONSOLE_HOST_PORT   (mach/machsecret)
 
-  Logs dos processos em background: ${C_DIM}$LOG_DIR/*.log${C_RESET}
+  Monitor de Recursos: /dashboard/monitor no Frontend (CPU/memória via
+  metrics-server, RPS/sucesso/latência via Prometheus do linkerd-viz).
+
+  kubectl -n machv4 get pods         # status dos 8 serviços
+  linkerd -n machv4 viz stat deploy  # métricas do service mesh
+  Logs dos passos deste script: ${C_DIM}$LOG_DIR/*.log${C_RESET}
 EOF
 
 if [ "$WITH_FRONTEND" = "1" ]; then
   echo "  ${C_BOLD}Frontend${C_RESET}  http://localhost:5183  (iniciando em foreground abaixo)"
   echo
-  confirm "Abrir o frontend agora (npm run dev, foreground, Ctrl+C encerra tudo)?" && {
+  confirm "Abrir o frontend agora (npm run dev, foreground, Ctrl+C encerra)?" && {
     cd services/frontend && exec npm run dev
   }
   info "Frontend não iniciado. Rode manualmente: cd services/frontend && npm run dev"
 fi
 
 echo
-echo "Ctrl+C encerra todos os processos em background iniciados por este script."
+echo "Ctrl+C encerra o frontend (o cluster kind continua no ar)."
 wait
