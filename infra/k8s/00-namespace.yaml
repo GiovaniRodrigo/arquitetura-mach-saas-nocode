@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: machv4
+  annotations:
+    # Injeção automática do sidecar Linkerd em todo pod deste namespace —
+    # spec 009 (migração Kubernetes + service mesh), base do Monitor de
+    # Recursos (spec 008): dá métricas L7 (RPS/latência/sucesso) por serviço
+    # sem instrumentar cada um individualmente.
+    linkerd.io/inject: enabled

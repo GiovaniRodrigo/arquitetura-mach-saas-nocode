@@ -1,0 +1,176 @@
+# Dependências stateful do MACH V4, dentro do cluster (spec 009) — mesmas
+# imagens/credenciais do docker-compose.yml raiz, sem persistência real (dev):
+# EmptyDir no lugar dos named volumes do compose, aceitável porque este
+# cluster é descartável (kind).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: machv4
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: postgres } }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - { name: POSTGRES_USER, value: "mach" }
+            - { name: POSTGRES_PASSWORD, value: "mach" }
+            - { name: POSTGRES_DB, value: "machv4" }
+          ports: [{ containerPort: 5432 }]
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "mach", "-d", "machv4"] }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+      volumes:
+        - { name: data, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: postgres, namespace: machv4 }
+spec:
+  selector: { app: postgres }
+  ports: [{ port: 5432, targetPort: 5432 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: machv4
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis } }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7
+          command: ["redis-server", "--appendonly", "yes"]
+          ports: [{ containerPort: 6379 }]
+          readinessProbe:
+            exec: { command: ["redis-cli", "ping"] }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis, namespace: machv4 }
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: rabbitmq-config, namespace: machv4 }
+data:
+  enabled_plugins: "[rabbitmq_management,rabbitmq_consistent_hash_exchange]."
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: machv4
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: rabbitmq } }
+  template:
+    metadata: { labels: { app: rabbitmq } }
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3.13-management
+          ports: [{ containerPort: 5672 }, { containerPort: 15672 }]
+          readinessProbe:
+            exec: { command: ["rabbitmq-diagnostics", "-q", "ping"] }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          volumeMounts:
+            - { name: definitions, mountPath: /etc/rabbitmq/definitions.json, subPath: definitions.json }
+            - { name: rabbitmq-conf, mountPath: /etc/rabbitmq/rabbitmq.conf, subPath: rabbitmq.conf }
+            - { name: plugins, mountPath: /etc/rabbitmq/enabled_plugins, subPath: enabled_plugins }
+      volumes:
+        - name: definitions
+          configMap: { name: rabbitmq-definitions }
+        - name: rabbitmq-conf
+          configMap: { name: rabbitmq-conf }
+        - name: plugins
+          configMap: { name: rabbitmq-config }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: rabbitmq, namespace: machv4 }
+spec:
+  selector: { app: rabbitmq }
+  ports: [{ name: amqp, port: 5672, targetPort: 5672 }, { name: mgmt, port: 15672, targetPort: 15672 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: machv4
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: minio } }
+  template:
+    metadata: { labels: { app: minio } }
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          args: ["server", "/data", "--console-address", ":9001"]
+          env:
+            - { name: MINIO_ROOT_USER, value: "mach" }
+            - { name: MINIO_ROOT_PASSWORD, value: "machsecret" }
+          ports: [{ containerPort: 9000 }, { containerPort: 9001 }]
+          readinessProbe:
+            exec: { command: ["mc", "ready", "local"] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - { name: data, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: minio, namespace: machv4 }
+spec:
+  selector: { app: minio }
+  ports: [{ name: s3, port: 9000, targetPort: 9000 }, { name: console, port: 9001, targetPort: 9001 }]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+  namespace: machv4
+  annotations:
+    # O Job roda uma vez e sai — não precisa (nem deve) do sidecar do mesh,
+    # senão o Job nunca completa (o proxy fica vivo esperando tráfego).
+    linkerd.io/inject: disabled
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: postgres:16
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              for f in /migrations/*.sql; do
+                echo "==> aplicando $f";
+                psql "postgres://mach:mach@postgres:5432/machv4?sslmode=disable" -v ON_ERROR_STOP=1 -f "$f";
+              done
+          volumeMounts:
+            - { name: migrations, mountPath: /migrations }
+      volumes:
+        - name: migrations
+          configMap: { name: postgres-migrations }

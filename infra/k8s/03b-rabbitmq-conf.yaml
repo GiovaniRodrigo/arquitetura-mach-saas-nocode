@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  rabbitmq.conf: |
+    # Carrega a topologia declarativa (exchanges, filas, DLQs, políticas) no arranque.
+    # Como as definitions.json já incluem o utilizador `mach`, não usamos
+    # RABBITMQ_DEFAULT_USER/PASS no compose (evita conflito de credenciais).
+    load_definitions = /etc/rabbitmq/definitions.json
+kind: ConfigMap
+metadata:
+  name: rabbitmq-conf
+  namespace: machv4

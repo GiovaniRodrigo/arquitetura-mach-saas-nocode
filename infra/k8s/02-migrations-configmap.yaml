@@ -1,0 +1,462 @@
+apiVersion: v1
+data:
+  0001_create_tenants_table.sql: |
+    -- 0001 — tenants + enum tenant_tipo (RN01, RN02)
+    -- Hierarquia Dono → Parceiro → Cliente Final e chave HMAC por tenant.
+
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tenant_tipo') THEN
+            CREATE TYPE tenant_tipo AS ENUM ('dono', 'parceiro', 'cliente');
+        END IF;
+    END$$;
+
+    CREATE TABLE IF NOT EXISTS tenants (
+        id                 uuid         NOT NULL DEFAULT gen_random_uuid(),
+        parent_id          uuid         NULL REFERENCES tenants (id) ON DELETE SET NULL,
+        nome               varchar(255) NOT NULL,
+        tipo               tenant_tipo  NOT NULL,
+        chave_blind_index  bytea        NOT NULL,
+        criado_em          timestamptz  NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_tenants_parent_id ON tenants (parent_id);
+  0002_create_sistemas_table.sql: |
+    -- 0002 — sistemas (RN01)
+    -- Sistema criado pelo utilizador, isolado por tenant_id.
+
+    CREATE TABLE IF NOT EXISTS sistemas (
+        id         uuid         NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id  uuid         NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        nome       varchar(255) NOT NULL,
+        criado_em  timestamptz  NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    -- Índice composto iniciando por tenant_id — padrão de acesso dominante (RN01).
+    CREATE INDEX IF NOT EXISTS idx_sistemas_tenant_id ON sistemas (tenant_id, id);
+  0003_create_versoes_sistema_table.sql: |
+    -- 0003 — versoes_sistema (RN04, RN05)
+    -- Versionamento por flag ativa; no máximo uma versão ativa por sistema.
+
+    CREATE TABLE IF NOT EXISTS versoes_sistema (
+        id              uuid        NOT NULL DEFAULT gen_random_uuid(),
+        sistema_id      uuid        NOT NULL REFERENCES sistemas (id) ON DELETE CASCADE,
+        tenant_id       uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        definicao_json  jsonb       NOT NULL,
+        ativa           boolean     NOT NULL DEFAULT false,
+        numero          integer     NOT NULL,
+        criado_em       timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    -- Garante RN04 no nível do banco: no máximo uma versão ativa por sistema.
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_versoes_sistema_ativa
+        ON versoes_sistema (sistema_id) WHERE ativa = true;
+
+    -- numero sequencial por sistema (rollback dirigido).
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_versoes_sistema_numero
+        ON versoes_sistema (sistema_id, numero);
+
+    CREATE INDEX IF NOT EXISTS idx_versoes_sistema_tenant_id
+        ON versoes_sistema (tenant_id, sistema_id);
+  0004_create_campos_definicao_table.sql: |
+    -- 0004 — campos_definicao (RN02)
+    -- Definição de campos indexada por Blind Index; PK composta (blind_index, sistema_id).
+
+    CREATE TABLE IF NOT EXISTS campos_definicao (
+        blind_index  varchar(64) NOT NULL,
+        sistema_id   uuid        NOT NULL REFERENCES sistemas (id) ON DELETE CASCADE,
+        tenant_id    uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        tipo         varchar(32) NOT NULL,
+        obrigatorio  boolean     NOT NULL DEFAULT false,
+        limites      jsonb       NULL,
+        PRIMARY KEY (blind_index, sistema_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_campos_definicao_tenant_id
+        ON campos_definicao (tenant_id, sistema_id);
+  0005_create_regras_negocio_table.sql: |
+    -- 0005 — regras_negocio (RF02)
+    -- Regras como árvores de decisão serializadas em JSONB.
+
+    CREATE TABLE IF NOT EXISTS regras_negocio (
+        id              uuid        NOT NULL DEFAULT gen_random_uuid(),
+        sistema_id      uuid        NOT NULL REFERENCES sistemas (id) ON DELETE CASCADE,
+        tenant_id       uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        arvore_decisao  jsonb       NOT NULL,
+        criado_em       timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_regras_negocio_tenant_id
+        ON regras_negocio (tenant_id, sistema_id);
+  0006_create_permissoes_table.sql: |
+    -- 0006 — permissoes (RN03)
+    -- Permissão por componente (blind_index) e papel, com condição dinâmica.
+
+    CREATE TABLE IF NOT EXISTS permissoes (
+        id           uuid        NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id    uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        blind_index  varchar(64) NOT NULL,
+        papel        varchar(64) NOT NULL,
+        condicao     jsonb       NULL,
+        view         boolean     NOT NULL DEFAULT false,
+        click        boolean     NOT NULL DEFAULT false,
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_permissoes_tenant_lookup
+        ON permissoes (tenant_id, blind_index, papel);
+  0007_create_dados_operacionais_table.sql: |
+    -- 0007 — dados_operacionais (RF07)
+    -- Submissões de formulário: mapa blind_index → valor em JSONB, com índice GIN.
+
+    CREATE TABLE IF NOT EXISTS dados_operacionais (
+        id          uuid        NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id   uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        sistema_id  uuid        NOT NULL REFERENCES sistemas (id) ON DELETE CASCADE,
+        valores     jsonb       NOT NULL,
+        criado_em   timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_dados_operacionais_tenant_id
+        ON dados_operacionais (tenant_id, sistema_id);
+
+    -- Consultas por chave de blind_index dentro do JSONB.
+    CREATE INDEX IF NOT EXISTS idx_dados_operacionais_valores_gin
+        ON dados_operacionais USING gin (valores);
+  0008_create_jobs_exportacao_table.sql: |
+    -- 0008 — jobs_exportacao (RF05) + enum job_status
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'job_status') THEN
+            CREATE TYPE job_status AS ENUM ('criado', 'coletando', 'pronto', 'erro', 'expirado');
+        END IF;
+    END$$;
+
+    CREATE TABLE IF NOT EXISTS jobs_exportacao (
+        id           uuid        NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id    uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        sistema_id   uuid        NOT NULL REFERENCES sistemas (id) ON DELETE CASCADE,
+        status       job_status  NOT NULL DEFAULT 'criado',
+        arquivo_url  text        NULL,
+        expira_em    timestamptz NULL,
+        criado_em    timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_jobs_exportacao_tenant_id
+        ON jobs_exportacao (tenant_id, sistema_id);
+  0009_create_eventos_assincronos_table.sql: |
+    -- 0009 — eventos_assincronos (RF08 — outbox/auditoria) + enum evento_status
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'evento_status') THEN
+            CREATE TYPE evento_status AS ENUM ('pendente', 'publicado', 'processado', 'dlq');
+        END IF;
+    END$$;
+
+    CREATE TABLE IF NOT EXISTS eventos_assincronos (
+        id                     uuid          NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id              uuid          NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        tipo                   varchar(64)   NOT NULL,
+        component_blind_index  varchar(64)   NULL,
+        payload                jsonb         NOT NULL,
+        status                 evento_status NOT NULL DEFAULT 'pendente',
+        criado_em              timestamptz   NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_eventos_assincronos_tenant_id
+        ON eventos_assincronos (tenant_id, status);
+  0010_enable_row_level_security.sql: |
+    -- 0010 — Row-Level Security por tenant_id (RN01, defesa em profundidade)
+    -- Reforço à camada pkg/database (TenantScopedQuerier), NÃO substituto.
+    --
+    -- A aplicação define o tenant ativo por sessão/transação:
+    --     SET LOCAL app.tenant_id = '<uuid>';
+    -- Sem esse GUC, nullif(...) resulta em NULL e a política nega todas as linhas
+    -- (fail-closed). A tabela `tenants` não possui coluna tenant_id (ela É o tenant)
+    -- e é governada diretamente pelo IAM Service, portanto fica fora deste laço.
+
+    DO $$
+    DECLARE
+        t text;
+        tabelas text[] := ARRAY[
+            'sistemas',
+            'versoes_sistema',
+            'campos_definicao',
+            'regras_negocio',
+            'permissoes',
+            'dados_operacionais',
+            'jobs_exportacao',
+            'eventos_assincronos'
+        ];
+    BEGIN
+        FOREACH t IN ARRAY tabelas LOOP
+            EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', t);
+            EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY;', t);
+            EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I;', t);
+            EXECUTE format($f$
+                CREATE POLICY tenant_isolation ON %I
+                    USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+                    WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+            $f$, t);
+        END LOOP;
+    END$$;
+  0011_create_designs_table.sql: |
+    -- 0011 — designs (RF01)
+    -- Rascunho editável da árvore de UI (Composite). É este estado que a colaboração
+    -- muta e que o Deploy Engine (Fase 5) fotografa em versoes_sistema ao publicar.
+    -- Não previsto no data-model original; adicionado para suportar o contrato
+    -- DesignEngineService/POST /api/v1/designs.
+
+    CREATE TABLE IF NOT EXISTS designs (
+        id             uuid         NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id      uuid         NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        sistema_id     uuid         NOT NULL REFERENCES sistemas (id) ON DELETE CASCADE,
+        nome           varchar(255) NOT NULL,
+        arvore         jsonb        NOT NULL,
+        criado_em      timestamptz  NOT NULL DEFAULT now(),
+        atualizado_em  timestamptz  NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_designs_tenant_id ON designs (tenant_id, sistema_id);
+
+    -- Isolamento por tenant (RN01) — mesma política fail-closed da migração 0010.
+    ALTER TABLE designs ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE designs FORCE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS tenant_isolation ON designs;
+    CREATE POLICY tenant_isolation ON designs
+        USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+        WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+  0012_create_users_table.sql: |
+    -- 0012 — usuários autenticados por provedor third-party (Google/GitHub).
+    -- O IAM faz find-or-create por (provedor, external_id) e emite o JWT MACH.
+    -- tipo reutiliza o enum tenant_tipo (dono|parceiro|cliente).
+
+    CREATE TABLE IF NOT EXISTS users (
+        id             uuid         NOT NULL DEFAULT gen_random_uuid(),
+        provedor       varchar(32)  NOT NULL,
+        external_id    varchar(255) NOT NULL,
+        email          varchar(320) NOT NULL DEFAULT '',
+        nome           varchar(255) NOT NULL DEFAULT '',
+        tenant_id      uuid         NOT NULL REFERENCES tenants (id),
+        tipo           tenant_tipo  NOT NULL DEFAULT 'cliente',
+        criado_em      timestamptz  NOT NULL DEFAULT now(),
+        atualizado_em  timestamptz  NOT NULL DEFAULT now(),
+        PRIMARY KEY (id),
+        UNIQUE (provedor, external_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users (tenant_id);
+  0013_seed_tenant_padrao.sql: |
+    -- 0013 — tenant padrão dos usuários OAuth (decisão: todo login third-party entra
+    -- neste tenant como 'cliente'). UUID fixo e conhecido, referenciado pelo IAM store.
+    -- Idempotente: ON CONFLICT no id.
+
+    INSERT INTO tenants (id, parent_id, nome, tipo, chave_blind_index)
+    VALUES (
+        '00000000-0000-0000-0000-000000000001',
+        NULL,
+        'Tenant Padrão (OAuth)',
+        'dono',
+        gen_random_bytes(32)
+    )
+    ON CONFLICT (id) DO NOTHING;
+  0014_add_senha_users.sql: |
+    -- 0014 — auto cadastro por e-mail/senha (spec 006). Contas de senha reaproveitam
+    -- a tabela users com provedor='senha' e external_id=email; senha_hash é NULL
+    -- para contas OAuth. O índice único é parcial (só provedor='senha') para não
+    -- impedir uma conta Google e uma conta de senha coexistirem com o mesmo e-mail
+    -- (unificação de identidade é fora de escopo, spec 006 §8).
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS senha_hash varchar(255);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_senha_unico
+        ON users (email)
+        WHERE provedor = 'senha';
+  0015_create_config_white_label_table.sql: |
+    -- 0015 — config_white_label (RF13, RNF03)
+    -- Personalização de marca por tenant (logo/cores/domínio próprio). A validação
+    -- do domínio é assíncrona e fora de escopo desta entrega: dominio_validado
+    -- fica sempre false ao gravar (ver services/design/internal/store/white_label.go).
+
+    CREATE TABLE IF NOT EXISTS config_white_label (
+        tenant_id        uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        logo_url         text        NOT NULL DEFAULT '',
+        cor_primaria     varchar(7)  NOT NULL DEFAULT '',
+        cor_secundaria   varchar(7)  NOT NULL DEFAULT '',
+        dominio_proprio  varchar(255) NOT NULL DEFAULT '',
+        dominio_validado boolean     NOT NULL DEFAULT false,
+        atualizado_em    timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (tenant_id)
+    );
+
+    -- RLS por tenant_id (RN01, defesa em profundidade) — mesmo padrão da migração
+    -- 0010, replicado aqui porque 0010 já foi aplicada e não deve ser editada.
+    DO $$
+    DECLARE
+        t text;
+        tabelas text[] := ARRAY[
+            'config_white_label'
+        ];
+    BEGIN
+        FOREACH t IN ARRAY tabelas LOOP
+            EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', t);
+            EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY;', t);
+            EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I;', t);
+            EXECUTE format($f$
+                CREATE POLICY tenant_isolation ON %I
+                    USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+                    WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+            $f$, t);
+        END LOOP;
+    END$$;
+  0016_create_regras_validacao_componente_table.sql: |
+    -- 0016 — regras_validacao_componente (RF10/RF11, RN06)
+    -- Regras de validação de estado de componente (regex/tamanho/obrigatório).
+    -- Entidade distinta de regras_negocio (árvore de decisão do motor de ações):
+    -- aqui não há integração com o disparo de ações de SalvarFormulario (dívida
+    -- técnica consciente, ver plan.md da spec 004).
+
+    CREATE TABLE IF NOT EXISTS regras_validacao_componente (
+        id              uuid        NOT NULL DEFAULT gen_random_uuid(),
+        sistema_id      uuid        NOT NULL REFERENCES sistemas (id) ON DELETE CASCADE,
+        tenant_id       uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        blind_indexes   text[]      NOT NULL,
+        tipo            varchar(16) NOT NULL CHECK (tipo IN ('regex','tamanho','obrigatorio')),
+        parametros      jsonb       NOT NULL DEFAULT '{}',
+        criado_em       timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_regras_validacao_componente_tenant_id
+        ON regras_validacao_componente (tenant_id, sistema_id);
+
+    -- Row-Level Security por tenant_id (RN01, defesa em profundidade) — mesmo
+    -- padrão da migration 0010, replicado aqui só para esta tabela nova (a 0010 já
+    -- foi aplicada e não deve ser editada).
+    DO $$
+    DECLARE
+        t text;
+        tabelas text[] := ARRAY[
+            'regras_validacao_componente'
+        ];
+    BEGIN
+        FOREACH t IN ARRAY tabelas LOOP
+            EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', t);
+            EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY;', t);
+            EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I;', t);
+            EXECUTE format($f$
+                CREATE POLICY tenant_isolation ON %I
+                    USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+                    WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+            $f$, t);
+        END LOOP;
+    END$$;
+  0017_add_foto_url_users.sql: |
+    -- 0017 — foto de perfil (spec 004, RF17). Atualizada via PATCH /api/v1/conta/perfil
+    -- junto com o nome; sem upload de arquivo neste serviço, apenas a URL.
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS foto_url text NOT NULL DEFAULT '';
+  0018_add_mfa_users.sql: |
+    -- 0018 — MFA TOTP em duas etapas (spec 004, RF15, RNF01). mfa_segredo_cifrado
+    -- guarda o segredo TOTP cifrado em repouso (AES-256-GCM, services/iam/auth/mfa.go)
+    -- com a chave de IAM_MFA_ENCRYPTION_KEY — nunca em texto claro. mfa_ativo só vira
+    -- true após a confirmação (ativar gera e mostra; confirmar valida e liga).
+    -- mfa_ultimo_codigo_usado/mfa_ultimo_codigo_em sustentam o anti-replay: o mesmo
+    -- código TOTP nunca é aceito duas vezes seguidas.
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_segredo_cifrado bytea;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_ativo boolean NOT NULL DEFAULT false;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_ultimo_codigo_usado varchar(6);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_ultimo_codigo_em timestamptz;
+  0019_add_email_pendente_users.sql: |
+    -- 0019 — troca de e-mail em duas etapas (spec 004, RF18, RN08): o e-mail de
+    -- login (`email`) só muda na confirmação. email_pendente guarda o novo endereço
+    -- solicitado; email_token_hash é o sha256 (hex) do token de confirmação enviado
+    -- (nunca o token em claro); email_token_expira_em limita a validade a 1h.
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_pendente varchar(320);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_token_hash varchar(64);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_token_expira_em timestamptz;
+  0020_create_eventos_login_table.sql: |
+    -- 0020 — eventos_login: telemetria de login para o card "Últimos Acessos" do
+    -- Dashboard (spec 004, RF04, RN02).
+    --
+    -- Fica FORA da Row-Level Security (migração 0010): a query do Dashboard agrega
+    -- eventos do tenant do usuário autenticado + seus filhos diretos ao mesmo
+    -- tempo ("tenants vinculados", RF07/RN05), o que é incompatível com
+    -- ScopedDB.WithTenant (que fixa exatamente 1 app.tenant_id). O filtro por
+    -- tenant é feito manualmente no store via WHERE tenant_id = ANY($lista), no
+    -- mesmo padrão já usado para tenants/users em services/iam/internal/store/store.go.
+
+    CREATE TABLE IF NOT EXISTS eventos_login (
+        id          uuid        NOT NULL DEFAULT gen_random_uuid(),
+        usuario_id  uuid        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        tenant_id   uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        criado_em   timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_eventos_login_tenant_criado ON eventos_login (tenant_id, criado_em DESC);
+  0021_create_feedback_table.sql: |
+    -- 0021 — feedback: mensagens de feedback/reclamação por tenant, para o card
+    -- "Feedback" do Dashboard (spec 004, RF05, RN03).
+    --
+    -- Fica FORA da Row-Level Security pelo mesmo motivo de eventos_login (migração
+    -- 0020): a query agrega o tenant do usuário autenticado + seus filhos diretos
+    -- ("tenants vinculados"), incompatível com ScopedDB.WithTenant (1 único
+    -- app.tenant_id). Filtro manual no store via WHERE tenant_id = ANY($lista).
+
+    CREATE TYPE feedback_status AS ENUM ('pendente', 'respondido');
+
+    CREATE TABLE IF NOT EXISTS feedback (
+        id          uuid             NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id   uuid             NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        mensagem    text             NOT NULL,
+        status      feedback_status  NOT NULL DEFAULT 'pendente',
+        criado_em   timestamptz      NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_feedback_tenant_status ON feedback (tenant_id, status);
+  0022_create_assinaturas_tenant_table.sql: |
+    -- 0022 — assinaturas_tenant: linhas de receita de assinatura/cobrança por
+    -- tenant e competência, para o card "Resumo Financeiro" do Dashboard (spec
+    -- 004, RF06, RN04).
+    --
+    -- Não existe motor de billing real neste repo (fora de escopo — spec.md §8):
+    -- esta tabela só é lida pelo endpoint de resumo; não há fluxo de escrita
+    -- automatizado. Para os testes de integração, as linhas são semeadas via
+    -- INSERT direto.
+    --
+    -- Fica FORA da Row-Level Security pelo mesmo motivo de eventos_login/feedback
+    -- (migrações 0020/0021): a query agrega os "tenants vinculados" (tenant do
+    -- contexto + filhos diretos), incompatível com ScopedDB.WithTenant. Filtro
+    -- manual no store via WHERE tenant_id = ANY($lista).
+
+    CREATE TABLE IF NOT EXISTS assinaturas_tenant (
+        id                uuid        NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id         uuid        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        valor_centavos    bigint      NOT NULL,
+        moeda             varchar(3)  NOT NULL DEFAULT 'BRL',
+        competencia       date        NOT NULL,
+        criado_em         timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_assinaturas_tenant_competencia ON assinaturas_tenant (tenant_id, competencia);
+kind: ConfigMap
+metadata:
+  name: postgres-migrations
+  namespace: machv4

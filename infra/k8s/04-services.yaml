@@ -1,0 +1,276 @@
+# Os 8 serviços da plataforma MACH V4 monitorados pela tela Monitor de
+# Recursos (spec 008) — agora rodando em Kubernetes com sidecar Linkerd
+# injetado automaticamente via anotação do namespace (spec 009). CPU/memória
+# vêm do metrics-server (metrics.k8s.io); RPS/latência/taxa de sucesso por
+# serviço vêm do Prometheus do linkerd-viz — nenhum dos 8 precisa expor uma
+# RPC de "recursos" própria, o mesh instrumenta de fora.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iam
+  namespace: machv4
+  labels: { app: iam }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: iam } }
+  template:
+    metadata: { labels: { app: iam } }
+    spec:
+      containers:
+        - name: iam
+          image: machv4/iam:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 50051 }]
+          env:
+            - { name: DATABASE_URL, value: "postgres://mach:mach@postgres:5432/machv4?sslmode=disable" }
+            - name: IAM_MFA_ENCRYPTION_KEY
+              valueFrom: { secretKeyRef: { name: iam-secrets, key: IAM_MFA_ENCRYPTION_KEY } }
+            # Sem isto, o IAM cai no fallback de dev (loadPrivateKey em
+            # cmd/main.go): gera um par RSA efêmero a cada boot, que nenhum
+            # outro serviço conhece. O Collab (que verifica o JWT localmente,
+            # ao contrário do Gateway) nunca consegue validar nada nesse
+            # cenário — toda ligação WebSocket é recusada.
+            - { name: JWT_PRIVATE_KEY_PATH, value: "/etc/jwt/private.pem" }
+          volumeMounts:
+            - { name: jwt-keys, mountPath: /etc/jwt, readOnly: true }
+      volumes:
+        - name: jwt-keys
+          secret: { secretName: jwt-keys }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: iam, namespace: machv4 }
+spec:
+  selector: { app: iam }
+  ports: [{ port: 50051, targetPort: 50051 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: design
+  namespace: machv4
+  labels: { app: design }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: design } }
+  template:
+    metadata: { labels: { app: design } }
+    spec:
+      containers:
+        - name: design
+          image: machv4/design:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 50052 }]
+          env:
+            - { name: DATABASE_URL, value: "postgres://mach:mach@postgres:5432/machv4?sslmode=disable" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: design, namespace: machv4 }
+spec:
+  selector: { app: design }
+  ports: [{ port: 50052, targetPort: 50052 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logic
+  namespace: machv4
+  labels: { app: logic }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: logic } }
+  template:
+    metadata: { labels: { app: logic } }
+    spec:
+      containers:
+        - name: logic
+          image: machv4/logic:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 50053 }]
+          env:
+            - { name: DATABASE_URL, value: "postgres://mach:mach@postgres:5432/machv4?sslmode=disable" }
+            - { name: RABBITMQ_URL, value: "amqp://mach:mach@rabbitmq:5672/" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: logic, namespace: machv4 }
+spec:
+  selector: { app: logic }
+  ports: [{ port: 50053, targetPort: 50053 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy
+  namespace: machv4
+  labels: { app: deploy }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: deploy } }
+  template:
+    metadata: { labels: { app: deploy } }
+    spec:
+      containers:
+        - name: deploy
+          image: machv4/deploy:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 50054 }]
+          env:
+            - { name: DATABASE_URL, value: "postgres://mach:mach@postgres:5432/machv4?sslmode=disable" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: deploy, namespace: machv4 }
+spec:
+  selector: { app: deploy }
+  ports: [{ port: 50054, targetPort: 50054 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: export
+  namespace: machv4
+  labels: { app: export }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: export } }
+  template:
+    metadata: { labels: { app: export } }
+    spec:
+      containers:
+        - name: export
+          image: machv4/export:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 50055 }]
+          env:
+            - { name: DATABASE_URL, value: "postgres://mach:mach@postgres:5432/machv4?sslmode=disable" }
+            - { name: S3_ENDPOINT, value: "minio:9000" }
+            - { name: S3_ACCESS_KEY, value: "mach" }
+            - { name: S3_SECRET_KEY, value: "machsecret" }
+            - { name: S3_BUCKET, value: "exports" }
+            - { name: S3_USE_SSL, value: "false" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: export, namespace: machv4 }
+spec:
+  selector: { app: export }
+  ports: [{ port: 50055, targetPort: 50055 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workers
+  namespace: machv4
+  labels: { app: workers }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: workers } }
+  template:
+    metadata: { labels: { app: workers } }
+    spec:
+      containers:
+        - name: workers
+          image: machv4/workers:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8081 }]
+          env:
+            - { name: RABBITMQ_URL, value: "amqp://mach:mach@rabbitmq:5672/" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: workers, namespace: machv4 }
+spec:
+  selector: { app: workers }
+  ports: [{ port: 8081, targetPort: 8081 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collab
+  namespace: machv4
+  labels: { app: collab }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: collab } }
+  template:
+    metadata: { labels: { app: collab } }
+    spec:
+      containers:
+        - name: collab
+          image: machv4/collab:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 4000 }]
+          env:
+            - { name: DESIGN_GRPC_ADDR, value: "design:50052" }
+            - { name: REDIS_URL, value: "redis://redis:6379" }
+            - { name: PHX_HOST, value: "collab" }
+            - { name: PORT, value: "4000" }
+            # Sem isto, o Phoenix.Socket rejeita o handshake WebSocket do
+            # Vite dev server (Origin http://localhost:5183) porque o
+            # check_origin default só aceita Origin == PHX_HOST ("collab").
+            # A tela do editor fica presa em "Carregando tela..." para
+            # sempre, sem erro visível, pois o join do canal nunca chega
+            # a ser enviado.
+            - { name: PHX_CHECK_ORIGIN, value: "http://localhost:5183" }
+            - name: SECRET_KEY_BASE
+              valueFrom: { secretKeyRef: { name: collab-secrets, key: SECRET_KEY_BASE } }
+            # Chave pública RS256 do IAM (par gerado por ensure_secret
+            # jwt-keys no dev-up.sh) — sem isto, Collab.Auth.Token.verify/1
+            # sempre falha com :sem_chave_publica e nenhuma ligação
+            # WebSocket é autenticada (lib/collab/auth/token.ex:29-32).
+            - name: JWT_PUBLIC_KEY_PEM
+              valueFrom: { secretKeyRef: { name: jwt-keys, key: public.pem } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: collab, namespace: machv4 }
+spec:
+  selector: { app: collab }
+  # NodePort (não ClusterIP): o Frontend fala com o Collab via WebSocket
+  # direto do host (vite.config.ts proxy /socket -> localhost:4000), fora do
+  # cluster — precisa estar alcançável de fora, como o Gateway.
+  type: NodePort
+  ports: [{ port: 4000, targetPort: 4000, nodePort: 30400 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: machv4
+  labels: { app: gateway }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: gateway } }
+  template:
+    metadata: { labels: { app: gateway } }
+    spec:
+      serviceAccountName: gateway
+      containers:
+        - name: gateway
+          image: machv4/gateway:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: IAM_GRPC_ADDR, value: "iam:50051" }
+            - { name: DESIGN_GRPC_ADDR, value: "design:50052" }
+            - { name: LOGIC_GRPC_ADDR, value: "logic:50053" }
+            - { name: DEPLOY_GRPC_ADDR, value: "deploy:50054" }
+            - { name: EXPORT_GRPC_ADDR, value: "export:50055" }
+            # K8S_NAMESPACE/LINKERD_PROMETHEUS_URL usam os defaults do próprio
+            # main.go (namespace "machv4", Prometheus do linkerd-viz via DNS
+            # interno) — sem necessidade de sobrescrever aqui.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: machv4
+spec:
+  selector: { app: gateway }
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080

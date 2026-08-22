@@ -1,0 +1,15 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: machv4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # Mesmas portas que build/dev-up.sh e vite.config.ts já esperam para o
+      # Gateway (8080) e o Collab/websocket (4000) — dev-up.sh não sobe mais
+      # esses dois como processo solto, então não há conflito.
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
+      - containerPort: 30400
+        hostPort: 4000
+        protocol: TCP

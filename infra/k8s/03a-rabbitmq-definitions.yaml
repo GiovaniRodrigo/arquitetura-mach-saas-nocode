@@ -1,0 +1,312 @@
+apiVersion: v1
+data:
+  definitions.json: |
+    {
+      "rabbit_version": "3.13.0",
+      "users": [
+        {
+          "name": "mach",
+          "password_hash": "kI3GCgyjGXGWkp2V8KvhLjDu/Zu5LTXd2FXpMnlbf79YZNXO",
+          "hashing_algorithm": "rabbit_password_hashing_sha256",
+          "tags": ["administrator"]
+        }
+      ],
+      "vhosts": [{ "name": "/" }],
+      "permissions": [
+        { "user": "mach", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }
+      ],
+      "policies": [
+        {
+          "vhost": "/",
+          "name": "ha-eventos",
+          "pattern": "^(webhooks\\.disparo|notificacoes\\.envio).*",
+          "apply-to": "queues",
+          "priority": 0,
+          "definition": { "queue-mode": "lazy" }
+        }
+      ],
+      "exchanges": [
+        {
+          "name": "eventos.webhook",
+          "vhost": "/",
+          "type": "x-consistent-hash",
+          "durable": true,
+          "auto_delete": false,
+          "internal": false,
+          "arguments": {}
+        },
+        {
+          "name": "eventos.notificacao",
+          "vhost": "/",
+          "type": "x-consistent-hash",
+          "durable": true,
+          "auto_delete": false,
+          "internal": false,
+          "arguments": {}
+        }
+      ],
+      "queues": [
+        {
+          "name": "webhooks.disparo.0",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "webhooks.disparo.0.retry",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "webhooks.disparo.0"
+          }
+        },
+        {
+          "name": "webhooks.disparo.0.dlq",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "webhooks.disparo.1",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "webhooks.disparo.1.retry",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "webhooks.disparo.1"
+          }
+        },
+        {
+          "name": "webhooks.disparo.1.dlq",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "webhooks.disparo.2",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "webhooks.disparo.2.retry",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "webhooks.disparo.2"
+          }
+        },
+        {
+          "name": "webhooks.disparo.2.dlq",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "webhooks.disparo.3",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "webhooks.disparo.3.retry",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "webhooks.disparo.3"
+          }
+        },
+        {
+          "name": "webhooks.disparo.3.dlq",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "notificacoes.envio.0",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "notificacoes.envio.0.retry",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "notificacoes.envio.0"
+          }
+        },
+        {
+          "name": "notificacoes.envio.0.dlq",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "notificacoes.envio.1",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "notificacoes.envio.1.retry",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "notificacoes.envio.1"
+          }
+        },
+        {
+          "name": "notificacoes.envio.1.dlq",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "notificacoes.envio.2",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "notificacoes.envio.2.retry",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "notificacoes.envio.2"
+          }
+        },
+        {
+          "name": "notificacoes.envio.2.dlq",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "notificacoes.envio.3",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        },
+        {
+          "name": "notificacoes.envio.3.retry",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "notificacoes.envio.3"
+          }
+        },
+        {
+          "name": "notificacoes.envio.3.dlq",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        }
+      ],
+      "bindings": [
+        {
+          "source": "eventos.webhook",
+          "vhost": "/",
+          "destination": "webhooks.disparo.0",
+          "destination_type": "queue",
+          "routing_key": "10",
+          "arguments": {}
+        },
+        {
+          "source": "eventos.webhook",
+          "vhost": "/",
+          "destination": "webhooks.disparo.1",
+          "destination_type": "queue",
+          "routing_key": "10",
+          "arguments": {}
+        },
+        {
+          "source": "eventos.webhook",
+          "vhost": "/",
+          "destination": "webhooks.disparo.2",
+          "destination_type": "queue",
+          "routing_key": "10",
+          "arguments": {}
+        },
+        {
+          "source": "eventos.webhook",
+          "vhost": "/",
+          "destination": "webhooks.disparo.3",
+          "destination_type": "queue",
+          "routing_key": "10",
+          "arguments": {}
+        },
+        {
+          "source": "eventos.notificacao",
+          "vhost": "/",
+          "destination": "notificacoes.envio.0",
+          "destination_type": "queue",
+          "routing_key": "10",
+          "arguments": {}
+        },
+        {
+          "source": "eventos.notificacao",
+          "vhost": "/",
+          "destination": "notificacoes.envio.1",
+          "destination_type": "queue",
+          "routing_key": "10",
+          "arguments": {}
+        },
+        {
+          "source": "eventos.notificacao",
+          "vhost": "/",
+          "destination": "notificacoes.envio.2",
+          "destination_type": "queue",
+          "routing_key": "10",
+          "arguments": {}
+        },
+        {
+          "source": "eventos.notificacao",
+          "vhost": "/",
+          "destination": "notificacoes.envio.3",
+          "destination_type": "queue",
+          "routing_key": "10",
+          "arguments": {}
+        }
+      ]
+    }
+kind: ConfigMap
+metadata:
+  name: rabbitmq-definitions
+  namespace: machv4

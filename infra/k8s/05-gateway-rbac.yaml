@@ -1,0 +1,27 @@
+# Permite ao Gateway ler metrics.k8s.io/v1beta1 (CPU/memória dos pods do
+# namespace machv4) para servir GET /api/v1/monitor/recursos (spec 009). O
+# Prometheus do linkerd-viz não exige RBAC — é acessado via DNS interno do
+# cluster (nenhuma auth própria no linkerd-viz por padrão).
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: gateway, namespace: machv4 }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: gateway-metrics-reader, namespace: machv4 }
+rules:
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: gateway-metrics-reader, namespace: machv4 }
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gateway-metrics-reader
+subjects:
+  - kind: ServiceAccount
+    name: gateway
+    namespace: machv4
