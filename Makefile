@@ -48,6 +48,11 @@ seed: ## Popula o stack local com um site de demonstração (requer stack no ar:
 test: ## Executa a suíte de testes Go
 	go test ./...
 
+.PHONY: test-html
+test-html: ## Valida o HTML das telas do sistema (e2e) e do builder nocode (componente) via html-validator
+	cd services/frontend && npx vitest run src/pages/Dashboard/editor/PreviewRenderer.htmlValidator.test.tsx
+	cd services/frontend && npx playwright test e2e/htmlSistema.spec.ts
+
 .PHONY: tidy
 tidy: ## Sincroniza dependências do módulo Go
 	go mod tidy
