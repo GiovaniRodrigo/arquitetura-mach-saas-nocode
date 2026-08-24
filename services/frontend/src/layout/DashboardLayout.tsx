@@ -84,7 +84,11 @@ export function DashboardLayout() {
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader className="p-4">
-            <h2 className="text-lg font-bold font-heading">MAYS - Make Your SaaS</h2>
+            {/* Marca da sidebar, não título de página — não deve ser <h2>: a
+                marca aparece antes do <h1> real (título da página, no
+                header) na ordem do DOM, o que quebraria a hierarquia de
+                headings (regra heading-level do html-validate). */}
+            <p className="text-lg font-bold font-heading">MAYS - Make Your SaaS</p>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>

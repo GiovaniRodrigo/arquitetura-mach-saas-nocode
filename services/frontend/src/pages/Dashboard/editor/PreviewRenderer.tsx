@@ -57,7 +57,11 @@ export function PreviewRenderer({ no, selecionado }: { no: Componente; seleciona
     case 'section':
       return <section style={estilo}>{filhos}</section>;
     case 'heading':
-      return <h1 style={estilo} dangerouslySetInnerHTML={{ __html: textoHtml ?? '' }} />;
+      // h2 (não h1): uma tela pode ter vários componentes "heading" (título
+      // do hero, títulos de seção no footer etc. — ver build/seed-demo-site.sh)
+      // e o modelo de dados não distingue qual seria o h1 semântico da
+      // página; múltiplos <h1> violam a regra heading-level do html-validate.
+      return <h2 style={estilo} dangerouslySetInnerHTML={{ __html: textoHtml ?? '' }} />;
     case 'paragrafo':
       return <p style={estilo} dangerouslySetInnerHTML={{ __html: textoHtml ?? '' }} />;
     case 'botao':
@@ -72,7 +76,7 @@ export function PreviewRenderer({ no, selecionado }: { no: Componente; seleciona
         />
       );
     case 'input':
-      return <input style={estilo} placeholder={texto} readOnly />;
+      return <input type="text" style={estilo} placeholder={texto} readOnly />;
     case 'select':
       return (
         <select style={estilo} disabled>
@@ -338,6 +342,7 @@ function VideoPublicado({
   return embed ? (
     <iframe
       src={embed}
+      title="Vídeo incorporado"
       style={estilo}
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       allowFullScreen
