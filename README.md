@@ -1,22 +1,26 @@
-# Construtor de Sistemas MACH V4 — Plataforma Low-Code / No-Code
+# MACH V4 System Builder — Low-Code / No-Code Platform
 
-## 1. Visão Geral
-[cite_start]Este repositório contém a especificação técnica de arquitetura unificada para a plataforma **MACH V4**. [cite_start]O sistema foi projetado sob os princípios modernos de arquitetura distribuída para permitir que utilizadores criem as suas próprias aplicações digitais através de uma interface inteiramente visual[cite: 4, 6].
+## 1. Overview
 
-[cite_start]A versão V4 consolida os contratos gRPC via Protocol Buffers, o mapeamento de payloads dinâmicos por mapas chave-valor, o controlo de acessos refinado por componente (IAM) e integra camadas de mensajaria assíncrona escalável e sincronização em tempo real[cite: 5].
+This repository contains the unified technical architecture specification for the **MACH V4** platform. The system was designed under modern distributed architecture principles to allow users to build their own digital applications through an entirely visual interface.
 
-## 2. Requisitos Principais da Plataforma
-* [cite_start]**CRUD de UI:** Criação e salvamento dos metadados de construção de interfaces visuais de utilizador[cite: 8].
-* [cite_start]**CRUD de Regras de Negócio:** Registo de regras operacionais, controlo de acessos e requisitos funcionais[cite: 9].
-* [cite_start]**Publicação Instantânea:** Mecanismo de deploy imediato baseado em uma abordagem interpretada[cite: 10].
-* [cite_start]**Multi-tenancy Hierárquico:** Isolamento lógico estruturado para Donos, Parceiros e Clientes Finais[cite: 11].
-* [cite_start]**Exportação Assíncrona:** Extração completa de dados operacionais e metadados em segundo plano[cite: 12].
-* [cite_start]**Colaboração em Tempo Real:** Edição simultânea de múltiplos utilizadores no painel de construção[cite: 13].
+Version V4 consolidates gRPC contracts via Protocol Buffers, dynamic payload mapping using key-value maps, fine-grained component-level access control (IAM), and integrates scalable asynchronous messaging layers with real-time synchronization.
 
-## 3. Guia de Leitura da Documentação
-Para entender detalhadamente cada componente da infraestrutura, consulte os arquivos especializados:
-* [`ARCHITECTURE_PILLARS.md`](./ARCHITECTURE_PILLARS.md): Mapeamento dos 4 pilares MACH e divisão dos Microsserviços.
-* [`GATEWAY_COLLABORATION.md`](./GATEWAY_COLLABORATION.md): Detalhes do Gateway híbrido (Go & Elixir) e sincronização via WebSockets.
-* [`DATA_SECURITY.md`](./DATA_SECURITY.md): Gestão de dados dinâmicos, Blind Index e políticas de IAM por componente.
-* [`ASYNC_OBSERVABILITY.md`](./ASYNC_OBSERVABILITY.md): Mensageria distribuída com KEDA e Rastreamento com OpenTelemetry.
-* [`CONTRACTS_PERFORMANCE.md`](./CONTRACTS_PERFORMANCE.md): Contratos `.proto` oficiais, estratégias de renderização e plano de evolução técnica.
+## 2. Core Platform Requirements
+
+* **UI CRUD:** Creation and saving of metadata for building visual user interfaces.
+* **Business Rules CRUD:** Registration of operational rules, access control, and functional requirements.
+* **Instant Publishing:** Immediate deployment mechanism based on an interpreted approach.
+* **Hierarchical Multi-Tenancy:** Structured logical isolation for Owners, Partners, and End Customers.
+* **Asynchronous Export:** Complete background extraction of operational data and metadata.
+* **Real-Time Collaboration:** Simultaneous multi-user editing within the builder canvas.
+
+## 3. Documentation Reading Guide
+
+To gain a detailed understanding of each infrastructure component, refer to the specialized files:
+
+* [`ARCHITECTURE_PILLARS.md`](https://www.google.com/search?q=./ARCHITECTURE_PILLARS.md): Mapping of the 4 MACH pillars and microservice breakdown.
+* [`GATEWAY_COLLABORATION.md`](https://www.google.com/search?q=./GATEWAY_COLLABORATION.md): Details on the hybrid Gateway (Go & Elixir) and WebSocket synchronization.
+* [`DATA_SECURITY.md`](https://www.google.com/search?q=./DATA_SECURITY.md): Dynamic data management, Blind Index, and component-level IAM policies.
+* [`ASYNC_OBSERVABILITY.md`](https://www.google.com/search?q=./ASYNC_OBSERVABILITY.md): Distributed messaging with KEDA and OpenTelemetry tracing.
+* [`CONTRACTS_PERFORMANCE.md`](https://www.google.com/search?q=./CONTRACTS_PERFORMANCE.md): Official `.proto` contracts, rendering strategies, and technical evolution roadmap.
