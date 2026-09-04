@@ -1,45 +1,45 @@
-# Modelo de Dados: Auto Cadastro (Self Sign-up)
+# Data Model: Self Sign-up
 
-Nenhuma entidade nova — apenas uma extensão da tabela `users` já criada na
-migração `0012_create_users_table.sql`. A tabela `tenants` (migração `0001`) não
-muda de schema, só ganha novas linhas com `tipo = 'dono'` e `parent_id = NULL`
-(mesmo formato do tenant padrão OAuth da migração `0013`, só que um por cadastro).
+No new entity — just an extension of the `users` table already created in
+migration `0012_create_users_table.sql`. The `tenants` table (migration `0001`) does not
+change schema, it only gains new rows with `tipo = 'dono'` and `parent_id = NULL`
+(same shape as the default OAuth tenant from migration `0013`, just one per sign-up).
 
 ---
 
-## 1. Entidades
+## 1. Entities
 
-### `users` (alterada)
+### `users` (changed)
 
-| Campo | Tipo | Nulável | Padrão | Descrição |
+| Field | Type | Nullable | Default | Description |
 |-------|------|---------|--------|-----------|
-| id | uuid | não | `gen_random_uuid()` | PK (inalterado) |
-| provedor | varchar(32) | não | — | `google`\|`github`\|**`senha`** (novo valor de fato, não de enum — coluna é `varchar` livre) |
-| external_id | varchar(255) | não | — | id do provedor OAuth, ou **o próprio e-mail** quando `provedor = 'senha'` (garante `UNIQUE (provedor, external_id)` já existente sem migração nesse índice) |
-| email | varchar(320) | não | `''` | inalterado |
-| nome | varchar(255) | não | `''` | inalterado |
-| **senha_hash** | varchar(255) | **sim** | `NULL` | **novo.** Hash bcrypt (prefixo `$2`); `NULL` para contas OAuth |
-| tenant_id | uuid | não | — | FK `tenants(id)` (inalterado) |
-| tipo | tenant_tipo | não | `'cliente'` | inalterado — cadastro por senha grava explicitamente `'dono'` |
-| criado_em / atualizado_em | timestamptz | não | `now()` | inalterado |
+| id | uuid | no | `gen_random_uuid()` | PK (unchanged) |
+| provedor | varchar(32) | no | — | `google`\|`github`\|**`senha`** (new value in practice, not in an enum — the column is a free `varchar`) |
+| external_id | varchar(255) | no | — | the OAuth provider's id, or **the email itself** when `provedor = 'senha'` (satisfies the already-existing `UNIQUE (provedor, external_id)` with no migration on that index) |
+| email | varchar(320) | no | `''` | unchanged |
+| nome | varchar(255) | no | `''` | unchanged |
+| **senha_hash** | varchar(255) | **yes** | `NULL` | **new.** bcrypt hash (prefix `$2`); `NULL` for OAuth accounts |
+| tenant_id | uuid | no | — | FK `tenants(id)` (unchanged) |
+| tipo | tenant_tipo | no | `'cliente'` | unchanged — password sign-up explicitly writes `'dono'` |
+| criado_em / atualizado_em | timestamptz | no | `now()` | unchanged |
 
-### `tenants` (sem alteração de schema, só de dado)
+### `tenants` (no schema change, only data)
 
-Cadastro por senha insere uma linha com `parent_id = NULL`, `tipo = 'dono'`,
-`chave_blind_index` gerada com o mesmo padrão de `CriarTenant` (32 bytes
-`crypto/rand`) — nenhuma coluna nova.
+Password sign-up inserts a row with `parent_id = NULL`, `tipo = 'dono'`,
+`chave_blind_index` generated the same way as `CriarTenant` (32 bytes via
+`crypto/rand`) — no new column.
 
 ---
 
-## 2. Relacionamentos
+## 2. Relationships
 
-| Entidade A | Cardinalidade | Entidade B | Chave Estrangeira |
+| Entity A | Cardinality | Entity B | Foreign Key |
 |------------|--------------|------------|--------------------|
-| tenants | 1:N | users | `users.tenant_id → tenants.id` (inalterado) |
+| tenants | 1:N | users | `users.tenant_id → tenants.id` (unchanged) |
 
 ---
 
-## 3. Diagrama ER
+## 3. ER Diagram
 
 ```mermaid
 erDiagram
@@ -57,7 +57,7 @@ erDiagram
     varchar external_id
     varchar email
     varchar nome
-    varchar senha_hash "novo, nullable"
+    varchar senha_hash "new, nullable"
     uuid tenant_id FK
     tenant_tipo tipo
     timestamptz criado_em
@@ -67,20 +67,20 @@ erDiagram
 
 ---
 
-## 4. Migrações Necessárias
+## 4. Required Migrations
 
-| Arquivo de Migração | Operação | Tabela |
+| Migration File | Operation | Table |
 |----------------------|----------|--------|
-| `0014_add_senha_users.sql` | `ALTER TABLE ... ADD COLUMN senha_hash` + `CREATE UNIQUE INDEX` parcial | `users` |
+| `0014_add_senha_users.sql` | `ALTER TABLE ... ADD COLUMN senha_hash` + partial `CREATE UNIQUE INDEX` | `users` |
 
-Conteúdo completo da migração (idempotente, seguindo o estilo das anteriores):
+Full migration content (idempotent, following the style of the previous ones):
 
 ```sql
--- 0014 — auto cadastro por e-mail/senha (spec 006). Contas de senha reaproveitam
--- a tabela users com provedor='senha' e external_id=email; senha_hash é NULL
--- para contas OAuth. O índice único é parcial (só provedor='senha') para não
--- impedir uma conta Google e uma conta de senha coexistirem com o mesmo e-mail
--- (unificação de identidade é fora de escopo, spec.md §8).
+-- 0014 — email/password self sign-up (spec 006). Password accounts reuse
+-- the users table with provedor='senha' and external_id=email; senha_hash is NULL
+-- for OAuth accounts. The unique index is partial (only provedor='senha') so as
+-- not to prevent a Google account and a password account from coexisting with the
+-- same email (identity unification is out of scope, spec.md §8).
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS senha_hash varchar(255);
 

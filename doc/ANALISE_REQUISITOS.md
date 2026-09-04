@@ -1,68 +1,68 @@
-# Documento de Requisitos e Análise — Construtor de Sistemas MACH V4
+# Requirements and Analysis Document — MACH V4 System Builder
 
-## 1. Visão Geral
-Plataforma Low-Code/No-Code multi-tenant baseada nos pilares **MACH** (Microservices, API-first, Cloud-native SaaS, Headless). Permite que utilizadores construam aplicações digitais via interface visual, com colaboração em tempo real, publicação instantânea (abordagem interpretada), regras de negócio dinâmicas, controlo de acessos por componente (IAM) e exportação assíncrona de dados. A arquitetura é composta por 5 microsserviços (Design Engine, Logic Engine, IAM Service, Deploy Engine, Export Engine), um Gateway híbrido (Go + Elixir/Phoenix), mensageria assíncrona via RabbitMQ/KEDA e observabilidade via OpenTelemetry/Jaeger.
+## 1. Overview
+Multi-tenant Low-Code/No-Code platform based on the **MACH** pillars (Microservices, API-first, Cloud-native SaaS, Headless). Allows users to build digital applications via a visual interface, with real-time collaboration, instant publishing (interpreted approach), dynamic business rules, per-component access control (IAM), and asynchronous data export. The architecture is composed of 5 microservices (Design Engine, Logic Engine, IAM Service, Deploy Engine, Export Engine), a hybrid Gateway (Go + Elixir/Phoenix), asynchronous messaging via RabbitMQ/KEDA, and observability via OpenTelemetry/Jaeger.
 
-## 2. Regras de Negócio (RN)
+## 2. Business Rules (RN)
 
-| ID | Nome | Descrição |
+| ID | Name | Description |
 | :--- | :--- | :--- |
-| RN01 | Isolamento Multi-tenant | Toda query à base de dados partilhada aplica filtro obrigatório `WHERE tenant_id = :id`, extraído do contexto gRPC/JWT, impedindo vazamento de dados entre clientes. |
-| RN02 | Anonimização por Blind Index | Campos dinâmicos criados pelos utilizadores nunca são referenciados por nome real; são sempre mapeados por um hash criptográfico (Blind Index) para tipo, obrigatoriedade e limites de validação. |
-| RN03 | Avaliação de Permissões no Servidor | Condições de acesso (view/click) de cada componente são sempre calculadas no IAM Service; o front-end apenas recebe o mapa booleano final indexado por Blind Index — nunca a lógica da regra. |
-| RN04 | Publicação por Flag Ativa | Publicar uma versão cria uma nova linha em `versoes_sistema`; apenas uma versão pode estar com a flag `Ativa` por sistema, e o Headless Player sempre consome a versão ativa. |
-| RN05 | Rollback Instantâneo | Reverter uma publicação é feito apenas alternando a flag `Ativa` para a versão estável anterior, sem recompilação ou downtime. |
-| RN06 | Persistência por Debounce (Write-Behind) | Mutações de edição colaborativa só são persistidas na base relacional após 5 segundos de inatividade de rede detectados pelo GenServer; antes disso residem apenas em memória BEAM e Redis. |
-| RN07 | Bloqueio Otimista por Componente | Um componente sob edição ativa por um colaborador é temporariamente bloqueado (via Blind Index) para os demais colaboradores concorrentes. |
-| RN08 | Validação Dupla Obrigatória | Todo payload de formulário deve ser validado no front-end (bloqueio imediato) **e** revalidado no Logic Engine contra o schema salvo, rejeitando submissões que contornem o cliente. |
-| RN09 | Isolamento de Fila por Tenant (Fair Queuing) | Nenhum tenant pode monopolizar os workers assíncronos; falhas contínuas de integração de um tenant são desviadas para DLQ sem afetar outros tenants. |
-| RN10 | Escalonamento por Fila, não por CPU | O autoscaling de workers assíncronos reage exclusivamente ao tamanho da fila (QueueLength) no RabbitMQ, podendo escalar a zero réplicas. |
+| BR01 | Multi-tenant Isolation | Every query to the shared database applies a mandatory `WHERE tenant_id = :id` filter, extracted from the gRPC/JWT context, preventing data leakage between customers. |
+| BR02 | Anonymization via Blind Index | Dynamic fields created by users are never referenced by their real name; they are always mapped through a cryptographic hash (Blind Index) for type, requiredness, and validation limits. |
+| BR03 | Server-Side Permission Evaluation | Access conditions (view/click) for each component are always computed in the IAM Service; the front-end only receives the final boolean map indexed by Blind Index — never the rule logic. |
+| BR04 | Publishing via Active Flag | Publishing a version creates a new row in `versoes_sistema`; only one version can have the `Ativa` flag per system, and the Headless Player always consumes the active version. |
+| BR05 | Instant Rollback | Reverting a publication is done simply by switching the `Ativa` flag to the previous stable version, without recompilation or downtime. |
+| BR06 | Debounce-based Persistence (Write-Behind) | Collaborative edit mutations are only persisted to the relational database after 5 seconds of network inactivity detected by the GenServer; before that, they live only in BEAM memory and Redis. |
+| BR07 | Optimistic Per-Component Locking | A component under active edit by one collaborator is temporarily locked (via Blind Index) for other concurrent collaborators. |
+| BR08 | Mandatory Double Validation | Every form payload must be validated on the front-end (immediate blocking) **and** revalidated in the Logic Engine against the saved schema, rejecting submissions that bypass the client. |
+| BR09 | Per-Tenant Queue Isolation (Fair Queuing) | No tenant can monopolize the asynchronous workers; a tenant's repeated integration failures are diverted to a DLQ without affecting other tenants. |
+| BR10 | Queue-based Scaling, not CPU-based | Autoscaling of asynchronous workers reacts exclusively to queue size (QueueLength) in RabbitMQ, and can scale down to zero replicas. |
 
-## 3. Requisitos Funcionais (RF)
+## 3. Functional Requirements (RF)
 
-| ID | Nome | Descrição | Prioridade |
+| ID | Name | Description | Priority |
 | :--- | :--- | :--- | :--- |
-| RF01 | CRUD de Design (UI) | Criar, ler, atualizar e remover definições de interface em árvore recursiva (padrão Composite) via Design Engine. | Alta |
-| RF02 | CRUD de Regras de Negócio | Criar e gerir regras de negócio como árvores de decisão via Logic Engine. | Alta |
-| RF03 | Autenticação e Controlo de Acesso | Validar JWT no Gateway, propagar identidade via gRPC Metadata e avaliar permissões por componente no IAM Service. | Alta |
-| RF04 | Publicação e Rollback de Sistema | Publicar uma nova versão do sistema (flag ativa) e reverter instantaneamente para versão anterior em caso de falha. | Alta |
-| RF05 | Exportação Assíncrona de Dados | Gerar um Job de exportação completa (UI, regras, dados operacionais) entregue via link seguro temporário (Presigned URL). | Média |
-| RF06 | Colaboração em Tempo Real | Permitir múltiplos utilizadores editando o mesmo sistema simultaneamente, com sincronização via WebSockets (Phoenix Channels) e presença (cursores). | Alta |
-| RF07 | Submissão e Validação de Formulários | Submeter dados operacionais dinâmicos com validação distribuída (cliente + servidor) via Blind Index. | Alta |
-| RF08 | Processamento Assíncrono de Eventos | Disparar tarefas em segundo plano (webhooks, notificações) desacopladas do fluxo síncrono, via RabbitMQ/KEDA. | Média |
+| FR01 | Design CRUD (UI) | Create, read, update, and delete interface definitions in a recursive tree (Composite pattern) via the Design Engine. | High |
+| FR02 | Business Rules CRUD | Create and manage business rules as decision trees via the Logic Engine. | High |
+| FR03 | Authentication and Access Control | Validate JWT at the Gateway, propagate identity via gRPC Metadata, and evaluate per-component permissions in the IAM Service. | High |
+| FR04 | System Publishing and Rollback | Publish a new system version (active flag) and instantly revert to the previous version on failure. | High |
+| FR05 | Asynchronous Data Export | Generate a complete export Job (UI, rules, operational data) delivered via a temporary secure link (Presigned URL). | Medium |
+| FR06 | Real-Time Collaboration | Allow multiple users to edit the same system simultaneously, with synchronization via WebSockets (Phoenix Channels) and presence (cursors). | High |
+| FR07 | Form Submission and Validation | Submit dynamic operational data with distributed validation (client + server) via Blind Index. | High |
+| FR08 | Asynchronous Event Processing | Trigger background tasks (webhooks, notifications) decoupled from the synchronous flow, via RabbitMQ/KEDA. | Medium |
 
-## 4. Requisitos Não Funcionais (RNF)
+## 4. Non-Functional Requirements (RNF)
 
-| ID | Nome | Descrição | Categoria |
+| ID | Name | Description | Category |
 | :--- | :--- | :--- | :--- |
-| RNF01 | Comunicação Interna de Baixa Latência | Toda comunicação entre microsserviços deve ocorrer via gRPC/Protocol Buffers sobre HTTP/2. | Performance |
-| RNF02 | Propagação Segura de Identidade | Contexto de tenant/identidade deve trafegar como Metadata binário do gRPC, nunca em payload de negócio. | Segurança |
-| RNF03 | Escalabilidade Elástica (Scale-to-Zero) | Workers assíncronos devem escalar de 0 a N réplicas (ex: até 50) conforme profundidade de fila, sem custo ocioso. | Escalabilidade |
-| RNF04 | Rastreabilidade Distribuída Ponta a Ponta | Toda requisição deve ser rastreável via Trace ID (W3C Trace Context) através de HTTP, gRPC e AMQP, visível no Jaeger. | Observabilidade |
-| RNF05 | Disponibilidade em Publicações | Rollback de versão deve ocorrer em milissegundos, sem indisponibilidade do sistema publicado. | Disponibilidade |
-| RNF06 | Resiliência a Falhas de Integração | Falhas de integrações de terceiros não podem impactar outros tenants; devem ser isoladas via DLQ. | Confiabilidade |
-| RNF07 | Fluidez de Renderização | O Headless Player deve aplicar mudanças de UI em lotes de 16ms (60Hz), evitando jank visual. | Performance/UX |
-| RNF08 | Privacidade por Design | Nenhum nome real de coluna/tabela/campo de negócio pode ser exposto em logs, traces ou payloads de erro — apenas Blind Index. | Segurança/LGPD |
+| NFR01 | Low-Latency Internal Communication | All communication between microservices must occur via gRPC/Protocol Buffers over HTTP/2. | Performance |
+| NFR02 | Secure Identity Propagation | Tenant/identity context must travel as binary gRPC Metadata, never in the business payload. | Security |
+| NFR03 | Elastic Scalability (Scale-to-Zero) | Asynchronous workers must scale from 0 to N replicas (e.g., up to 50) according to queue depth, with no idle cost. | Scalability |
+| NFR04 | End-to-End Distributed Traceability | Every request must be traceable via Trace ID (W3C Trace Context) across HTTP, gRPC, and AMQP, visible in Jaeger. | Observability |
+| NFR05 | Publication Availability | Version rollback must occur within milliseconds, with no downtime for the published system. | Availability |
+| NFR06 | Resilience to Integration Failures | Third-party integration failures must not impact other tenants; they must be isolated via DLQ. | Reliability |
+| NFR07 | Rendering Fluidity | The Headless Player must apply UI changes in 16ms (60Hz) batches, avoiding visual jank. | Performance/UX |
+| NFR08 | Privacy by Design | No real column/table/business-field name may be exposed in logs, traces, or error payloads — only Blind Index. | Security/LGPD |
 
-## 5. Diagramas UML (Mermaid)
+## 5. UML Diagrams (Mermaid)
 
-### 5.1 Diagrama de Caso de Uso
+### 5.1 Use Case Diagram
 ```mermaid
 flowchart LR
-  criador(["Criador/Colaborador"])
-  cliente(["Cliente Final"])
-  admin(["Administrador (Dono/Parceiro)"])
-  externo(["Sistema Externo"])
+  criador(["Creator/Collaborator"])
+  cliente(["End Customer"])
+  admin(["Administrator (Owner/Partner)"])
+  externo(["External System"])
 
-  subgraph sistema["Construtor de Sistemas MACH"]
-    UC1(["RF01 - CRUD de Design (UI)"])
-    UC2(["RF02 - CRUD de Regras de Negócio"])
-    UC3(["RF03 - Autenticação e Controlo de Acesso"])
-    UC4(["RF04 - Publicação e Rollback"])
-    UC5(["RF05 - Exportação Assíncrona de Dados"])
-    UC6(["RF06 - Colaboração em Tempo Real"])
-    UC7(["RF07 - Submissão e Validação de Formulários"])
-    UC8(["RF08 - Processamento Assíncrono de Eventos"])
+  subgraph sistema["MACH System Builder"]
+    UC1(["FR01 - Design CRUD (UI)"])
+    UC2(["FR02 - Business Rules CRUD"])
+    UC3(["FR03 - Authentication and Access Control"])
+    UC4(["FR04 - Publishing and Rollback"])
+    UC5(["FR05 - Asynchronous Data Export"])
+    UC6(["FR06 - Real-Time Collaboration"])
+    UC7(["FR07 - Form Submission and Validation"])
+    UC8(["FR08 - Asynchronous Event Processing"])
   end
 
   criador --> UC1
@@ -79,83 +79,83 @@ flowchart LR
   UC2 -. include .-> UC3
 ```
 
-### 5.2 Diagrama de Sequência — RF07: Submissão e Validação de Formulários
+### 5.2 Sequence Diagram — FR07: Form Submission and Validation
 ```mermaid
 sequenceDiagram
-    actor cliente as Cliente Final
+    actor cliente as End Customer
     participant player as Headless Player
     participant gw as API Gateway (Go)
     participant logic as Logic Engine
-    participant db as Base de Dados (JSONB)
+    participant db as Database (JSONB)
     participant mq as RabbitMQ
 
-    cliente->>player: preenche formulário
-    player->>player: valida campos (Blind Index)
-    alt erro de validação local
-        player-->>cliente: bloqueia envio + destaca campo
-    else válido
+    cliente->>player: fills out the form
+    player->>player: validates fields (Blind Index)
+    alt local validation error
+        player-->>cliente: blocks submission + highlights field
+    else valid
         player->>gw: POST /formulario (JWT)
-        gw->>gw: valida JWT + Rate Limiting
+        gw->>gw: validates JWT + Rate Limiting
         gw->>logic: SalvarFormulario(dados_formulario) [gRPC + Metadata tenant_id]
-        logic->>db: revalida schema por blind_index
-        alt payload inválido
-            db-->>logic: erro
+        logic->>db: revalidates schema via blind_index
+        alt invalid payload
+            db-->>logic: error
             logic-->>gw: erros_validacao[blind_index]
-            gw-->>player: erro estruturado
-            player-->>cliente: sinaliza input exato
-        else payload válido
+            gw-->>player: structured error
+            player-->>cliente: flags exact input
+        else valid payload
             db-->>logic: ok
-            logic->>mq: publica evento (tenant_id, blind_index) [se regra dispara tarefa]
-            logic-->>gw: sucesso
-            gw-->>player: sucesso
-            player-->>cliente: confirmação
+            logic->>mq: publishes event (tenant_id, blind_index) [if rule triggers a task]
+            logic-->>gw: success
+            gw-->>player: success
+            player-->>cliente: confirmation
         end
     end
 ```
 
-### 5.3 Diagrama de Sequência — RF06: Colaboração em Tempo Real
+### 5.3 Sequence Diagram — FR06: Real-Time Collaboration
 ```mermaid
 sequenceDiagram
-    actor userA as Colaborador A
-    actor userB as Colaborador B
+    actor userA as Collaborator A
+    actor userB as Collaborator B
     participant channel as Phoenix Channel
     participant genserver as GenServer (BEAM)
     participant redis as Redis
     participant design as Design Engine
 
-    userA->>channel: edita componente (WebSocket)
-    channel->>genserver: aplica mutação
-    genserver->>redis: snapshot de segurança
-    genserver->>channel: broadcast alteração
-    channel-->>userB: atualização em tempo real
-    genserver->>genserver: detecta inatividade (5s)
-    genserver->>design: gRPC batch (persistir JSONB)
-    design-->>genserver: ack persistência
+    userA->>channel: edits component (WebSocket)
+    channel->>genserver: applies mutation
+    genserver->>redis: safety snapshot
+    genserver->>channel: broadcasts change
+    channel-->>userB: real-time update
+    genserver->>genserver: detects inactivity (5s)
+    genserver->>design: gRPC batch (persist JSONB)
+    design-->>genserver: persistence ack
 ```
 
-### 5.4 Diagrama de Sequência — RF04: Publicação e Rollback
+### 5.4 Sequence Diagram — FR04: Publishing and Rollback
 ```mermaid
 sequenceDiagram
-    actor criador as Criador
+    actor criador as Creator
     participant deploy as Deploy Engine
     participant db as versoes_sistema
     participant player as Headless Player
 
-    criador->>deploy: publicar()
-    deploy->>db: insere nova versão (flag = Ativa)
+    criador->>deploy: publish()
+    deploy->>db: inserts new version (flag = Ativa)
     db-->>deploy: ok
-    player->>db: consulta versão ativa
-    db-->>player: versão publicada
-    alt falha detectada
+    player->>db: queries active version
+    db-->>player: published version
+    alt failure detected
         criador->>deploy: rollback()
-        deploy->>db: reativa versão estável anterior
+        deploy->>db: reactivates previous stable version
         db-->>deploy: ok
-        player->>db: consulta versão ativa
-        db-->>player: versão revertida
+        player->>db: queries active version
+        db-->>player: reverted version
     end
 ```
 
-### 5.5 Diagrama de Sequência — RF08: Processamento Assíncrono de Eventos (KEDA)
+### 5.5 Sequence Diagram — FR08: Asynchronous Event Processing (KEDA)
 ```mermaid
 sequenceDiagram
     participant logic as Logic Engine
@@ -164,23 +164,23 @@ sequenceDiagram
     participant worker as Worker
     participant dlq as Dead Letter Queue
 
-    logic->>mq: publica evento (tenant_id, blind_index)
-    keda->>mq: monitoriza QueueLength
-    alt fila vazia
-        keda->>keda: mantém 0 réplicas (scale-to-zero)
-    else fila com mensagens
-        keda->>worker: escala réplicas (até maxReplicaCount)
-        mq->>worker: entrega mensagem
-        alt processamento falha repetidamente
-            worker->>dlq: envia para DLQ
-            dlq->>logic: alerta no painel do tenant
-        else sucesso
-            worker->>worker: executa integração/notificação
+    logic->>mq: publishes event (tenant_id, blind_index)
+    keda->>mq: monitors QueueLength
+    alt empty queue
+        keda->>keda: keeps 0 replicas (scale-to-zero)
+    else queue has messages
+        keda->>worker: scales replicas (up to maxReplicaCount)
+        mq->>worker: delivers message
+        alt processing fails repeatedly
+            worker->>dlq: sends to DLQ
+            dlq->>logic: alerts tenant dashboard
+        else success
+            worker->>worker: runs integration/notification
         end
     end
 ```
 
-### 5.6 Diagrama de Classes
+### 5.6 Class Diagram
 ```mermaid
 classDiagram
     class Tenant {
@@ -240,29 +240,29 @@ classDiagram
     Tenant "1" *-- "many" EventoAssincrono
 ```
 
-## 6. Mapeamento para Plane (Cards)
+## 6. Mapping to Plane (Cards)
 
-| Título do Card | Descrição Sugerida (HTML/Plane) | Prioridade |
+| Card Title | Suggested Description (HTML/Plane) | Priority |
 | :--- | :--- | :--- |
-| Design Engine: CRUD de definições de UI | `<h3>Tarefas</h3><ul><li>Criar contrato gRPC para CRUD de componentes</li><li>Modelar árvore recursiva (Composite) com componente_filhos</li><li>Persistir definição em coluna JSONB</li></ul>` | high |
-| Design Engine: estrutura de Blind Index para componentes | `<h3>Tarefas</h3><ul><li>Gerar hash criptográfico por componente</li><li>Mapear tipo, obrigatoriedade e limites por blind_index</li></ul>` | high |
-| Logic Engine: CRUD de regras de negócio | `<h3>Tarefas</h3><ul><li>Criar contrato gRPC para árvore de decisão</li><li>Persistir regras vinculadas ao sistema</li></ul>` | high |
-| Logic Engine: revalidação de payload por schema | `<h3>Tarefas</h3><ul><li>Implementar validação server-side contra schema salvo</li><li>Retornar mapa de erros indexado por blind_index</li></ul>` | high |
-| IAM Service: autenticação JWT no Gateway | `<h3>Tarefas</h3><ul><li>Validar JWT no cabeçalho Authorization</li><li>Aplicar Rate Limiting no API Gateway (Go)</li></ul>` | high |
-| IAM Service: propagação de identidade via gRPC Metadata | `<h3>Tarefas</h3><ul><li>Extrair JWT no Gateway</li><li>Injetar tenant_id/identidade como Metadata binário gRPC</li></ul>` | high |
-| IAM Service: avaliação de permissões no servidor | `<h3>Tarefas</h3><ul><li>Avaliar condições dinâmicas no back-end</li><li>Retornar mapa booleano indexado por blind_index</li></ul>` | high |
-| Deploy Engine: versionamento por flag ativa | `<h3>Tarefas</h3><ul><li>Criar tabela versoes_sistema</li><li>Implementar alternância de flag Ativa na publicação</li></ul>` | high |
-| Deploy Engine: rollback instantâneo | `<h3>Tarefas</h3><ul><li>Implementar reversão de flag para versão estável</li><li>Garantir operação sem downtime</li></ul>` | high |
-| Export Engine: criação de Job assíncrono | `<h3>Tarefas</h3><ul><li>Criar endpoint de solicitação de exportação</li><li>Retornar resposta imediata ao front-end</li></ul>` | medium |
-| Export Engine: streaming gRPC de dados | `<h3>Tarefas</h3><ul><li>Implementar Server Streaming para coleta em chunks</li><li>Evitar sobrecarga de memória RAM</li></ul>` | medium |
-| Export Engine: armazenamento e entrega segura | `<h3>Tarefas</h3><ul><li>Compactar e armazenar arquivo em Cloud Storage</li><li>Gerar Presigned URL com expiração curta</li></ul>` | medium |
-| API Gateway (Go): tradução HTTP para gRPC | `<h3>Tarefas</h3><ul><li>Implementar proxy REST -> gRPC</li><li>Configurar HTTP/2 para chamadas internas</li></ul>` | high |
-| Motor de Colaboração Elixir: Phoenix Channels | `<h3>Tarefas</h3><ul><li>Configurar WebSockets via Phoenix Channels</li><li>Criar GenServer isolado por tela em edição</li></ul>` | high |
-| Motor de Colaboração Elixir: write-behind com debounce | `<h3>Tarefas</h3><ul><li>Implementar snapshot em Redis</li><li>Persistir via gRPC batch após 5s de inatividade</li></ul>` | high |
-| Motor de Colaboração Elixir: presença e bloqueio otimista | `<h3>Tarefas</h3><ul><li>Implementar Phoenix Presence via CRDT</li><li>Bloquear temporariamente componente em edição por blind_index</li></ul>` | medium |
-| Mensageria: setup RabbitMQ + KEDA ScaledObject | `<h3>Tarefas</h3><ul><li>Configurar exchanges e filas dedicadas</li><li>Criar ScaledObject monitorando QueueLength</li></ul>` | medium |
-| Mensageria: isolamento de tenant e DLQ | `<h3>Tarefas</h3><ul><li>Implementar Fair Queuing por tenant</li><li>Configurar Dead Letter Queue com alerta ao tenant</li></ul>` | medium |
-| Observabilidade: instrumentação OpenTelemetry | `<h3>Tarefas</h3><ul><li>Instrumentar Gateway, gRPC e AMQP com Trace Context W3C</li><li>Integrar exportação de traces ao Jaeger</li></ul>` | medium |
-| Observabilidade: tags multi-tenant seguras | `<h3>Tarefas</h3><ul><li>Adicionar platform.tenant_id aos spans</li><li>Adicionar platform.component.blind_index aos spans</li></ul>` | low |
-| Headless Player: contrato .proto de submissão | `<h3>Tarefas</h3><ul><li>Implementar SalvarFormularioRequest/Response</li><li>Mapear dados_formulario como map blind_index -> valor</li></ul>` | high |
-| Headless Player: batching de renderização (16ms) | `<h3>Tarefas</h3><ul><li>Acumular mutações em janelas de 16ms</li><li>Executar diffing único por lote no DOM Virtual</li></ul>` | medium |
+| Design Engine: UI definition CRUD | `<h3>Tasks</h3><ul><li>Create gRPC contract for component CRUD</li><li>Model recursive tree (Composite) with componente_filhos</li><li>Persist definition in a JSONB column</li></ul>` | high |
+| Design Engine: Blind Index structure for components | `<h3>Tasks</h3><ul><li>Generate a cryptographic hash per component</li><li>Map type, requiredness, and limits by blind_index</li></ul>` | high |
+| Logic Engine: business rules CRUD | `<h3>Tasks</h3><ul><li>Create gRPC contract for the decision tree</li><li>Persist rules linked to the system</li></ul>` | high |
+| Logic Engine: schema-based payload revalidation | `<h3>Tasks</h3><ul><li>Implement server-side validation against the saved schema</li><li>Return an error map indexed by blind_index</li></ul>` | high |
+| IAM Service: JWT authentication at the Gateway | `<h3>Tasks</h3><ul><li>Validate JWT in the Authorization header</li><li>Apply Rate Limiting in the API Gateway (Go)</li></ul>` | high |
+| IAM Service: identity propagation via gRPC Metadata | `<h3>Tasks</h3><ul><li>Extract JWT at the Gateway</li><li>Inject tenant_id/identity as binary gRPC Metadata</li></ul>` | high |
+| IAM Service: server-side permission evaluation | `<h3>Tasks</h3><ul><li>Evaluate dynamic conditions on the back-end</li><li>Return a boolean map indexed by blind_index</li></ul>` | high |
+| Deploy Engine: active-flag versioning | `<h3>Tasks</h3><ul><li>Create the versoes_sistema table</li><li>Implement toggling of the Ativa flag on publish</li></ul>` | high |
+| Deploy Engine: instant rollback | `<h3>Tasks</h3><ul><li>Implement flag reversion to the stable version</li><li>Ensure the operation has no downtime</li></ul>` | high |
+| Export Engine: asynchronous Job creation | `<h3>Tasks</h3><ul><li>Create the export request endpoint</li><li>Return an immediate response to the front-end</li></ul>` | medium |
+| Export Engine: gRPC data streaming | `<h3>Tasks</h3><ul><li>Implement Server Streaming for chunked collection</li><li>Avoid RAM memory overload</li></ul>` | medium |
+| Export Engine: secure storage and delivery | `<h3>Tasks</h3><ul><li>Compress and store the file in Cloud Storage</li><li>Generate a Presigned URL with a short expiration</li></ul>` | medium |
+| API Gateway (Go): HTTP-to-gRPC translation | `<h3>Tasks</h3><ul><li>Implement REST -> gRPC proxy</li><li>Configure HTTP/2 for internal calls</li></ul>` | high |
+| Elixir Collaboration Engine: Phoenix Channels | `<h3>Tasks</h3><ul><li>Configure WebSockets via Phoenix Channels</li><li>Create an isolated GenServer per screen being edited</li></ul>` | high |
+| Elixir Collaboration Engine: debounced write-behind | `<h3>Tasks</h3><ul><li>Implement snapshot in Redis</li><li>Persist via gRPC batch after 5s of inactivity</li></ul>` | high |
+| Elixir Collaboration Engine: presence and optimistic locking | `<h3>Tasks</h3><ul><li>Implement Phoenix Presence via CRDT</li><li>Temporarily lock the component being edited by blind_index</li></ul>` | medium |
+| Messaging: RabbitMQ + KEDA ScaledObject setup | `<h3>Tasks</h3><ul><li>Configure dedicated exchanges and queues</li><li>Create a ScaledObject monitoring QueueLength</li></ul>` | medium |
+| Messaging: tenant isolation and DLQ | `<h3>Tasks</h3><ul><li>Implement per-tenant Fair Queuing</li><li>Configure a Dead Letter Queue with tenant alerting</li></ul>` | medium |
+| Observability: OpenTelemetry instrumentation | `<h3>Tasks</h3><ul><li>Instrument Gateway, gRPC, and AMQP with W3C Trace Context</li><li>Integrate trace export to Jaeger</li></ul>` | medium |
+| Observability: secure multi-tenant tags | `<h3>Tasks</h3><ul><li>Add platform.tenant_id to spans</li><li>Add platform.component.blind_index to spans</li></ul>` | low |
+| Headless Player: submission .proto contract | `<h3>Tasks</h3><ul><li>Implement SalvarFormularioRequest/Response</li><li>Map dados_formulario as a map blind_index -> value</li></ul>` | high |
+| Headless Player: rendering batching (16ms) | `<h3>Tasks</h3><ul><li>Accumulate mutations in 16ms windows</li><li>Run a single diff per batch on the Virtual DOM</li></ul>` | medium |

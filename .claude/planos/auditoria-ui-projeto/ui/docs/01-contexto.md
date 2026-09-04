@@ -1,77 +1,81 @@
-# Contexto do Projeto — Auditoria UI de Escopo Global
+# Project Context — Global-Scope UI Audit
 
-> Esta auditoria amplia o escopo do `/ui` de uma tela isolada (última execução: `008-monitor-recursos`)
-> para **todo o frontend** do projeto. Não repete o que já foi documentado — inventaria a cobertura
-> existente e foca no que ainda não tinha passado por uma análise de UI, além de registrar
-> **inconsistências reais encontradas ao ler o código de ponta a ponta** (só visíveis numa varredura
-> de projeto inteiro, não tela a tela).
+> This audit widens the `/ui` scope from a single isolated screen (last run: `008-monitor-recursos`)
+> to **the entire frontend** of the project. It does not repeat what has already been documented — it
+> inventories existing coverage and focuses on what had not yet gone through a UI review, in addition
+> to recording **real inconsistencies found while reading the code end to end** (only visible in a
+> whole-project scan, not screen by screen).
 
-## Domínio
+## Domain
 
-MAYS — Make Your SaaS (arquitetura MACH V4): plataforma SaaS no-code que permite a um usuário
-("dono"/"parceiro") criar sistemas (telas, regras de negócio, dados) sem programar, geri-los por
-cliente/tenant, e operar a própria plataforma (monitoramento de infraestrutura). O Frontend cobre
-três jornadas distintas:
+MAYS — Make Your SaaS (MACH V4 architecture): a no-code SaaS platform that lets a user
+("owner"/"partner") create systems (screens, business rules, data) without coding, manage them per
+client/tenant, and operate the platform itself (infrastructure monitoring). The Frontend covers
+three distinct journeys:
 
-1. **Portão público** (não autenticado): Login, Cadastro (Register).
-2. **Dashboard operacional** (autenticado): Dashboard/Home, Clientes → Sistemas do Cliente →
-   abas (Telas/Regras de Negócio/Versão), Configurações, Cadastro/Perfil, Ajuda, Monitor de Recursos.
-3. **Construtor visual** (editor de telas dentro da aba "Telas"): Canvas, Inspector, Painel de
-   Componentes/Layers — um editor tipo Figma/Webflow.
+1. **Public gateway** (unauthenticated): Login, Sign-up (Register).
+2. **Operational dashboard** (authenticated): Dashboard/Home, Clients → Client Systems →
+   tabs (Screens/Business Rules/Version), Settings, Account/Profile, Help, Resource Monitor.
+3. **Visual builder** (screen editor inside the "Screens" tab): Canvas, Inspector, Component/Layer
+   Panel — a Figma/Webflow-style editor.
 
-## Público-Alvo
+## Target Audience
 
-Reafirma o levantamento de `001-construtor-sistemas-mach-v4/ui/docs/01-contexto.md`: donos/parceiros
-(semi-técnicos, criam e publicam sistemas) e, para a tela Monitor, perfil mais técnico (operação da
-própria plataforma). Login/Register atendem quem ainda não tem conta — a página de portão pode (e
-deve) ter uma identidade visual própria, mais "marketing", diferente do dashboard interno.
+Reaffirms the survey from `001-construtor-sistemas-mach-v4/ui/docs/01-contexto.md`: owners/partners
+(semi-technical, create and publish systems) and, for the Monitor screen, a more technical profile
+(operating the platform itself). Login/Register serve people who don't yet have an account — the
+gateway page can (and should) have its own visual identity, more "marketing"-oriented, distinct from
+the internal dashboard.
 
-## Inventário de Telas e Cobertura de UI
+## Screen Inventory and UI Coverage
 
-| Tela / Componente | Arquivo | Padrão de UI | Já auditado? |
+| Screen / Component | File | UI Pattern | Already audited? |
 |---|---|---|---|
-| Login | `auth/Login.tsx` | Split-screen (zinc-900 + formulário) | ✓ `validacao-player-ui/ui/wireframes/login.html` |
-| Cadastro | `auth/Register.tsx` | Mesmo split-screen do Login (4 campos a mais) | Espelha o Login, não repetido aqui |
-| Dashboard (Home) | `pages/Dashboard/Dashboard.tsx` | Hero + métricas + FAB | ✓ `001-construtor-sistemas-mach-v4/ui/wireframes/dashboard.html` |
-| Clientes (lista) | `pages/Dashboard/Clientes.tsx` | Grid de cards + formulário de criação | Parcial — grid de card já coberto por outras telas; formulário não |
-| Sistemas do Cliente | `pages/Dashboard/ClienteSistemas.tsx` | Formulário de edição + **tabela de dados** | **Novo nesta auditoria** — único uso de `<table>` no dashboard |
-| Configurações | `pages/Dashboard/Configuracao.tsx` + `SegurancaForm`/`WhiteLabelForm` | Cards empilhados com formulários (senha, MFA, exclusão de conta, white label) | **Novo nesta auditoria** |
-| Cadastro/Perfil | `pages/Dashboard/Perfil.tsx` | Formulário de conta (nome, foto, e-mail) | **Novo nesta auditoria** (mesmo padrão de formulário de Configurações) |
-| Ajuda | `pages/Dashboard/Ajuda.tsx` | Busca + lista agrupada por categoria | Baixa complexidade, padrão já coberto por outros grids de card |
-| Monitor de Recursos | `pages/Dashboard/Monitor.tsx` | Cards de status | ✓ `008-monitor-recursos/ui/` (auditoria anterior) |
-| Seletor de Sistemas | `systems/SeletorSistemas.tsx` | Grid de cards + criação | Mesmo padrão de Clientes.tsx |
-| Construtor (abas Telas/Regras/Versão) | `pages/Dashboard/abas/*`, `pages/Dashboard/editor/*` | Editor visual complexo | ✓ `001-construtor-sistemas-mach-v4/ui/wireframes/builder.html` |
-| Player/tela publicada | (serviço `player`) | Renderização headless | ✓ `validacao-player-ui/ui/wireframes/tela-dinamica.html` + `estados.html` |
+| Login | `auth/Login.tsx` | Split-screen (zinc-900 + form) | ✓ `validacao-player-ui/ui/wireframes/login.html` |
+| Sign-up | `auth/Register.tsx` | Same split-screen as Login (4 extra fields) | Mirrors Login, not repeated here |
+| Dashboard (Home) | `pages/Dashboard/Dashboard.tsx` | Hero + metrics + FAB | ✓ `001-construtor-sistemas-mach-v4/ui/wireframes/dashboard.html` |
+| Clients (list) | `pages/Dashboard/Clientes.tsx` | Card grid + creation form | Partial — card grid already covered by other screens; form is not |
+| Client Systems | `pages/Dashboard/ClienteSistemas.tsx` | Edit form + **data table** | **New in this audit** — the only use of `<table>` in the dashboard |
+| Settings | `pages/Dashboard/Configuracao.tsx` + `SegurancaForm`/`WhiteLabelForm` | Stacked cards with forms (password, MFA, account deletion, white label) | **New in this audit** |
+| Account/Profile | `pages/Dashboard/Perfil.tsx` | Account form (name, photo, email) | **New in this audit** (same form pattern as Settings) |
+| Help | `pages/Dashboard/Ajuda.tsx` | Search + list grouped by category | Low complexity, pattern already covered by other card grids |
+| Resource Monitor | `pages/Dashboard/Monitor.tsx` | Status cards | ✓ `008-monitor-recursos/ui/` (previous audit) |
+| System Selector | `systems/SeletorSistemas.tsx` | Card grid + creation | Same pattern as Clientes.tsx |
+| Builder (Screens/Rules/Version tabs) | `pages/Dashboard/abas/*`, `pages/Dashboard/editor/*` | Complex visual editor | ✓ `001-construtor-sistemas-mach-v4/ui/wireframes/builder.html` |
+| Player/published screen | (`player` service) | Headless rendering | ✓ `validacao-player-ui/ui/wireframes/tela-dinamica.html` + `estados.html` |
 
-## Achados de Consistência (só visíveis em varredura de projeto inteiro)
+## Consistency Findings (only visible in a whole-project scan)
 
-Uma leitura tela a tela não pega isto — só apareceu ao comparar o código de 12+ arquivos lado a lado:
+A screen-by-screen read does not catch this — it only surfaced when comparing the code of 12+ files
+side by side:
 
-1. **Cor de status fora do sistema de tokens, em 7 arquivos diferentes.** `text-emerald-600
-   dark:text-emerald-400` aparece hardcoded em `Perfil.tsx:94`, `ClienteSistemas.tsx:121`,
+1. **Status color outside the token system, in 7 different files.** `text-emerald-600
+   dark:text-emerald-400` appears hardcoded in `Perfil.tsx:94`, `ClienteSistemas.tsx:121`,
    `abas/AbaVersao.tsx:84`, `SegurancaForm.tsx:127`, `WhiteLabelForm.tsx:89`; `bg-amber-500/15
-   text-amber-600` em `CardFeedback.tsx:28-29`; `bg-green-500`/`bg-red-500` em
-   `CardServicoStatus.tsx:44` (já sinalizado na auditoria `008-monitor-recursos`). Ou seja: **todo
-   mensagem de sucesso do app usa a mesma cor emerald, sempre com o mesmo par claro/escuro — só
-   nunca foi promovida a token** `--success` em `index.css`. Isso não é uma preferência de uma tela,
-   é um padrão real e consistente do projeto que falta formalizar (ver `04-sistema-cores-tipografia.md`).
-2. **`Dashboard.tsx` é a única tela do dashboard autenticado com texto em inglês.** "Build your Next
-   Flow", "Start creating projects and designing your business architecture with our intuitive
-   node-based editor", "Get Started", "Create" — enquanto Clientes, Configurações, Perfil, Ajuda,
-   Monitor, ClienteSistemas são 100% PT-BR. Ver `03-principios-aplicados.md` (Observar Convenções).
-3. **Dois tamanhos de input para o mesmo tipo de campo de texto**, sem motivo funcional aparente:
-   formulários "de destaque" (criar cliente em `Clientes.tsx`, editar nome em `ClienteSistemas.tsx`)
-   usam `px-4 py-3 rounded-xl`; formulários de conta (`Perfil.tsx`, `SegurancaForm.tsx`) usam
-   `px-3 py-2 rounded-lg`. Mesmo componente semântico (campo de texto simples), duas dimensões.
-4. **Login e Register compartilham a mesma identidade visual "portão"** (split-screen zinc-900 +
-   formulário), consistente entre si — não é uma inconsistência, é uma decisão de design deliberada
-   e correta (jornada pública ≠ jornada autenticada). Registrado aqui só para não ser confundido com
-   os achados 1–3 numa leitura futura.
+   text-amber-600` in `CardFeedback.tsx:28-29`; `bg-green-500`/`bg-red-500` in
+   `CardServicoStatus.tsx:44` (already flagged in the `008-monitor-recursos` audit). In other words:
+   **every success message in the app uses the same emerald color, always with the same light/dark
+   pair — it was just never promoted to a token** `--success` in `index.css`. This isn't a single
+   screen's preference, it's a real, consistent project pattern that still needs to be formalized
+   (see `04-sistema-cores-tipografia.md`).
+2. **`Dashboard.tsx` is the only screen in the authenticated dashboard with English text.** "Build
+   your Next Flow", "Start creating projects and designing your business architecture with our
+   intuitive node-based editor", "Get Started", "Create" — while Clientes, Configurações, Perfil,
+   Ajuda, Monitor, ClienteSistemas are 100% PT-BR. See `03-principios-aplicados.md` (Follow
+   Conventions).
+3. **Two input sizes for the same text-field type**, with no apparent functional reason:
+   "highlighted" forms (create client in `Clientes.tsx`, edit name in `ClienteSistemas.tsx`)
+   use `px-4 py-3 rounded-xl`; account forms (`Perfil.tsx`, `SegurancaForm.tsx`) use
+   `px-3 py-2 rounded-lg`. Same semantic component (plain text field), two dimensions.
+4. **Login and Register share the same "gateway" visual identity** (split-screen zinc-900 +
+   form), consistent with each other — this is not an inconsistency, it's a deliberate and correct
+   design decision (public journey ≠ authenticated journey). Recorded here only so it isn't confused
+   with findings 1–3 in a future read.
 
-## Referências Visuais Encontradas
+## Visual References Found
 
-| Referência | Popularidade | Por que é relevante |
+| Reference | Popularity | Why it's relevant |
 |---|---|---|
-| SaaSUI (Notion/Linear/Figma/Stripe screens) | Biblioteca de referência dedicada a padrões de SaaS reais (login, settings, dashboards) | Confirma que "settings page com cards empilhados por seção" (já usado em `Configuracao.tsx`) é o padrão vigente em SaaS B2B de referência — não precisa reinventar, só refinar consistência. |
-| shadcn/ui — data table (`tasks` example) | Base de um dos design systems mais adotados no ecossistema React/Tailwind atual (a própria stack do projeto é shadcn-like) | É a referência de tabela mais próxima da stack já usada (`components/ui/*` já segue convenções shadcn) — aplicável diretamente à tabela de sistemas em `ClienteSistemas.tsx`. |
-| Stripe Dashboard (billing/settings) | Referência de mercado recorrente em comparações de SaaS B2B | Confirma o padrão de mensagem de sucesso inline junto ao botão de ação (usado em Perfil/SegurancaForm) em vez de toast — adequado para formulários de configuração de baixa frequência. |
+| SaaSUI (Notion/Linear/Figma/Stripe screens) | Reference library dedicated to real SaaS patterns (login, settings, dashboards) | Confirms that "settings page with cards stacked by section" (already used in `Configuracao.tsx`) is the prevailing pattern in reference B2B SaaS — no need to reinvent it, just refine consistency. |
+| shadcn/ui — data table (`tasks` example) | Base of one of the most widely adopted design systems in the current React/Tailwind ecosystem (the project's own stack is shadcn-like) | The closest table reference to the stack already in use (`components/ui/*` already follows shadcn conventions) — directly applicable to the systems table in `ClienteSistemas.tsx`. |
+| Stripe Dashboard (billing/settings) | Recurring market reference in B2B SaaS comparisons | Confirms the pattern of an inline success message next to the action button (used in Perfil/SegurancaForm) instead of a toast — appropriate for low-frequency settings forms. |

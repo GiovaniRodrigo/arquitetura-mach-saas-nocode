@@ -1,12 +1,12 @@
-# Interfaces: Dashboard — Integração de Dados e Funcionalidade
+# Interfaces: Dashboard — Data Integration and Functionality
 
-Contratos de código (TypeScript) introduzidos no Player. Todos residem em `player/src/`.
+Code contracts (TypeScript) introduced in the Player. All live under `player/src/`.
 
 ---
 
-## `EstadoDados<T>` (RF06)
+## `EstadoDados<T>` (FR06)
 
-Máquina de estados de UI compartilhada por telas que carregam dados.
+UI state machine shared by screens that load data.
 
 ```ts
 type EstadoDados<T> =
@@ -16,68 +16,68 @@ type EstadoDados<T> =
   | { fase: "erro"; mensagem: string };
 ```
 
-**Implementações esperadas**: `useSistemas`, `useMetricas`, e os componentes de
-`StateViews` que renderizam cada fase.
+**Expected implementations**: `useSistemas`, `useMetricas`, and the
+`StateViews` components that render each phase.
 
 ---
 
-## `useSistemas` (RF02, RF06, RNF05)
+## `useSistemas` (FR02, FR06, NFR05)
 
-Fonte única de listagem/criação de sistemas; consumido por `Projects` e `SeletorSistemas`.
+Single source of truth for listing/creating systems; consumed by `Projects` and `SeletorSistemas`.
 
 ```ts
 interface UseSistemas {
   estado: EstadoDados<Sistema[]>;
   recarregar(): void;
-  criar(nome: string): Promise<Sistema>;   // repropaga ApiError (ex.: 403 → RN10)
+  criar(nome: string): Promise<Sistema>;   // repropagates ApiError (e.g., 403 → BR10)
 }
 
 function useSistemas(client: ApiClient): UseSistemas;
 ```
 
-**Implementações esperadas**: `player/src/systems/useSistemas.ts`.
+**Expected implementations**: `player/src/systems/useSistemas.ts`.
 
 ---
 
-## `Metricas` / `useMetricas` (RF01)
+## `Metricas` / `useMetricas` (FR01)
 
 ```ts
 interface Metricas {
   sistemas_total: number;
-  sistemas_ativos?: number;    // requer payload enriquecido (Fase 2)
-  sistemas_rascunho?: number;  // requer payload enriquecido (Fase 2)
+  sistemas_ativos?: number;    // requires the enriched payload (Phase 2)
+  sistemas_rascunho?: number;  // requires the enriched payload (Phase 2)
 }
 
 function useMetricas(client: ApiClient): EstadoDados<Metricas>;
 ```
 
-**Implementações esperadas**: `player/src/dashboard/useMetricas.ts`.
+**Expected implementations**: `player/src/dashboard/useMetricas.ts`.
 
 ---
 
-## `UsuarioAutenticado` / `lerClaims` (RF03, RNF06)
+## `UsuarioAutenticado` / `lerClaims` (FR03, NFR06)
 
 ```ts
 interface UsuarioAutenticado {
   nome?: string;
   email?: string;
-  iniciais: string;   // derivadas; fallback "?"
+  iniciais: string;   // derived; fallback "?"
 }
 
-/** Lê claims do payload do JWT apenas para exibição (não valida assinatura). */
+/** Reads claims from the JWT payload for display only (does not validate the signature). */
 function lerClaims(token: string): { nome?: string; email?: string } | null;
 
-/** Monta o objeto de exibição a partir do token persistido. */
+/** Builds the display object from the persisted token. */
 function usuarioDe(token: string): UsuarioAutenticado;
 ```
 
-**Implementações esperadas**: `player/src/auth/jwt.ts`.
+**Expected implementations**: `player/src/auth/jwt.ts`.
 
 ---
 
-## `AppContext` (RF01, RF02, RF03)
+## `AppContext` (FR01, FR02, FR03)
 
-Provê `ApiClient` e usuário à árvore do dashboard, evitando prop drilling.
+Provides the `ApiClient` and the user to the dashboard tree, avoiding prop drilling.
 
 ```ts
 interface AppContextValue {
@@ -86,14 +86,14 @@ interface AppContextValue {
 }
 
 const AppContext: React.Context<AppContextValue | null>;
-function useApp(): AppContextValue;   // lança se usado fora do provider
+function useApp(): AppContextValue;   // throws if used outside the provider
 ```
 
-**Implementações esperadas**: `player/src/app/AppContext.tsx`.
+**Expected implementations**: `player/src/app/AppContext.tsx`.
 
 ---
 
-## `ThemeContext` / `ThemeProvider` (RF05, RNF04)
+## `ThemeContext` / `ThemeProvider` (FR05, NFR04)
 
 ```ts
 type Tema = "claro" | "escuro";
@@ -106,18 +106,18 @@ interface ThemeContextValue {
 
 function useTheme(): ThemeContextValue;
 
-/** Aplica o tema salvo em localStorage à classe `dark` do <html>, síncrono no boot. */
+/** Applies the theme saved in localStorage to the <html> `dark` class, synchronously at boot. */
 function initTheme(): void;
 ```
 
-**Implementações esperadas**: `player/src/theme/ThemeProvider.tsx`,
-`player/src/theme/initTheme.ts`. Chave de persistência: `mach_theme`.
+**Expected implementations**: `player/src/theme/ThemeProvider.tsx`,
+`player/src/theme/initTheme.ts`. Persistence key: `mach_theme`.
 
 ---
 
-## `StateViews` (RF06, RNF03)
+## `StateViews` (FR06, NFR03)
 
-Componentes M3 reutilizáveis para as fases de `EstadoDados`.
+Reusable M3 components for the `EstadoDados` phases.
 
 ```tsx
 function Skeleton(props: { linhas?: number; className?: string }): JSX.Element;      // aria-busy
@@ -125,4 +125,4 @@ function EmptyState(props: { titulo: string; descricao?: string; acao?: React.Re
 function ErrorState(props: { mensagem: string; onRepetir(): void }): JSX.Element;    // role="alert"
 ```
 
-**Implementações esperadas**: `player/src/components/ui/StateViews.tsx`.
+**Expected implementations**: `player/src/components/ui/StateViews.tsx`.

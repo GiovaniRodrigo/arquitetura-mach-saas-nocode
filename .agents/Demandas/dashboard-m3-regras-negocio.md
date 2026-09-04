@@ -1,18 +1,18 @@
-# Dashboard Material Design 3 (M3) - Regras de Negócio
+# Material Design 3 (M3) Dashboard - Business Rules
 
-## Arquitetura de Arquivos
-- `player/src/layout/DashboardLayout.tsx`: Contêiner principal com Navigation Rail (menu lateral) e Top App Bar superior, provendo o `<Outlet />` para as páginas.
-- `player/src/pages/Dashboard/Overview.tsx`: A página principal do painel, implementando o "Hero Card" e os "Métricas Cards" arredondados.
-- `player/src/components/m3/`: Nova pasta para componentes puros M3 (`FabButton.tsx`, `TonalCard.tsx`, `ElevatedCard.tsx`, `NavPill.tsx`).
+## File Architecture
+- `player/src/layout/DashboardLayout.tsx`: Main container with Navigation Rail (side menu) and top Top App Bar, providing the `<Outlet />` for the pages.
+- `player/src/pages/Dashboard/Overview.tsx`: The main dashboard page, implementing the "Hero Card" and the rounded "Metrics Cards".
+- `player/src/components/m3/`: New folder for pure M3 components (`FabButton.tsx`, `TonalCard.tsx`, `ElevatedCard.tsx`, `NavPill.tsx`).
 
-## Requisitos Funcionais (RF)
-- **RF01:** O sistema deve renderizar um menu de navegação lateral (Navigation Drawer/Rail) exclusivo para usuários logados.
-- **RF02:** O sistema deve exibir um cabeçalho ("Top App Bar") contendo mensagem de boas-vindas e o avatar do usuário.
-- **RF03:** A tela principal (Overview) deve exibir um card de boas-vindas com chamada para ação ("Hero Card").
-- **RF04:** A tela principal deve exibir cards de indicadores (Status Cards) baseados nos dados da plataforma.
-- **RF05:** A tela deve prover um Floating Action Button (FAB) para criação rápida de projetos/fluxos.
+## Functional Requirements (RF)
+- **FR01:** The system must render a side navigation menu (Navigation Drawer/Rail) exclusive to logged-in users.
+- **FR02:** The system must display a header ("Top App Bar") containing a welcome message and the user's avatar.
+- **FR03:** The main screen (Overview) must display a welcome card with a call to action ("Hero Card").
+- **FR04:** The main screen must display indicator cards (Status Cards) based on platform data.
+- **FR05:** The screen must provide a Floating Action Button (FAB) for quickly creating projects/flows.
 
-## Requisitos Não-Funcionais (RNF)
-- **RNF01:** Toda a interface deve utilizar a estética visual do **Material Design 3 (M3)**, com cantos pronunciados (`rounded-3xl` e `rounded-full`), cores tonais e elevações suaves.
-- **RNF02:** O layout deve ser responsivo (o menu lateral deve ser oculto ou adaptado em dispositivos móveis).
-- **RNF03:** Os componentes interativos devem possuir estados claros (`hover`, `focus`, `active:scale-95`) para fornecer feedback tátil ao usuário.
+## Non-Functional Requirements (RNF)
+- **NFR01:** The entire interface must use the **Material Design 3 (M3)** visual aesthetic, with pronounced corners (`rounded-3xl` and `rounded-full`), tonal colors, and soft elevations.
+- **NFR02:** The layout must be responsive (the side menu must be hidden or adapted on mobile devices).
+- **NFR03:** Interactive components must have clear states (`hover`, `focus`, `active:scale-95`) to provide tactile feedback to the user.

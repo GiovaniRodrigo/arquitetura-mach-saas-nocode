@@ -1,18 +1,18 @@
 # Collab
 
-Para iniciar o servidor Phoenix:
+To start your Phoenix server:
 
-  * Execute `mix setup` para instalar e configurar as dependências
-  * Inicie o endpoint Phoenix com `mix phx.server` ou dentro do IEx com `iex -S mix phx.server`
+  * Run `mix setup` to install and setup dependencies
+  * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 
-Agora pode aceder a [`localhost:4000`](http://localhost:4000) no navegador.
+Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
-Pronto para rodar em produção? Consulte os [guias de deployment](https://hexdocs.pm/phoenix/deployment.html).
+Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 
-## Saiba mais
+## Learn more
 
-  * Site oficial: https://www.phoenixframework.org/
-  * Guias: https://hexdocs.pm/phoenix/overview.html
+  * Official website: https://www.phoenixframework.org/
+  * Guides: https://hexdocs.pm/phoenix/overview.html
   * Docs: https://hexdocs.pm/phoenix
-  * Fórum: https://elixirforum.com/c/phoenix-forum
-  * Código-fonte: https://github.com/phoenixframework/phoenix
+  * Forum: https://elixirforum.com/c/phoenix-forum
+  * Source: https://github.com/phoenixframework/phoenix

@@ -1,61 +1,62 @@
-# Contexto do Projeto
+# Project Context
 
-## Domínio
+## Domain
 
-Este `/ui` cobre um alvo diferente das auditorias anteriores (`001-construtor-sistemas-mach-v4`,
-`008-monitor-recursos`, `auditoria-ui-projeto`): não é o **dashboard interno** do MACH V4 (a
-ferramenta que donos/parceiros usam para operar a plataforma), e sim o **produto final que o
-Design Engine no-code gera** — o site publicado que o cliente do dono da conta vê.
+This `/ui` covers a different target than the previous audits (`001-construtor-sistemas-mach-v4`,
+`008-monitor-recursos`, `auditoria-ui-projeto`): it's not the MACH V4 **internal dashboard** (the
+tool owners/partners use to operate the platform), but rather the **final product that the
+no-code Design Engine generates** — the published site the account owner's client sees.
 
-Especificamente: a tela **"Home"** do sistema de demonstração "Loja Demo", uma landing page SaaS
-B2B completa ("Brillance" — inspirada no template "Brillance SaaS Landing Page" do v0.app),
-montada inteiramente com os componentes do catálogo do Design Engine
-(`services/frontend/src/systems/componentRegistry.ts`) via o script
-`build/seed-demo-site.sh` (707 linhas, gera 3 telas: Home, Produtos, Contato — o foco aqui é Home,
-a mais elaborada e a que serve de vitrine do que o construtor no-code é capaz de produzir).
+Specifically: the **"Home"** screen of the "Loja Demo" demo system, a complete B2B SaaS landing
+page ("Brillance" — inspired by the "Brillance SaaS Landing Page" template from v0.app),
+assembled entirely from the Design Engine's component catalog
+(`services/frontend/src/systems/componentRegistry.ts`) via the
+`build/seed-demo-site.sh` script (707 lines, generates 3 screens: Home, Produtos, Contato — the
+focus here is Home, the most elaborate one and the one that showcases what the no-code builder
+can produce).
 
-Estrutura atual da Home (linhas do script entre parênteses): navbar (170-189), hero (422-447),
-logo cloud (448-465), grid de 6 feature cards em 2 linhas (466-489), dois showcases
-texto/imagem alternados (264-299, instanciados em 396-397), faixa de estatísticas em 4 blocos
-(301-311, 492-496), 3 cards de depoimento (313-339, 498-508), 3 cards de plano/pricing
-(341-385, 509-526), FAQ em accordion (528-541), CTA final (542-551) e footer de 5 colunas
+Current Home structure (script line numbers in parentheses): navbar (170-189), hero (422-447),
+logo cloud (448-465), a grid of 6 feature cards in 2 rows (466-489), two alternating text/image
+showcases (264-299, instantiated at 396-397), a 4-block stats strip
+(301-311, 492-496), 3 testimonial cards (313-339, 498-508), 3 plan/pricing cards
+(341-385, 509-526), an FAQ accordion (528-541), a final CTA (542-551), and a 5-column footer
 (206-248).
 
-## Público-Alvo
+## Target Audience
 
-Dois públicos distintos e por isso duas leituras diferentes desta auditoria:
+Two distinct audiences, and therefore two different readings of this audit:
 
-1. **Quem edita** (dono/parceiro do MACH, semi-técnico): usa o Canvas para montar telas como
-   esta arrastando os mesmos componentes — então toda recomendação de melhoria precisa ser
-   **alcançável com o catálogo de componentes atual** (ver `03-principios-aplicados.md` para o
-   levantamento exato do que o motor de renderização suporta), ou vir marcada explicitamente como
-   "requer novo campo no registry".
-2. **Quem visita o site publicado** (cliente final do dono/parceiro — aqui, o público-alvo
-   fictício da "Brillance" é um comprador B2B avaliando ferramentas de gestão de equipe). É este
-   público que a pesquisa de tendências em `02-referencias.md` mira.
+1. **The editor** (MACH owner/partner, semi-technical): uses the Canvas to assemble screens like
+   this one by dragging the same components — so every improvement recommendation needs to be
+   **achievable with the current component catalog** (see `03-principios-aplicados.md` for the
+   exact survey of what the rendering engine supports), or explicitly flagged as
+   "requires a new registry field".
+2. **Whoever visits the published site** (the owner/partner's end customer — here, the "Brillance"
+   fictional target audience is a B2B buyer evaluating team-management tools). This is the
+   audience that the trend research in `02-referencias.md` targets.
 
-## Referências Visuais Encontradas
+## Visual References Found
 
-| Referência | URL | Relevância |
+| Reference | URL | Relevance |
 |---|---|---|
-| Notion / Linear / Framer (hero storytelling) | citado em SaaSFrame Blog, "10 SaaS Landing Page Trends for 2026" | Hero sections que mostram o produto e uma narrativa de "antes → depois" em vez de só declarar o que o produto é — a Home já segue parcialmente isso (headline + imagem do painel), dá pra reforçar. |
-| Dribbble — tag `saas-hero` / `hero-section` | dribbble.com/tags/saas-hero | Milhares de designs — usada para validar o padrão de "eyebrow badge + heading + CTA duplo + prova social flutuante" que a Home já usa (`hero-eyebrow`, `hero-badge-flutuante`). |
-| Dribbble — tag `pricing-page` / `pricing-card` | dribbble.com/tags/pricing-page (1.800+ designs) | Confirma o padrão "Mais Popular" com borda/sombra destacada, já implementado em `pricing_card()` — validado, não muda. |
-| Nielsen Norman Group (via SaaS Website Best Practices, Lovable/Brand Vision) | ver `02-referencias.md` | Prova social: testemunhos com foto + nome completo são avaliados como mais confiáveis que iniciais anônimas; um badge de rating agregado ("4.8/5, 3.200 avaliações") é mais crível que uma citação isolada. |
-| Figma — páginas de cor Indigo/Violet | figma.com/colors/indigo, figma.com/colors/violet | Indigo (a cor primária atual, `#4f46e5` = Tailwind indigo-600) é descrita como o meio-termo preferido em SaaS premium — mais personalidade que azul, mais acessível que violeta. Paleta atual **validada**, não é datada. |
-| SaaS Landing Page — ranking de fontes | saaslandingpage.com/articles/the-12-most-popular-google-fonts-for-landing-pages | Inter aparece em 182 sites SaaS analisados — a fonte nº1 do mercado. O projeto já usa Inter como fonte padrão (`tailwind.config.js`). **Validado.** |
+| Notion / Linear / Framer (hero storytelling) | cited in SaaSFrame Blog, "10 SaaS Landing Page Trends for 2026" | Hero sections that show the product and a "before → after" narrative instead of just stating what the product is — the Home already partially follows this (headline + panel image), and it can be reinforced. |
+| Dribbble — `saas-hero` / `hero-section` tag | dribbble.com/tags/saas-hero | Thousands of designs — used to validate the "eyebrow badge + heading + dual CTA + floating social proof" pattern the Home already uses (`hero-eyebrow`, `hero-badge-flutuante`). |
+| Dribbble — `pricing-page` / `pricing-card` tag | dribbble.com/tags/pricing-page (1,800+ designs) | Confirms the "Most Popular" pattern with a highlighted border/shadow, already implemented in `pricing_card()` — validated, no change needed. |
+| Nielsen Norman Group (via SaaS Website Best Practices, Lovable/Brand Vision) | see `02-referencias.md` | Social proof: testimonials with a photo + full name are rated as more trustworthy than anonymous initials; an aggregate rating badge ("4.8/5, 3,200 reviews") is more credible than an isolated quote. |
+| Figma — Indigo/Violet color pages | figma.com/colors/indigo, figma.com/colors/violet | Indigo (the current primary color, `#4f46e5` = Tailwind indigo-600) is described as the preferred middle ground in premium SaaS — more personality than blue, more accessible than violet. Current palette **validated**, not dated. |
+| SaaS Landing Page — font ranking | saaslandingpage.com/articles/the-12-most-popular-google-fonts-for-landing-pages | Inter appears in 182 SaaS sites analyzed — the market's #1 font. The project already uses Inter as its default font (`tailwind.config.js`). **Validated.** |
 
-## Tendências Identificadas
+## Trends Identified
 
-1. **Tipografia com duas vozes** (heading em fonte "display" mais expressiva, corpo em fonte
-   neutra) — em vez de uma família só para tudo.
-2. **Prova social com rosto** — foto real (ou placeholder de foto) em vez de iniciais em avatar,
-   e um número agregado de credibilidade (rating/contagem) perto da seção de depoimentos.
-3. **Profundidade em camadas** (múltiplas sombras — ambiente + contato — em vez de uma sombra só)
-   para dar sensação de elevação sem precisar de gradiente.
-4. **Raio de borda um pouco maior** ("soft UI") em cards e botões de destaque, tendência 2025 em
-   relação ao 8-12px mais "corporativo" de anos anteriores.
-5. **Gradientes e overlays de cor** — tendência forte no mercado, mas **não suportada hoje** pelo
-   modelo de estilos do Design Engine (`fundoCor` mapeia só para `background-color` sólido, nunca
-   para `background: linear-gradient(...)`) — registrado como oportunidade de melhoria de
-   plataforma, não como recomendação de conteúdo (ver `03-principios-aplicados.md`).
+1. **Typography with two voices** (heading in a more expressive "display" font, body in a
+   neutral font) — instead of a single family for everything.
+2. **Social proof with a face** — a real photo (or photo placeholder) instead of avatar
+   initials, plus an aggregate credibility number (rating/count) near the testimonials section.
+3. **Layered depth** (multiple shadows — ambient + contact — instead of a single shadow)
+   to give a sense of elevation without needing a gradient.
+4. **A slightly larger border radius** ("soft UI") on cards and highlighted buttons, a 2025 trend
+   compared to the more "corporate" 8-12px of previous years.
+5. **Gradients and color overlays** — a strong market trend, but **not supported today** by
+   the Design Engine's style model (`fundoCor` maps only to a solid `background-color`, never
+   to `background: linear-gradient(...)`) — recorded as a platform improvement opportunity, not
+   as a content recommendation (see `03-principios-aplicados.md`).

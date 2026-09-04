@@ -1,20 +1,20 @@
-# Gestão de Dados, Segurança e Isolamento IAM
+# Data Management, Security, and IAM Isolation
 
-[cite_start]A segurança e a integridade dos dados na plataforma são aplicadas em múltiplas camadas para suportar um ecossistema multi-tenant seguro[cite: 65].
+[cite_start]Data security and integrity on the platform are enforced across multiple layers to support a secure multi-tenant ecosystem[cite: 65].
 
-## 1. Gestão de Dados Dinâmicos (JSONB)
-[cite_start]Como os utilizadores criam seus próprios campos e tabelas, a base de dados utiliza colunas do tipo `JSONB` integradas à mesma tabela física[cite: 32]. 
+## 1. Dynamic Data Management (JSONB)
+[cite_start]Since users create their own fields and tables, the database uses `JSONB`-type columns integrated into the same physical table[cite: 32].
 
-## 2. Mapeamento Expandido por Blind Index
-[cite_start]Para realizar validações e indexações sem comprometer a privacidade ou expor dados brutos[cite: 33]:
-* [cite_start]As definições dos campos dinâmicos usam um modelo baseado no **Blind Index** (índice cego criptográfico) dos componentes como chave[cite: 33].
-* [cite_start]Essa estrutura define o tipo, obrigatoriedade e limites (como valor mínimo ou tamanho máximo de string) garantindo validações seguras e anónimas[cite: 33, 319].
+## 2. Expanded Mapping via Blind Index
+[cite_start]To perform validations and indexing without compromising privacy or exposing raw data[cite: 33]:
+* [cite_start]Dynamic field definitions use a model based on the components' **Blind Index** (cryptographic blind index) as the key[cite: 33].
+* [cite_start]This structure defines type, requiredness, and limits (such as minimum value or maximum string length), ensuring safe and anonymous validations[cite: 33, 319].
 
-## 3. Segurança e Propagação de Identidade (IAM)
-* [cite_start]**Tokens JWT e gRPC Metadata:** O token JWT interceptado pelo API Gateway em Go é extraído e injetado nativamente como **Metadados (Metadata) binários do gRPC**[cite: 66, 67]. [cite_start]Isso propaga o contexto de identidade e o `tenant_id` de forma segura para todos os microsserviços internos[cite: 67].
-* [cite_start]**Avaliação de Condições no Servidor:** Para evitar fraudes visuais que burlem o código client-side, o *IAM Service* processa todas as condições dinâmicas estritamente no back-end[cite: 68]. [cite_start]O servidor avalia as regras complexas e devolve ao front-end apenas um mapa simples de booleanos indexado pelo *Blind Index* dos componentes afetados[cite: 69].
+## 3. Security and Identity Propagation (IAM)
+* [cite_start]**JWT Tokens and gRPC Metadata:** The JWT token intercepted by the Go API Gateway is extracted and natively injected as **binary gRPC Metadata**[cite: 66, 67]. [cite_start]This securely propagates the identity context and `tenant_id` to all internal microservices[cite: 67].
+* [cite_start]**Server-Side Condition Evaluation:** To prevent visual fraud that bypasses client-side code, the *IAM Service* processes all dynamic conditions strictly on the back-end[cite: 68]. [cite_start]The server evaluates the complex rules and returns to the front-end only a simple boolean map indexed by the *Blind Index* of the affected components[cite: 69].
 
-### Exemplo de Payload de Permissões enviado ao Headless Player
+### Example Permissions Payload Sent to the Headless Player
 ```json
 {  
   "permissions": {    
@@ -24,5 +24,5 @@
 }
 ```
 
-## 4. Isolamento de Dados na Base
-[cite_start]O microsserviço de base de dados aplica cláusulas automáticas de filtragem (`WHERE tenant_id = :id`) baseadas no contexto extraído do gRPC, prevenindo nativamente o vazamento de dados entre clientes[cite: 69].
+## 4. Data Isolation at the Database Layer
+[cite_start]The database microservice applies automatic filtering clauses (`WHERE tenant_id = :id`) based on the context extracted from gRPC, natively preventing data leakage between customers[cite: 69].

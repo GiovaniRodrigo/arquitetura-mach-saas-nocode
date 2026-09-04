@@ -1,122 +1,122 @@
-# Plano de Implementação: Dashboard — Integração de Dados e Funcionalidade
+# Implementation Plan: Dashboard — Data Integration and Functionality
 
-A estratégia é evoluir o dashboard mockado em incrementos verticais, começando pela
-integração de dados de maior valor (Projects/Overview) e reaproveitando o que já está
-validado em `SeletorSistemas.tsx`. Extrai-se a lógica de listagem/criação de sistemas
-para um hook compartilhado (`useSistemas`), injeta-se o `ApiClient`/identidade via
-contexto React (hoje o `client` só existe em `App.tsx`), adiciona-se um `ThemeContext`
-para o dark mode e padronizam-se os estados de UI (loading/empty/erro) em componentes
-reutilizáveis. Recursos de Fase 2 (tenant, Cmd+K, presença, DLQ) ficam isolados atrás
-de flags/campos opcionais para não bloquear a Fase 1.
-
----
-
-## 1. Arquivos a Criar/Editar
-
-### 1.1. Contexto de aplicação (client + usuário)
-
-* **`player/src/app/AppContext.tsx`** (novo): provê `ApiClient` e o usuário autenticado
-  (derivado do JWT) para toda a árvore do dashboard, evitando prop drilling. (RF01, RF02, RF03)
-* **`player/src/auth/jwt.ts`** (novo): decodifica o payload do JWT (base64url, sem
-  validar assinatura — só leitura de claims) para extrair nome/e-mail/iniciais. (RF03, RNF06)
-* **`player/src/App.tsx`** (editar): envolver as rotas `/dashboard` com o `AppContext`
-  provider; remover o `<nav>` genérico duplicado (linhas 67–75) que coexiste com a
-  sidebar. (RF03, RF-nav)
-
-### 1.2. Hook e serviço de dados
-
-* **`player/src/systems/useSistemas.ts`** (novo): hook que encapsula
-  `listarSistemas()`/`criarSistema()` com estados `carregando | pronto | vazio | erro`
-  e ação `recarregar()`. Fonte única de verdade para `Projects` e `SeletorSistemas`. (RF02, RF06, RNF05)
-* **`player/src/systems/SeletorSistemas.tsx`** (editar): refatorar para consumir
-  `useSistemas`, eliminando a duplicação de estados. (RNF05)
-* **`player/src/dashboard/useMetricas.ts`** (novo): hook que deriva as métricas do
-  Overview a partir dos sistemas (e, quando disponível, do endpoint de métricas). (RF01)
-
-### 1.3. Tema (dark mode)
-
-* **`player/src/theme/ThemeProvider.tsx`** (novo): `ThemeContext` + provider que lê/grava
-  `mach_theme` em `localStorage` e alterna a classe `dark` no `<html>`. (RF05, RNF04)
-* **`player/src/theme/initTheme.ts`** (novo): script síncrono aplicado no boot (importado
-  cedo em `main.tsx`) para evitar flash de tema. (RNF04)
-* **`player/src/main.tsx`** (editar): chamar `initTheme()` antes do render e envolver
-  a App no `ThemeProvider`. (RF05, RNF04)
-
-### 1.4. Componentes de estado de UI
-
-* **`player/src/components/ui/StateViews.tsx`** (novo): `Skeleton`, `EmptyState` e
-  `ErrorState` (com botão repetir) reutilizáveis, no estilo M3. (RF06, RNF03)
-
-### 1.5. Telas do dashboard
-
-* **`player/src/pages/Dashboard/Overview.tsx`** (editar): métricas reais via
-  `useMetricas`; "Get Started" e FAB acionam criação; estados loading/empty/erro. (RF01, RF04, RF06)
-* **`player/src/pages/Dashboard/Projects.tsx`** (editar): grade de sistemas via
-  `useSistemas`; card "Criar novo projeto" e "Abrir projeto" funcionais; status/versão
-  por card (RF07); filtros/visualização (RF12, Fase 2). (RF02, RF04, RF06, RF07)
-* **`player/src/pages/Dashboard/Settings.tsx`** (editar): "Alternar Tema" ligado ao
-  `ThemeContext`; "Editar Perfil" navega para placeholder. (RF05)
-* **`player/src/layout/DashboardLayout.tsx`** (editar): nome/avatar reais do usuário via
-  `AppContext`; transformar o avatar inerte (C7) em menu do usuário (perfil/config/sair,
-  reusando `encerrarSessao`); (Fase 2) seletor de tenant, notificações, Cmd+K. (RF03, RF14, RF11, RF13)
-
-> **Cobertura de controles (RF04):** as edições de `Overview`, `Projects`, `Settings` e
-> `DashboardLayout` acima devem, em conjunto, dar handler real a **todos** os controles
-> C1–C7 do Inventário (spec §2.1) e preservar C8–C10. Os handlers de criação/abertura de
-> sistema reutilizam `criarSistema`/`abrirSistema` (via `useSistemas`), sem duplicar lógica.
-
-### 1.6. Fase 2 (isolada)
-
-* **`player/src/dashboard/CommandPalette.tsx`** (novo, Fase 2): busca Cmd+K. (RF10)
-* **`player/src/dashboard/PresencaColaboradores.tsx`** (novo, Fase 2): avatares empilhados
-  via `collab/phoenixSocket.ts`. (RF08)
-* **`player/src/dashboard/TenantSwitcher.tsx`** (novo, Fase 2): seletor de tenant. (RF11)
-
-### 1.7. Testes
-
-* **`player/src/systems/useSistemas.test.ts`** (novo): estados via `fetch` mockado. (RF02, RF06)
-* **`player/src/theme/ThemeProvider.test.tsx`** (novo): toggle + persistência. (RF05)
-* **`player/src/auth/jwt.test.ts`** (novo): extração de claims. (RF03)
-* **`player/src/pages/Dashboard/*.test.tsx`** (editar): substituir asserts de texto
-  estático por comportamento (estados, ações, dados). (RF01, RF02, RF04, RF06)
+The strategy is to evolve the mocked dashboard in vertical increments, starting with
+the highest-value data integration (Projects/Overview) and reusing what is already
+validated in `SeletorSistemas.tsx`. The system listing/creation logic is extracted
+into a shared hook (`useSistemas`), the `ApiClient`/identity is injected via a
+React context (today the `client` only exists in `App.tsx`), a `ThemeContext`
+is added for dark mode, and the UI states (loading/empty/error) are standardized into
+reusable components. Phase 2 features (tenant, Cmd+K, presence, DLQ) are kept isolated
+behind flags/optional fields so as not to block Phase 1.
 
 ---
 
-## 2. Estratégia Técnica
+## 1. Files to Create/Edit
 
-### 2.1. Fonte única de dados de sistemas (RNF05)
+### 1.1. Application context (client + user)
 
-Hoje `SeletorSistemas` implementa manualmente `listarSistemas` + skeleton + empty + erro
-+ retry. `Projects` recriaria tudo isso como mock. Em vez disso, extrai-se um hook:
+* **`player/src/app/AppContext.tsx`** (new): provides the `ApiClient` and the authenticated
+  user (derived from the JWT) to the whole dashboard tree, avoiding prop drilling. (FR01, FR02, FR03)
+* **`player/src/auth/jwt.ts`** (new): decodes the JWT payload (base64url, without
+  signature validation — claims read only) to extract name/email/initials. (FR03, NFR06)
+* **`player/src/App.tsx`** (edit): wrap the `/dashboard` routes with the `AppContext`
+  provider; remove the duplicated generic `<nav>` (lines 67–75) that coexists with the
+  sidebar. (FR03, FR-nav)
+
+### 1.2. Data hook and service
+
+* **`player/src/systems/useSistemas.ts`** (new): hook that wraps
+  `listarSistemas()`/`criarSistema()` with `loading | ready | empty | error` states
+  and a `reload()` action. Single source of truth for `Projects` and `SeletorSistemas`. (FR02, FR06, NFR05)
+* **`player/src/systems/SeletorSistemas.tsx`** (edit): refactor to consume
+  `useSistemas`, eliminating state duplication. (NFR05)
+* **`player/src/dashboard/useMetricas.ts`** (new): hook that derives the
+  Overview metrics from the systems (and, once available, from the metrics endpoint). (FR01)
+
+### 1.3. Theme (dark mode)
+
+* **`player/src/theme/ThemeProvider.tsx`** (new): `ThemeContext` + provider that reads/writes
+  `mach_theme` in `localStorage` and toggles the `dark` class on `<html>`. (FR05, NFR04)
+* **`player/src/theme/initTheme.ts`** (new): synchronous script applied at boot (imported
+  early in `main.tsx`) to avoid a theme flash. (NFR04)
+* **`player/src/main.tsx`** (edit): call `initTheme()` before render and wrap
+  the App in `ThemeProvider`. (FR05, NFR04)
+
+### 1.4. UI state components
+
+* **`player/src/components/ui/StateViews.tsx`** (new): reusable `Skeleton`, `EmptyState`, and
+  `ErrorState` (with a retry button), in M3 style. (FR06, NFR03)
+
+### 1.5. Dashboard screens
+
+* **`player/src/pages/Dashboard/Overview.tsx`** (edit): real metrics via
+  `useMetricas`; "Get Started" and the FAB trigger creation; loading/empty/error states. (FR01, FR04, FR06)
+* **`player/src/pages/Dashboard/Projects.tsx`** (edit): system grid via
+  `useSistemas`; functional "Create new project" card and "Open project"; status/version
+  per card (FR07); filters/view toggle (FR12, Phase 2). (FR02, FR04, FR06, FR07)
+* **`player/src/pages/Dashboard/Settings.tsx`** (edit): "Toggle Theme" wired to the
+  `ThemeContext`; "Edit Profile" navigates to a placeholder. (FR05)
+* **`player/src/layout/DashboardLayout.tsx`** (edit): real user name/avatar via
+  `AppContext`; turn the inert avatar (C7) into a user menu (profile/settings/sign out,
+  reusing `encerrarSessao`); (Phase 2) tenant selector, notifications, Cmd+K. (FR03, FR14, FR11, FR13)
+
+> **Control coverage (FR04):** the edits to `Overview`, `Projects`, `Settings`, and
+> `DashboardLayout` above must, together, give a real handler to **all**
+> controls C1–C7 of the Inventory (spec §2.1) and preserve C8–C10. The system
+> creation/opening handlers reuse `criarSistema`/`abrirSistema` (via `useSistemas`), without duplicating logic.
+
+### 1.6. Phase 2 (isolated)
+
+* **`player/src/dashboard/CommandPalette.tsx`** (new, Phase 2): Cmd+K search. (FR10)
+* **`player/src/dashboard/PresencaColaboradores.tsx`** (new, Phase 2): stacked avatars
+  via `collab/phoenixSocket.ts`. (FR08)
+* **`player/src/dashboard/TenantSwitcher.tsx`** (new, Phase 2): tenant selector. (FR11)
+
+### 1.7. Tests
+
+* **`player/src/systems/useSistemas.test.ts`** (new): states via mocked `fetch`. (FR02, FR06)
+* **`player/src/theme/ThemeProvider.test.tsx`** (new): toggle + persistence. (FR05)
+* **`player/src/auth/jwt.test.ts`** (new): claims extraction. (FR03)
+* **`player/src/pages/Dashboard/*.test.tsx`** (edit): replace static-text
+  assertions with behavior (states, actions, data). (FR01, FR02, FR04, FR06)
+
+---
+
+## 2. Technical Strategy
+
+### 2.1. Single source of truth for system data (NFR05)
+
+Today `SeletorSistemas` manually implements `listarSistemas` + skeleton + empty + error
++ retry. `Projects` would recreate all of that as a mock. Instead, a hook is extracted:
 
 ```ts
-// useSistemas.ts (esboço)
-type Estado =
-  | { fase: "carregando" }
-  | { fase: "pronto"; sistemas: Sistema[] }
-  | { fase: "vazio" }
-  | { fase: "erro"; mensagem: string };
+// useSistemas.ts (sketch)
+type State =
+  | { phase: "loading" }
+  | { phase: "ready"; sistemas: Sistema[] }
+  | { phase: "empty" }
+  | { phase: "error"; message: string };
 
 export function useSistemas(client: ApiClient) {
-  const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
-  const [tentativa, setTentativa] = useState(0);
-  useEffect(() => { /* listarSistemas → pronto | vazio | erro */ }, [client, tentativa]);
-  return { estado, recarregar: () => setTentativa(t => t + 1) };
+  const [state, setState] = useState<State>({ phase: "loading" });
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => { /* listarSistemas → ready | empty | error */ }, [client, attempt]);
+  return { state, reload: () => setAttempt(t => t + 1) };
 }
 ```
 
-`SeletorSistemas` e `Projects` passam a consumir o mesmo hook e os mesmos componentes
-de estado (`StateViews`).
+`SeletorSistemas` and `Projects` now consume the same hook and the same state
+components (`StateViews`).
 
-### 2.2. Identidade via claims do JWT (RF03/RNF06)
+### 2.2. Identity via JWT claims (FR03/NFR06)
 
-O JWT já vive em `localStorage` (`auth/session.ts`). Um decodificador de payload lê
-`name`/`email`/`sub` **apenas para exibição** — a autorização continua no Gateway. Não
-se valida assinatura no cliente.
+The JWT already lives in `localStorage` (`auth/session.ts`). A payload decoder reads
+`name`/`email`/`sub` **for display only** — authorization remains on the Gateway. No
+signature validation is done on the client.
 
 ```ts
-// jwt.ts (esboço)
-export function lerClaims(token: string): { nome?: string; email?: string } | null {
+// jwt.ts (sketch)
+export function readClaims(token: string): { name?: string; email?: string } | null {
   const [, payload] = token.split(".");
   if (!payload) return null;
   try { return JSON.parse(atob(payload.replace(/-/g,'+').replace(/_/g,'/'))); }
@@ -124,46 +124,46 @@ export function lerClaims(token: string): { nome?: string; email?: string } | nu
 }
 ```
 
-### 2.3. Tema sem flash (RF05/RNF04)
+### 2.3. Flash-free theme (FR05/NFR04)
 
-`initTheme()` roda de forma síncrona no boot e aplica a classe `dark` no `<html>` a
-partir do `localStorage` antes do primeiro paint; o `ThemeProvider` expõe o toggle para
-o Settings. O Tailwind já suporta `dark:` via classe.
+`initTheme()` runs synchronously at boot and applies the `dark` class on `<html>`
+from `localStorage` before the first paint; `ThemeProvider` exposes the toggle for
+Settings. Tailwind already supports `dark:` via class.
 
-### 2.4. Métricas do Overview (RF01)
+### 2.4. Overview metrics (FR01)
 
-Enquanto não existir endpoint dedicado de métricas, `useMetricas` deriva contadores a
-partir de `listarSistemas()` (total, e — quando o `Sistema` for enriquecido — ativos vs.
-rascunhos). O contrato de métricas fica especificado em `contracts/api.md` para quando
-o backend expuser.
+Until a dedicated metrics endpoint exists, `useMetricas` derives counters
+from `listarSistemas()` (total, and — once `Sistema` is enriched — active vs.
+draft). The metrics contract is specified in `contracts/api.md` for when
+the backend exposes it.
 
-### 2.5. Faseamento
+### 2.5. Phasing
 
-- **Fase 1 (Alta)**: RF01–RF06 — integração, ações, tema, estados, identidade.
-- **Fase 2 (Média/Baixa)**: RF07–RF13 — status/versão por card, presença, DLQ, Cmd+K,
-  tenant switcher, filtros, notificações. Dependem de enriquecimento de contrato/backend.
-
----
-
-## 3. Dependências e Pré-requisitos
-
-- [ ] Gateway acessível com um JWT válido (fluxo OAuth de `auth/session.ts`) ou
-      `VITE_BYPASS_AUTH=true` para desenvolvimento.
-- [ ] Endpoint `GET /api/v1/sistemas` operante (já consumido por `SeletorSistemas`).
-- [ ] (Fase 2 — RF07/RF09) Enriquecimento do payload de `Sistema` no Gateway com
-      `status`, `versao_ativa` e métricas de DLQ — ver `data-model.md` e `contracts/api.md`.
-- [ ] (Fase 2 — RF08) Tópicos de presença por sistema disponíveis no servidor de
-      colaboração (Phoenix).
+- **Phase 1 (High)**: FR01–FR06 — integration, actions, theme, states, identity.
+- **Phase 2 (Medium/Low)**: FR07–FR13 — status/version per card, presence, DLQ, Cmd+K,
+  tenant switcher, filters, notifications. Depend on contract/backend enrichment.
 
 ---
 
-## 4. Riscos e Pontos de Atenção
+## 3. Dependencies and Prerequisites
 
-| Risco | Impacto | Mitigação |
+- [ ] Gateway reachable with a valid JWT (OAuth flow from `auth/session.ts`) or
+      `VITE_BYPASS_AUTH=true` for development.
+- [ ] `GET /api/v1/sistemas` endpoint operational (already consumed by `SeletorSistemas`).
+- [ ] (Phase 2 — FR07/FR09) Enrichment of the `Sistema` payload on the Gateway with
+      `status`, `versao_ativa`, and DLQ metrics — see `data-model.md` and `contracts/api.md`.
+- [ ] (Phase 2 — FR08) Per-system presence topics available on the
+      collaboration server (Phoenix).
+
+---
+
+## 4. Risks and Points of Attention
+
+| Risk | Impact | Mitigation |
 |-------|---------|-----------|
-| `Sistema` atual só tem `id`/`nome`; RF07/RF09 exigem campos inexistentes. | Alto | Faseamento: Fase 1 não depende deles; Fase 2 tratada como opcional/degradável até o contrato ser estendido. |
-| Não há endpoint de métricas agregadas para o Overview. | Médio | Derivar métricas de `listarSistemas()` no `useMetricas`; especificar contrato futuro. |
-| Refatorar `SeletorSistemas` pode regredir comportamento já validado. | Médio | Extrair hook com testes cobrindo os quatro estados antes de trocar a tela. |
-| Flash de tema (FOUC) se o provider aplicar o tema só após o mount. | Médio | `initTheme()` síncrono no boot, antes do `createRoot().render`. |
-| Ler claims do JWT no cliente pode ser confundido com autorização. | Alto (segurança) | Claims usados só para exibição; autorização permanece no Gateway (RNF06). |
-| Duplicação de navegação (`<nav>` de `App.tsx` + sidebar). | Baixo | Remover o `<nav>` genérico ao envolver o dashboard no layout. |
+| The current `Sistema` only has `id`/`nome`; FR07/FR09 require fields that don't exist. | High | Phasing: Phase 1 does not depend on them; Phase 2 is treated as optional/degradable until the contract is extended. |
+| There is no aggregated metrics endpoint for the Overview. | Medium | Derive metrics from `listarSistemas()` in `useMetricas`; specify a future contract. |
+| Refactoring `SeletorSistemas` may regress already-validated behavior. | Medium | Extract the hook with tests covering all four states before swapping the screen. |
+| Theme flash (FOUC) if the provider applies the theme only after mount. | Medium | Synchronous `initTheme()` at boot, before `createRoot().render`. |
+| Reading JWT claims on the client could be mistaken for authorization. | High (security) | Claims used for display only; authorization remains on the Gateway (NFR06). |
+| Navigation duplication (`App.tsx`'s `<nav>` + sidebar). | Low | Remove the generic `<nav>` when wrapping the dashboard in the layout. |

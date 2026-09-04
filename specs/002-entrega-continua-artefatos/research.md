@@ -1,67 +1,67 @@
-# Pesquisa: Pipeline CI/CD por Entrega de Artefatos Compilados
+# Research: CI/CD Pipeline for Compiled Artifact Delivery
 
 ---
 
-## 1. Padrões Existentes no Projeto
+## 1. Existing Patterns in the Project
 
-| Arquivo/Padrão | Localização | Relevância |
+| File/Pattern | Location | Relevance |
 |----------------|-------------|-----------|
-| Pipeline de validação (Fase 11) | `.github/workflows/ci.yml` | Base reutilizável do *gate* de CI: jobs `proto`/`go`/`elixir`/`player`/`integration`. O `cd.yml` o consome via `workflow_call`. |
-| Geração de stubs `.proto` | `Makefile` (`make proto`), `buf.gen.yaml` | O build de artefatos precisa gerar `gen/` antes de compilar Go/Elixir. `gen/` é gitignored (RN05). |
-| Entrypoints Go | `gateway/cmd`, `services/{iam,design,logic,deploy,export}/cmd`, `workers/cmd` | As 7 unidades binárias a compilar (`go build ./<caminho>/cmd`). |
-| Serviço Elixir | `collab/mix.exs` | Precisa ganhar config `releases:` para `mix release` produzir OTP autocontido. |
-| Player | `player/package.json` (`build`), `player/vite.config.ts` | `vite build` → `player/dist` (bundle estático minificado). |
-| Manifesto KEDA/k8s | `infra/k8s/keda/scaledobject-workers.yaml` | Substrato **alternativo** (container/Kubernetes) — referência para a decisão de arquitetura (seção 4). Usa `ghcr.io/machv4/workers:latest`, namespace `mach`. |
-| Instrumentação OTel | serviços Go + `collab` (Fase 9) | Os binários já exportam OTLP; o runtime de produção só precisa apontar `OTEL_EXPORTER_OTLP_ENDPOINT` ao Collector do ambiente. |
-| Toolchains do runner | memórias do projeto | Go 1.26 (`$HOME/.local/go`), OTP 26.2/Elixir 1.17.3, `buf` 1.42.0, `protoc-gen-elixir` via escript. |
+| Validation pipeline (Phase 11) | `.github/workflows/ci.yml` | Reusable base of the CI *gate*: `proto`/`go`/`elixir`/`player`/`integration` jobs. `cd.yml` consumes it via `workflow_call`. |
+| `.proto` stub generation | `Makefile` (`make proto`), `buf.gen.yaml` | The artifact build needs to generate `gen/` before compiling Go/Elixir. `gen/` is gitignored (BR05). |
+| Go entrypoints | `gateway/cmd`, `services/{iam,design,logic,deploy,export}/cmd`, `workers/cmd` | The 7 binary units to compile (`go build ./<path>/cmd`). |
+| Elixir service | `collab/mix.exs` | Needs a `releases:` config for `mix release` to produce a self-contained OTP package. |
+| Player | `player/package.json` (`build`), `player/vite.config.ts` | `vite build` → `player/dist` (minified static bundle). |
+| KEDA/k8s manifest | `infra/k8s/keda/scaledobject-workers.yaml` | **Alternative** substrate (container/Kubernetes) — reference for the architecture decision (section 4). Uses `ghcr.io/machv4/workers:latest`, namespace `mach`. |
+| OTel instrumentation | Go services + `collab` (Phase 9) | The binaries already export OTLP; the production runtime just needs to point `OTEL_EXPORTER_OTLP_ENDPOINT` at the environment's Collector. |
+| Runner toolchains | project memories | Go 1.26 (`$HOME/.local/go`), OTP 26.2/Elixir 1.17.3, `buf` 1.42.0, `protoc-gen-elixir` via escript. |
 
 ---
 
-## 2. Tecnologias e Bibliotecas
+## 2. Technologies and Libraries
 
-| Tecnologia | Versão | Uso | Já instalada? |
+| Technology | Version | Use | Already installed? |
 |------------|--------|-----|---------------|
-| GitHub Actions | — | Orquestração de CI/CD, *environments* e aprovação manual | Sim (Fase 11) |
-| `go build` (`CGO_ENABLED=0`) | Go 1.26 | Binários estáticos, sem toolchain em produção | Sim (runner) |
-| `mix release` | Elixir 1.17.3 / OTP 26.2 | Release OTP autocontido do `collab` | Sim (runner) |
-| Vite | 5.x | `vite build` → `dist/` estático | Sim (player) |
-| rsync sobre SSH | — | Transferência incremental (delta) só de artefatos | Padrão do runner Ubuntu |
-| `webfactory/ssh-agent` (ou `ssh-agent` nativo) | — | Injeção da chave SSH no job de deploy | Não (adicionar) |
-| systemd | — | Supervisão dos serviços no host (restart, EnvironmentFile) | Assumido no host |
-| Nginx | — | Servir o player estático + proxy para o gateway | Assumido no host |
+| GitHub Actions | — | CI/CD orchestration, *environments*, and manual approval | Yes (Phase 11) |
+| `go build` (`CGO_ENABLED=0`) | Go 1.26 | Static binaries, no toolchain in production | Yes (runner) |
+| `mix release` | Elixir 1.17.3 / OTP 26.2 | Self-contained OTP release of `collab` | Yes (runner) |
+| Vite | 5.x | `vite build` → static `dist/` | Yes (player) |
+| rsync over SSH | — | Incremental (delta) transfer of artifacts only | Standard on the Ubuntu runner |
+| `webfactory/ssh-agent` (or native `ssh-agent`) | — | Injecting the SSH key into the deploy job | No (to add) |
+| systemd | — | Service supervision on the host (restart, EnvironmentFile) | Assumed on the host |
+| Nginx | — | Serve the static player + proxy to the gateway | Assumed on the host |
 
 ---
 
-## 3. Referências Externas
+## 3. External References
 
-| Referência | URL | O que resolve |
+| Reference | URL | What it resolves |
 |------------|-----|--------------|
-| Deploying Elixir releases | https://hexdocs.pm/mix/Mix.Tasks.Release.html | Configuração de `mix release` autocontido |
-| Go — build de binários estáticos | https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies | Flags `-trimpath`, `-ldflags`, `CGO_ENABLED=0` |
-| GitHub Environments / workflow_dispatch | https://docs.github.com/actions/deployment/targeting-different-environments | Escopo de secrets por ambiente; gate de produção por disparo manual (RN03). *Required reviewers* precisam de plano pago/repo público. |
-| rsync deploy pattern | https://rsync.samba.org/documentation.html | Entrega incremental e `--delete` |
-| Zero-downtime symlink swap | https://12factor.net (build/release/run) | Separação build → release → run; ativação atômica |
+| Deploying Elixir releases | https://hexdocs.pm/mix/Mix.Tasks.Release.html | Configuring a self-contained `mix release` |
+| Go — building static binaries | https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies | `-trimpath`, `-ldflags`, `CGO_ENABLED=0` flags |
+| GitHub Environments / workflow_dispatch | https://docs.github.com/actions/deployment/targeting-different-environments | Per-environment secret scoping; production gate via manual trigger (BR03). *Required reviewers* need a paid plan/public repo. |
+| rsync deploy pattern | https://rsync.samba.org/documentation.html | Incremental delivery and `--delete` |
+| Zero-downtime symlink swap | https://12factor.net (build/release/run) | Build → release → run separation; atomic activation |
 
 ---
 
-## 4. Alternativas Consideradas
+## 4. Alternatives Considered
 
-### Opção A: Entrega por artefatos compilados (rsync/SSH + systemd) — **Escolhida**
-- **Prós**: produção sem toolchain, fonte ou `.git` (RNF01); binários Go estáticos e release OTP são naturalmente autocontidos; ativação/rollback atômicos por symlink; simples, sem orquestrador. Alinha-se exatamente ao fluxo pedido `[Git] → [Runner] → [Produção só recebe artefatos]`.
-- **Contras**: sem scale-to-zero nativo dos `workers`; host único tende a SPOF; migração de schema fica desacoplada do deploy.
-- **Decisão**: **Escolhida** — atende ao requisito central de enviar somente artefatos.
+### Option A: Compiled artifact delivery (rsync/SSH + systemd) — **Chosen**
+- **Pros**: production without a toolchain, source, or `.git` (NFR01); static Go binaries and the OTP release are naturally self-contained; atomic activation/rollback via symlink; simple, no orchestrator. Aligns exactly with the requested flow `[Git] → [Runner] → [Production receives only artifacts]`.
+- **Cons**: no native scale-to-zero for the `workers`; a single host tends toward SPOF; schema migration remains decoupled from deploy.
+- **Decision**: **Chosen** — meets the core requirement of sending only artifacts.
 
-### Opção B: Imagens de container + Kubernetes/GHCR + KEDA
-- **Prós**: já há um manifesto KEDA (`scaledobject-workers.yaml`) e imagens `ghcr.io/machv4/*`; scale-to-zero dos workers; portabilidade.
-- **Contras**: a imagem é o artefato, mas o modelo foge do requisito de "apenas arquivos compilados via rsync"; exige cluster, registry e credenciais; maior complexidade operacional.
-- **Decisão**: **Descartada** para esta demanda; permanece como caminho válido especificamente para os `workers` (autoscaling por profundidade de fila). Ver risco correspondente em `plan.md`.
+### Option B: Container images + Kubernetes/GHCR + KEDA
+- **Pros**: a KEDA manifest already exists (`scaledobject-workers.yaml`) and `ghcr.io/machv4/*` images; scale-to-zero for the workers; portability.
+- **Cons**: the image is the artifact, but the model departs from the "only compiled files via rsync" requirement; requires a cluster, registry, and credentials; higher operational complexity.
+- **Decision**: **Rejected** for this effort; remains a valid path specifically for the `workers` (queue-depth-based autoscaling). See the corresponding risk in `plan.md`.
 
-### Opção C: Clonar o repositório no host e buildar em produção (`git pull` + `go build`/`npm install`)
-- **Prós**: trivial de configurar.
-- **Contras**: viola RN01/RNF01 (fonte, `.git`, toolchain e dev-deps em produção); builds não reprodutíveis; superfície de ataque maior.
-- **Decisão**: **Descartada** — é justamente o antipadrão que esta demanda elimina.
+### Option C: Clone the repository on the host and build in production (`git pull` + `go build`/`npm install`)
+- **Pros**: trivial to set up.
+- **Cons**: violates BR01/NFR01 (source, `.git`, toolchain, and dev-deps in production); non-reproducible builds; larger attack surface.
+- **Decision**: **Rejected** — this is exactly the anti-pattern this effort eliminates.
 
-### Opção D: Publicar o player em object storage/CDN (S3/MinIO) em vez de Nginx no host
-- **Prós**: descarrega o host do tráfego estático; cache/CDN; já há MinIO na stack (Fase 8).
-- **Contras**: introduz um segundo alvo de deploy e configuração de CDN/domínio.
-- **Decisão**: **Descartada** como padrão; registrada como evolução. O padrão adotado serve o `dist/` pelo Nginx do host.
+### Option D: Publish the player to object storage/CDN (S3/MinIO) instead of Nginx on the host
+- **Pros**: offloads static traffic from the host; caching/CDN; MinIO is already in the stack (Phase 8).
+- **Cons**: introduces a second deploy target and CDN/domain configuration.
+- **Decision**: **Rejected** as the standard; recorded as a future evolution. The adopted standard serves `dist/` via Nginx on the host.

@@ -1,25 +1,25 @@
-# Mapeamento dos Pilares MACH & Componentes Core
+# Mapping of the MACH Pillars & Core Components
 
-[cite_start]A arquitetura do sistema é totalmente baseada no acrónimo **MACH**: *Microservices, API-first, Cloud-native SaaS e Headless*[cite: 4].
+[cite_start]The system architecture is entirely based on the acronym **MACH**: *Microservices, API-first, Cloud-native SaaS and Headless*[cite: 4].
 
-## 1. 🧩 M – Microsserviços (Microservices)
-[cite_start]O motor da plataforma é dividido em serviços especializados, independentes e com ciclos de vida isolados[cite: 16]:
+## 1. 🧩 M – Microservices
+[cite_start]The platform engine is divided into specialized services, independent and with isolated lifecycles[cite: 16]:
 
-* [cite_start]**Design Engine (UI):** Responsável pelo CRUD que guarda as definições e metadados da interface criada pelo utilizador, estruturado em formato de árvore recursiva[cite: 17].
-* [cite_start]**Logic Engine (Regras):** Armazena e interpreta as regras de negócio baseadas em nós lógicos (árvores de decisão)[cite: 18].
-* [cite_start]**IAM Service (Identity & Access Management):** Centraliza o controlo de acessos, autenticação, níveis de permissão e isolamento de Tenants[cite: 19].
-* [cite_start]**Deploy Engine:** Controla os estados de publicação dos sistemas dos clientes, gerindo o versionamento por flags de status e orquestrando o provisionamento de recursos dinâmicos[cite: 20].
-* [cite_start]**Export Engine:** Serviço isolado responsável por coordenar a recolha de grandes volumes de dados para exportação de pacotes completos de forma assíncrona[cite: 21].
+* [cite_start]**Design Engine (UI):** Responsible for the CRUD that stores the definitions and metadata of the interface created by the user, structured as a recursive tree[cite: 17].
+* [cite_start]**Logic Engine (Rules):** Stores and interprets business rules based on logical nodes (decision trees)[cite: 18].
+* [cite_start]**IAM Service (Identity & Access Management):** Centralizes access control, authentication, permission levels, and Tenant isolation[cite: 19].
+* [cite_start]**Deploy Engine:** Controls the publication states of customer systems, managing versioning via status flags and orchestrating the provisioning of dynamic resources[cite: 20].
+* [cite_start]**Export Engine:** Isolated service responsible for coordinating the collection of large volumes of data for asynchronous export of complete packages[cite: 21].
 
-## 2. 🔌 A – API-first & Comunicação Interna
-* [cite_start]**Abordagem de Contratos:** Toda a comunicação interna é definida antes do desenvolvimento do código de negócio[cite: 148].
-* [cite_start]**Protocolo gRPC:** A comunicação entre os microsserviços internos ocorre via gRPC sobre HTTP/2 com Protocol Buffers, garantindo alta performance e tipagem forte[cite: 25, 198, 199].
+## 2. 🔌 A – API-first & Internal Communication
+* [cite_start]**Contract-First Approach:** All internal communication is defined before the business code is developed[cite: 148].
+* [cite_start]**gRPC Protocol:** Communication between internal microservices occurs via gRPC over HTTP/2 with Protocol Buffers, ensuring high performance and strong typing[cite: 25, 198, 199].
 
-## 3. ☁️ C – Cloud-native SaaS & Eficiência de Custos
-* [cite_start]**Elasticidade da Nuvem:** O sistema aproveita a escalabilidade sob demanda da infraestrutura em nuvem para mitigar gargalos[cite: 30, 154].
-* [cite_start]**Shared Database Multi-tenancy:** Para otimizar o uso de RAM e CPU, múltiplos clientes compartilham a mesma instância de base de dados[cite: 31]. [cite_start]O isolamento é garantido logicamente pela coluna `tenant_id`[cite: 32].
+## 3. ☁️ C – Cloud-native SaaS & Cost Efficiency
+* [cite_start]**Cloud Elasticity:** The system leverages on-demand scalability of the cloud infrastructure to mitigate bottlenecks[cite: 30, 154].
+* [cite_start]**Shared Database Multi-tenancy:** To optimize RAM and CPU usage, multiple customers share the same database instance[cite: 31]. [cite_start]Isolation is logically guaranteed by the `tenant_id` column[cite: 32].
 
-## 4. 👤 H – Headless & Motor de Renderização (Headless Player)
-[cite_start]A interface gráfica visualizada pelo utilizador final é completamente desacoplada do back-end[cite: 35]:
-* [cite_start]**Estrutura de Árvore Recursiva:** O front-end atua como um renderizador inteligente universal que consome definições estruturais brutas (JSON) baseadas no padrão *Composite* (propriedade `componente_filhos`)[cite: 36, 37].
-* [cite_start]**Navegação Dinâmica:** A alternância entre ecrãs ocorre no modelo SPA (Single Page Application) através de ações de `redirect` associadas a rotas dinâmicas[cite: 38].
+## 4. 👤 H – Headless & Rendering Engine (Headless Player)
+[cite_start]The graphical interface viewed by the end user is completely decoupled from the back-end[cite: 35]:
+* [cite_start]**Recursive Tree Structure:** The front-end acts as a universal intelligent renderer that consumes raw structural definitions (JSON) based on the *Composite* pattern (`componente_filhos` property)[cite: 36, 37].
+* [cite_start]**Dynamic Navigation:** Switching between screens occurs under the SPA (Single Page Application) model through `redirect` actions associated with dynamic routes[cite: 38].

@@ -1,135 +1,135 @@
-# Especificação: Construtor de Sistemas MACH V4 — Fundação da Plataforma
+# Specification: MACH V4 System Builder — Platform Foundation
 
-Plataforma Low-Code/No-Code multi-tenant baseada nos pilares **MACH** (Microservices, API-first, Cloud-native SaaS, Headless). Esta especificação cobre a implementação fundacional da plataforma a partir do documento de análise `doc/ANALISE_REQUISITOS.md`: os 5 microsserviços core (Design Engine, Logic Engine, IAM Service, Deploy Engine, Export Engine), o Gateway híbrido (Go + Elixir/Phoenix), a mensageria assíncrona (RabbitMQ/KEDA), a observabilidade (OpenTelemetry/Jaeger) e o Headless Player.
-
----
-
-## 1. Objetivo
-
-Entregar a fundação executável da plataforma: um monorepo poliglota com os contratos gRPC versionados, os 5 microsserviços operacionais atrás do Gateway Go, colaboração em tempo real via Elixir/Phoenix, pipeline assíncrono com scale-to-zero e rastreabilidade distribuída de ponta a ponta. Ao final, um utilizador autenticado deve conseguir criar um sistema visual, publicá-lo, submeter dados via Headless Player e exportar seus dados — tudo com isolamento multi-tenant garantido.
+Multi-tenant Low-Code/No-Code platform based on the **MACH** pillars (Microservices, API-first, Cloud-native SaaS, Headless). This specification covers the foundational implementation of the platform based on the requirements analysis document `doc/ANALISE_REQUISITOS.md`: the 5 core microservices (Design Engine, Logic Engine, IAM Service, Deploy Engine, Export Engine), the hybrid Gateway (Go + Elixir/Phoenix), asynchronous messaging (RabbitMQ/KEDA), observability (OpenTelemetry/Jaeger), and the Headless Player.
 
 ---
 
-## 2. Requisitos Funcionais
+## 1. Objective
 
-| ID   | Descrição | Ator | Prioridade |
+Deliver the executable foundation of the platform: a polyglot monorepo with versioned gRPC contracts, the 5 microservices operating behind the Go Gateway, real-time collaboration via Elixir/Phoenix, an asynchronous pipeline with scale-to-zero, and end-to-end distributed traceability. By the end, an authenticated user must be able to create a visual system, publish it, submit data via the Headless Player, and export their data — all with guaranteed multi-tenant isolation.
+
+---
+
+## 2. Functional Requirements
+
+| ID   | Description | Actor | Priority |
 |------|-----------|------|------------|
-| RF01 | CRUD de definições de interface em árvore recursiva (padrão Composite) via Design Engine. | Criador/Colaborador | Alta |
-| RF02 | CRUD de regras de negócio como árvores de decisão via Logic Engine. | Criador/Colaborador | Alta |
-| RF03 | Validar JWT no Gateway, propagar identidade via gRPC Metadata e avaliar permissões por componente no IAM Service. | Administrador | Alta |
-| RF04 | Publicar nova versão do sistema (flag ativa) e reverter instantaneamente para versão anterior. | Criador | Alta |
-| RF05 | Gerar Job de exportação completa (UI, regras, dados operacionais) entregue via Presigned URL. | Criador/Administrador | Média |
-| RF06 | Edição simultânea multiusuário com sincronização via WebSockets (Phoenix Channels) e presença (cursores). | Criador/Colaborador | Alta |
-| RF07 | Submeter dados operacionais dinâmicos com validação distribuída (cliente + servidor) via Blind Index. | Cliente Final | Alta |
-| RF08 | Disparar tarefas em segundo plano (webhooks, notificações) desacopladas do fluxo síncrono, via RabbitMQ/KEDA. | Sistema Externo | Média |
+| FR01 | CRUD of interface definitions in a recursive tree (Composite pattern) via the Design Engine. | Creator/Collaborator | High |
+| FR02 | CRUD of business rules as decision trees via the Logic Engine. | Creator/Collaborator | High |
+| FR03 | Validate the JWT at the Gateway, propagate identity via gRPC Metadata, and evaluate per-component permissions in the IAM Service. | Administrator | High |
+| FR04 | Publish a new system version (active flag) and instantly roll back to the previous version. | Creator | High |
+| FR05 | Generate a full export Job (UI, rules, operational data) delivered via a Presigned URL. | Creator/Administrator | Medium |
+| FR06 | Simultaneous multi-user editing with synchronization via WebSockets (Phoenix Channels) and presence (cursors). | Creator/Collaborator | High |
+| FR07 | Submit dynamic operational data with distributed validation (client + server) via Blind Index. | End Customer | High |
+| FR08 | Trigger background tasks (webhooks, notifications) decoupled from the synchronous flow, via RabbitMQ/KEDA. | External System | Medium |
 
 ---
 
-## 3. Requisitos Não-Funcionais
+## 3. Non-Functional Requirements
 
-| ID    | Categoria       | Descrição |
+| ID    | Category       | Description |
 |-------|-----------------|-----------|
-| RNF01 | Performance     | Toda comunicação entre microsserviços via gRPC/Protocol Buffers sobre HTTP/2. |
-| RNF02 | Segurança       | Contexto de tenant/identidade trafega como Metadata binário do gRPC, nunca em payload de negócio. |
-| RNF03 | Escalabilidade  | Workers assíncronos escalam de 0 a N réplicas (ex.: até 50) conforme profundidade de fila, sem custo ocioso. |
-| RNF04 | Observabilidade | Toda requisição rastreável via Trace ID (W3C Trace Context) através de HTTP, gRPC e AMQP, visível no Jaeger. |
-| RNF05 | Disponibilidade | Rollback de versão em milissegundos, sem indisponibilidade do sistema publicado. |
-| RNF06 | Confiabilidade  | Falhas de integrações de terceiros isoladas via DLQ, sem impactar outros tenants. |
-| RNF07 | Performance/UX  | Headless Player aplica mudanças de UI em lotes de 16ms (60Hz), evitando jank visual. |
-| RNF08 | Segurança/LGPD  | Nenhum nome real de coluna/tabela/campo exposto em logs, traces ou payloads de erro — apenas Blind Index. |
+| NFR01 | Performance     | All inter-microservice communication via gRPC/Protocol Buffers over HTTP/2. |
+| NFR02 | Security        | Tenant/identity context travels as binary gRPC Metadata, never in the business payload. |
+| NFR03 | Scalability     | Asynchronous workers scale from 0 to N replicas (e.g., up to 50) based on queue depth, with no idle cost. |
+| NFR04 | Observability   | Every request is traceable via Trace ID (W3C Trace Context) across HTTP, gRPC, and AMQP, visible in Jaeger. |
+| NFR05 | Availability    | Version rollback in milliseconds, with no downtime for the published system. |
+| NFR06 | Reliability     | Third-party integration failures isolated via DLQ, without impacting other tenants. |
+| NFR07 | Performance/UX  | The Headless Player applies UI changes in 16ms batches (60Hz), avoiding visual jank. |
+| NFR08 | Security/LGPD   | No real column/table/field name is ever exposed in logs, traces, or error payloads — only the Blind Index. |
 
 ---
 
-## 4. Regras de Negócio
+## 4. Business Rules
 
-| ID   | Regra |
+| ID   | Rule |
 |------|-------|
-| RN01 | **Isolamento Multi-tenant**: toda query à base partilhada aplica filtro obrigatório `WHERE tenant_id = :id`, extraído do contexto gRPC/JWT. |
-| RN02 | **Anonimização por Blind Index**: campos dinâmicos nunca são referenciados por nome real; sempre por hash criptográfico mapeando tipo, obrigatoriedade e limites. |
-| RN03 | **Avaliação de Permissões no Servidor**: condições view/click calculadas no IAM Service; front-end recebe apenas o mapa booleano final indexado por Blind Index. |
-| RN04 | **Publicação por Flag Ativa**: publicar cria nova linha em `versoes_sistema`; apenas uma versão ativa por sistema; Headless Player consome sempre a versão ativa. |
-| RN05 | **Rollback Instantâneo**: reverter = alternar flag `ativa` para a versão estável anterior, sem recompilação ou downtime. |
-| RN06 | **Persistência por Debounce (Write-Behind)**: mutações colaborativas persistidas na base relacional apenas após 5s de inatividade detectados pelo GenServer; antes disso, apenas memória BEAM + Redis. |
-| RN07 | **Bloqueio Otimista por Componente**: componente sob edição ativa é temporariamente bloqueado (via Blind Index) para os demais colaboradores. |
-| RN08 | **Validação Dupla Obrigatória**: payload validado no front-end **e** revalidado no Logic Engine contra o schema salvo. |
-| RN09 | **Fair Queuing por Tenant**: nenhum tenant monopoliza workers; falhas contínuas desviadas para DLQ sem afetar outros tenants. |
-| RN10 | **Escalonamento por Fila**: autoscaling reage exclusivamente ao `QueueLength` no RabbitMQ, podendo escalar a zero. |
+| BR01 | **Multi-tenant Isolation**: every query against the shared database applies a mandatory `WHERE tenant_id = :id` filter, extracted from the gRPC/JWT context. |
+| BR02 | **Anonymization via Blind Index**: dynamic fields are never referenced by their real name; always by a cryptographic hash mapping type, required-ness, and limits. |
+| BR03 | **Server-Side Permission Evaluation**: view/click conditions are computed in the IAM Service; the front-end receives only the final boolean map indexed by Blind Index. |
+| BR04 | **Publishing via Active Flag**: publishing creates a new row in `versoes_sistema`; only one active version per system; the Headless Player always consumes the active version. |
+| BR05 | **Instant Rollback**: rolling back = toggling the `ativa` flag to the previous stable version, with no recompilation or downtime. |
+| BR06 | **Debounced Persistence (Write-Behind)**: collaborative mutations are persisted to the relational database only after 5s of inactivity detected by the GenServer; before that, they live only in BEAM memory + Redis. |
+| BR07 | **Optimistic Per-Component Locking**: a component under active edition is temporarily locked (via Blind Index) for other collaborators. |
+| BR08 | **Mandatory Double Validation**: payload validated on the front-end **and** revalidated in the Logic Engine against the saved schema. |
+| BR09 | **Fair Queuing per Tenant**: no tenant monopolizes workers; persistent failures are diverted to the DLQ without affecting other tenants. |
+| BR10 | **Queue-Based Scaling**: autoscaling reacts exclusively to `QueueLength` in RabbitMQ, and can scale to zero. |
 
 ---
 
-## 5. Cenários de Uso
+## 5. Usage Scenarios
 
-### Cenário 1: Submissão de formulário válido (RF07, RN01, RN02, RN08)
-* **Dado que** um Cliente Final acede a um sistema publicado com um formulário dinâmico
-* **Quando** preenche todos os campos corretamente e submete
-* **Então** o Headless Player valida localmente pelo mapa de Blind Index, o Gateway valida o JWT e traduz para gRPC, o Logic Engine revalida contra o schema salvo e persiste na coluna JSONB com `tenant_id`
-* **E** se alguma regra de negócio disparar tarefa assíncrona, um evento é publicado no RabbitMQ sem bloquear a resposta
+### Scenario 1: Valid Form Submission (FR07, BR01, BR02, BR08)
+* **Given** an End Customer accesses a published system with a dynamic form
+* **When** they fill in all fields correctly and submit
+* **Then** the Headless Player validates locally via the Blind Index map, the Gateway validates the JWT and translates it to gRPC, the Logic Engine revalidates against the saved schema and persists it in the JSONB column with `tenant_id`
+* **And** if any business rule triggers an asynchronous task, an event is published to RabbitMQ without blocking the response
 
-### Cenário 2: Submissão maliciosa contornando o cliente (RF07, RN08, RNF08)
-* **Dado que** um atacante envia payload direto à API com campos inválidos
-* **Quando** o Logic Engine revalida o payload contra o schema
-* **Então** a submissão é rejeitada com mapa de erros indexado por `blind_index`
-* **E** nenhum nome real de coluna ou tabela aparece na resposta de erro
+### Scenario 2: Malicious Submission Bypassing the Client (FR07, BR08, NFR08)
+* **Given** an attacker sends a payload directly to the API with invalid fields
+* **When** the Logic Engine revalidates the payload against the schema
+* **Then** the submission is rejected with an error map indexed by `blind_index`
+* **And** no real column or table name appears in the error response
 
-### Cenário 3: Colaboração simultânea com debounce (RF06, RN06, RN07)
-* **Dado que** dois colaboradores editam o mesmo ecrã simultaneamente
-* **Quando** o Colaborador A move um componente
-* **Então** a mutação é aplicada no GenServer, replicada em snapshot no Redis e propagada via broadcast ao Colaborador B em tempo real
-* **E** após 5 segundos de silêncio de rede, o GenServer consolida a árvore e dispara uma única chamada gRPC batch ao Design Engine
+### Scenario 3: Simultaneous Collaboration with Debounce (FR06, BR06, BR07)
+* **Given** two collaborators edit the same screen simultaneously
+* **When** Collaborator A moves a component
+* **Then** the mutation is applied in the GenServer, replicated as a snapshot in Redis, and broadcast to Collaborator B in real time
+* **And** after 5 seconds of network silence, the GenServer consolidates the tree and fires a single batched gRPC call to the Design Engine
 
-### Cenário 4: Publicação e rollback (RF04, RN04, RN05, RNF05)
-* **Dado que** um Criador publicou a versão N do seu sistema
-* **Quando** detecta uma falha e aciona rollback
-* **Então** o Deploy Engine reativa a flag da versão N-1 em milissegundos
-* **E** o Headless Player passa a consumir a versão N-1 sem downtime
+### Scenario 4: Publishing and Rollback (FR04, BR04, BR05, NFR05)
+* **Given** a Creator has published version N of their system
+* **When** they detect a failure and trigger a rollback
+* **Then** the Deploy Engine reactivates the version N-1 flag in milliseconds
+* **And** the Headless Player starts consuming version N-1 with no downtime
 
-### Cenário 5: Pico de webhooks com scale-to-zero (RF08, RN09, RN10, RNF03)
-* **Dado que** as filas de eventos estão vazias e os workers escalados a 0 réplicas
-* **Quando** um tenant dispara 10.000 webhooks
-* **Então** o KEDA detecta o `QueueLength` e escala workers até o `maxReplicaCount`
-* **E** falhas contínuas de entrega são desviadas para a DLQ com alerta apenas ao tenant afetado
+### Scenario 5: Webhook Spike with Scale-to-Zero (FR08, BR09, BR10, NFR03)
+* **Given** the event queues are empty and workers are scaled to 0 replicas
+* **When** a tenant fires 10,000 webhooks
+* **Then** KEDA detects the `QueueLength` and scales workers up to the `maxReplicaCount`
+* **And** persistent delivery failures are diverted to the DLQ with an alert only to the affected tenant
 
-### Cenário 6: Exportação de grande volume (RF05, RNF01)
-* **Dado que** um Criador solicita exportação completa do seu sistema
-* **Quando** o Gateway cria o Job no Export Engine e liberta o front-end
-* **Então** a coleta ocorre via gRPC Server Streaming em chunks, o pacote é armazenado em Cloud Storage
-* **E** o utilizador recebe um Presigned URL de expiração curta para download direto
-
----
-
-## 6. Critérios de Aceitação
-
-1. Requisição sem JWT válido é rejeitada no Gateway com HTTP 401; requisição com JWT de outro tenant nunca retorna dados alheios (testável via teste de integração multi-tenant).
-2. `SalvarFormulario` com campo inválido retorna `erros_validacao` contendo apenas `blind_index` como chaves — nenhuma resposta da API contém nomes reais de colunas/tabelas.
-3. Publicar versão insere linha em `versoes_sistema` e desativa a anterior atomicamente (transação única); rollback restaura a anterior em < 100ms medidos no teste.
-4. Edição colaborativa: mutação enviada pelo cliente A chega ao cliente B via WebSocket; ausência de mutações por 5s gera exatamente 1 chamada gRPC `SalvarDesign` em lote.
-5. Com fila vazia por mais que o cooldown configurado, `kubectl get pods` mostra 0 workers; ao publicar N mensagens, réplicas sobem até o limite do `ScaledObject`.
-6. Um `traceparent` gerado no Gateway é visível no Jaeger atravessando Gateway → gRPC → RabbitMQ → Worker como spans do mesmo trace.
-7. Exportação devolve HTTP 202 imediato com `job_id`; ao completar, `GET /jobs/{id}` retorna Presigned URL que expira no tempo configurado.
-8. Todos os serviços sobem via `docker compose up` e os testes de integração passam no CI.
+### Scenario 6: Large-Volume Export (FR05, NFR01)
+* **Given** a Creator requests a full export of their system
+* **When** the Gateway creates the Job in the Export Engine and frees up the front-end
+* **Then** collection happens via gRPC Server Streaming in chunks, and the package is stored in Cloud Storage
+* **And** the user receives a short-lived Presigned URL for direct download
 
 ---
 
-## 7. Diagramas UML
+## 6. Acceptance Criteria
 
-### 7.1. Diagrama de Casos de Uso
+1. A request without a valid JWT is rejected at the Gateway with HTTP 401; a request with another tenant's JWT never returns someone else's data (testable via a multi-tenant integration test).
+2. `SalvarFormulario` with an invalid field returns `erros_validacao` containing only `blind_index` values as keys — no API response contains real column/table names.
+3. Publishing a version inserts a row into `versoes_sistema` and atomically deactivates the previous one (single transaction); rollback restores the previous version in < 100ms as measured in the test.
+4. Collaborative editing: a mutation sent by client A reaches client B via WebSocket; no mutations for 5s generates exactly 1 batched gRPC `SalvarDesign` call.
+5. With the queue empty for longer than the configured cooldown, `kubectl get pods` shows 0 workers; when N messages are published, replicas scale up to the `ScaledObject` limit.
+6. A `traceparent` generated at the Gateway is visible in Jaeger spanning Gateway → gRPC → RabbitMQ → Worker as spans of the same trace.
+7. Export returns an immediate HTTP 202 with `job_id`; upon completion, `GET /jobs/{id}` returns a Presigned URL that expires at the configured time.
+8. All services start via `docker compose up` and integration tests pass in CI.
+
+---
+
+## 7. UML Diagrams
+
+### 7.1. Use Case Diagram
 
 ```mermaid
 flowchart LR
-  criador(["Criador/Colaborador"])
-  cliente(["Cliente Final"])
-  admin(["Administrador (Dono/Parceiro)"])
-  externo(["Sistema Externo"])
+  criador(["Creator/Collaborator"])
+  cliente(["End Customer"])
+  admin(["Administrator (Owner/Partner)"])
+  externo(["External System"])
 
-  subgraph sistema["Construtor de Sistemas MACH"]
-    UC1(["RF01 - CRUD de Design (UI)"])
-    UC2(["RF02 - CRUD de Regras de Negócio"])
-    UC3(["RF03 - Autenticação e Controlo de Acesso"])
-    UC4(["RF04 - Publicação e Rollback"])
-    UC5(["RF05 - Exportação Assíncrona de Dados"])
-    UC6(["RF06 - Colaboração em Tempo Real"])
-    UC7(["RF07 - Submissão e Validação de Formulários"])
-    UC8(["RF08 - Processamento Assíncrono de Eventos"])
+  subgraph sistema["MACH System Builder"]
+    UC1(["FR01 - Design CRUD (UI)"])
+    UC2(["FR02 - Business Rules CRUD"])
+    UC3(["FR03 - Authentication and Access Control"])
+    UC4(["FR04 - Publishing and Rollback"])
+    UC5(["FR05 - Asynchronous Data Export"])
+    UC6(["FR06 - Real-Time Collaboration"])
+    UC7(["FR07 - Form Submission and Validation"])
+    UC8(["FR08 - Asynchronous Event Processing"])
   end
 
   criador --> UC1
@@ -146,63 +146,63 @@ flowchart LR
   UC2 -. include .-> UC3
 ```
 
-### 7.2. Diagrama de Sequência — Cenário 1/2 (RF07)
+### 7.2. Sequence Diagram — Scenario 1/2 (FR07)
 
 ```mermaid
 sequenceDiagram
-    actor cliente as Cliente Final
+    actor cliente as End Customer
     participant player as Headless Player
     participant gw as API Gateway (Go)
     participant logic as Logic Engine
     participant db as PostgreSQL (JSONB)
     participant mq as RabbitMQ
 
-    cliente->>player: preenche formulário
-    player->>player: valida campos (Blind Index)
-    alt erro de validação local
-        player-->>cliente: bloqueia envio + destaca campo
-    else válido
+    cliente->>player: fills in the form
+    player->>player: validates fields (Blind Index)
+    alt local validation error
+        player-->>cliente: blocks submission + highlights field
+    else valid
         player->>gw: POST /api/v1/formularios (JWT)
-        gw->>gw: valida JWT + Rate Limiting
+        gw->>gw: validates JWT + Rate Limiting
         gw->>logic: SalvarFormulario(dados_formulario) [gRPC + Metadata tenant_id]
-        logic->>db: revalida schema por blind_index
-        alt payload inválido
-            db-->>logic: erro
+        logic->>db: revalidates schema via blind_index
+        alt invalid payload
+            db-->>logic: error
             logic-->>gw: erros_validacao[blind_index]
-            gw-->>player: 422 + erro estruturado
-            player-->>cliente: sinaliza input exato
-        else payload válido
+            gw-->>player: 422 + structured error
+            player-->>cliente: flags the exact input
+        else valid payload
             db-->>logic: ok
-            logic->>mq: publica evento (tenant_id, blind_index)
-            logic-->>gw: sucesso
+            logic->>mq: publishes event (tenant_id, blind_index)
+            logic-->>gw: success
             gw-->>player: 200
-            player-->>cliente: confirmação
+            player-->>cliente: confirmation
         end
     end
 ```
 
-### 7.3. Diagrama de Sequência — Cenário 3 (RF06)
+### 7.3. Sequence Diagram — Scenario 3 (FR06)
 
 ```mermaid
 sequenceDiagram
-    actor userA as Colaborador A
-    actor userB as Colaborador B
+    actor userA as Collaborator A
+    actor userB as Collaborator B
     participant channel as Phoenix Channel
     participant genserver as GenServer (BEAM)
     participant redis as Redis
     participant design as Design Engine
 
-    userA->>channel: edita componente (WebSocket)
-    channel->>genserver: aplica mutação
-    genserver->>redis: snapshot de segurança
-    genserver->>channel: broadcast alteração
-    channel-->>userB: atualização em tempo real
-    genserver->>genserver: detecta inatividade (5s)
-    genserver->>design: SalvarDesign em lote (gRPC)
-    design-->>genserver: ack persistência
+    userA->>channel: edits component (WebSocket)
+    channel->>genserver: applies mutation
+    genserver->>redis: safety snapshot
+    genserver->>channel: broadcasts change
+    channel-->>userB: real-time update
+    genserver->>genserver: detects inactivity (5s)
+    genserver->>design: batched SalvarDesign (gRPC)
+    design-->>genserver: persistence ack
 ```
 
-### 7.4. Diagrama de Classes (entidades persistidas)
+### 7.4. Class Diagram (persisted entities)
 
 ```mermaid
 classDiagram
@@ -264,7 +264,7 @@ classDiagram
     }
 
     Tenant "1" *-- "many" Sistema
-    Tenant "1" o-- "many" Tenant : hierarquia
+    Tenant "1" o-- "many" Tenant : hierarchy
     Sistema "1" *-- "many" VersaoSistema
     Sistema "1" *-- "many" CampoDefinicao
     Sistema "1" *-- "many" RegraNegocio
@@ -276,11 +276,11 @@ classDiagram
 
 ---
 
-## 8. Fora de Escopo
+## 8. Out of Scope
 
-- **Abordagem Compilada** (geração de imagens Docker/Serverless por tenant): roadmap futuro descrito em `doc/CONTRACTS_PERFORMANCE.md §6`; a arquitetura apenas não pode impedi-la.
-- **Editor visual (builder UI)**: esta spec cobre o back-end, os contratos e o Headless Player (renderizador); o painel de construção drag-and-drop é demanda própria.
-- **Billing/cobrança por tenant** e gestão comercial de planos.
-- **Marketplace de componentes/templates** de terceiros.
-- **Instâncias single-tenant dedicadas** (modelo enterprise).
-- **Aplicativos móveis nativos** — o Headless Player é web (SPA).
+- **Compiled Approach** (generating per-tenant Docker/Serverless images): future roadmap described in `doc/CONTRACTS_PERFORMANCE.md §6`; the architecture must simply not preclude it.
+- **Visual editor (builder UI)**: this spec covers the back-end, the contracts, and the Headless Player (renderer); the drag-and-drop builder panel is a separate deliverable.
+- **Per-tenant billing** and commercial plan management.
+- **Third-party component/template marketplace**.
+- **Dedicated single-tenant instances** (enterprise model).
+- **Native mobile apps** — the Headless Player is web-based (SPA).

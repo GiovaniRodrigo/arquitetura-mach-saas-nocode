@@ -1,26 +1,26 @@
-# Camada de Gateway Híbrida e Colaboração em Tempo Real
+# Hybrid Gateway Layer and Real-Time Collaboration
 
-[cite_start]Para maximizar a eficiência de rede, o padrão BFF (Backend For Frontend) foi dividido em duas tecnologias distintas por tipo de protocolo e caso de uso[cite: 23].
+[cite_start]To maximize network efficiency, the BFF (Backend For Frontend) pattern was split into two distinct technologies by protocol type and use case[cite: 23].
 
-## 1. API Gateway em Go (Golang)
-[cite_start]Responsável por gerenciar todo o fluxo tradicional síncrono de *Request-Response* (HTTP/REST)[cite: 24].
-* [cite_start]**Atribuições:** Atua como um proxy ultra-rápido de baixa latência[cite: 25].
-* [cite_start]**Segurança e Tráfego:** Valida o token JWT no cabeçalho `Authorization` e aplica políticas de *Rate Limiting*[cite: 25].
-* [cite_start]**Tradução de Protocolos:** Traduz as requisições HTTP recebidas do navegador para chamadas gRPC internas direcionadas aos microsserviços[cite: 25].
+## 1. API Gateway in Go (Golang)
+[cite_start]Responsible for managing the entire traditional synchronous *Request-Response* flow (HTTP/REST)[cite: 24].
+* [cite_start]**Responsibilities:** Acts as an ultra-fast, low-latency proxy[cite: 25].
+* [cite_start]**Security and Traffic:** Validates the JWT token in the `Authorization` header and applies *Rate Limiting* policies[cite: 25].
+* [cite_start]**Protocol Translation:** Translates HTTP requests received from the browser into internal gRPC calls directed at the microservices[cite: 25].
 
-## 2. Motor de Colaboração em Elixir (Phoenix Channels)
-[cite_start]Responsável estritamente pelas conexões persistentes bidirecionais em tempo real via WebSockets[cite: 26, 77].
+## 2. Elixir Collaboration Engine (Phoenix Channels)
+[cite_start]Responsible strictly for real-time, bidirectional persistent connections via WebSockets[cite: 26, 77].
 
-### Gerenciamento de Estado em Memória (BEAM)
-* [cite_start]**Concorrência Isolada:** Para cada ecrã sob edição ativa no painel de construção, a Erlang VM (BEAM) instancia um processo leve isolado (`GenServer`), mantendo a árvore de componentes em memória viva[cite: 27, 78].
-* [cite_start]**Replicação e Sincronização:** As mutações leves enviadas por um usuário são processadas pelo `GenServer`, replicadas em *snapshots* de segurança numa instância global do Redis e propagadas instantaneamente via *broadcast* para os demais cocriadores[cite: 79].
+### In-Memory State Management (BEAM)
+* [cite_start]**Isolated Concurrency:** For each screen under active edit in the builder panel, the Erlang VM (BEAM) instantiates an isolated lightweight process (`GenServer`), keeping the component tree alive in memory[cite: 27, 78].
+* [cite_start]**Replication and Synchronization:** The lightweight mutations sent by a user are processed by the `GenServer`, replicated into safety *snapshots* on a global Redis instance, and instantly propagated via *broadcast* to the other co-creators[cite: 79].
 
-### Estratégia de Persistência Baseada em Debounce (Write-Behind)
-[cite_start]Para blindar a base de dados relacional contra exaustão de escrita induzida por micro-movimentos na UI, adota-se o seguinte fluxo[cite: 81]:
-1. [cite_start]As alterações acumulam-se temporariamente apenas na memória do processo BEAM e no Redis[cite: 82].
-2. [cite_start]Quando o `GenServer` detecta um período de inatividade de rede (ex: 5 segundos de silêncio), ele consolida a árvore recursiva num único payload estável[cite: 83].
-3. [cite_start]O processo Elixir dispara uma **única chamada gRPC otimizada em lote** para o *Design Engine*, persistindo os dados na coluna `JSONB` da base de dados relacional[cite: 84].
+### Debounce-Based Persistence Strategy (Write-Behind)
+[cite_start]To shield the relational database from write exhaustion induced by micro-movements in the UI, the following flow is adopted[cite: 81]:
+1. [cite_start]Changes accumulate temporarily only in the BEAM process's memory and in Redis[cite: 82].
+2. [cite_start]When the `GenServer` detects a period of network inactivity (e.g., 5 seconds of silence), it consolidates the recursive tree into a single stable payload[cite: 83].
+3. [cite_start]The Elixir process fires off a **single optimized batch gRPC call** to the *Design Engine*, persisting the data into the relational database's `JSONB` column[cite: 84].
 
-### Controle de Presença e Conflitos
-* [cite_start]**Phoenix Presence:** O rastreamento de utilizadores online e renderização de cursores simultâneos opera de forma descentralizada via CRDTs (*Conflict-Free Replicated Data Types*)[cite: 86].
-* [cite_start]**Bloqueios Otimistas:** Conflitos de edição direta no mesmo elemento são prevenidos através de bloqueios temporários por *Blind Index*, desativando os inputs dinamicamente nos navegadores concorrentes[cite: 87].
+### Presence and Conflict Control
+* [cite_start]**Phoenix Presence:** Tracking of online users and rendering of simultaneous cursors operates in a decentralized manner via CRDTs (*Conflict-Free Replicated Data Types*)[cite: 86].
+* [cite_start]**Optimistic Locking:** Direct editing conflicts on the same element are prevented through temporary locks by *Blind Index*, dynamically disabling the inputs on competing browsers[cite: 87].

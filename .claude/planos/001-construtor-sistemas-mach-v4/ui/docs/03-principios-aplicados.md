@@ -1,80 +1,80 @@
-# Princípios de Design Aplicados
+# Applied Design Principles
 
-Aplicação dos 9 princípios às três telas-alvo: **Dashboard**, **Construtor Visual (Builder)** e **Headless Player**. Cada princípio traz decisões concretas ancoradas nos RF/RN da spec.
+Application of the 9 principles to the three target screens: **Dashboard**, **Visual Builder**, and **Headless Player**. Each principle brings concrete decisions anchored in the spec's FRs/BRs.
 
 ---
 
-## 1. Início Óbvio
+## 1. Obvious Starting Point
 
-- **Dashboard**: o ponto de partida é o botão **"+ Novo Sistema"** (CTA primário, acento único, canto superior direito) e, abaixo, o card do último sistema editado em destaque. O olho vai do título → busca `Cmd+K` → grelha de sistemas.
-- **Builder**: o início é o **canvas central** — a maior superfície, sempre iluminada; a biblioteca de componentes (esquerda) convida ao primeiro arrasto com um *empty state* "Arraste um componente para começar".
-- **Player**: o início é o **primeiro campo do formulário já em foco** (autofocus) com o CTA "Enviar" fixo ao fim; em multi-etapa, o passo 1 aberto e o indicador "Passo 1 de N" no topo.
+- **Dashboard**: the starting point is the **"+ New System"** button (primary CTA, single accent, top-right corner) and, below it, the featured card of the last edited system. The eye goes from title → `Cmd+K` search → systems grid.
+- **Builder**: the starting point is the **central canvas** — the largest surface, always lit; the component library (left) invites the first drag with an *empty state* "Drag a component to start".
+- **Player**: the starting point is the **form's first field already in focus** (autofocus) with the "Submit" CTA fixed at the end; in multi-step, step 1 is open with the "Step 1 of N" indicator at the top.
 
-## 2. Reversão Clara
+## 2. Clear Reversal
 
-- **Rollback (RF04/RN05)** é a reversão-mãe do produto: acessível em 1 clique no painel de versões, com **diálogo de confirmação** ("Reverter para a versão 6? O sistema publicado passa a servir a v6 imediatamente."), mostrando o que muda. Executa em < 100 ms (critério de aceitação 3) e confirma via toast.
-- **Ações destrutivas** (excluir sistema, excluir componente, excluir regra) exigem confirmação explícita; o botão destrutivo é vermelho e nunca é o foco padrão do diálogo.
-- **Builder**: toda mutação é reversível via **Undo/Redo** (`Cmd+Z` / `Cmd+Shift+Z`); como a persistência é write-behind com debounce de 5 s (RN06), o undo local é instantâneo antes do flush.
-- **Formulário (Player)**: "Voltar" sempre visível em fluxos multi-etapa; nenhum dado é perdido ao voltar.
+- **Rollback (FR04/BR05)** is the product's mother reversal action: accessible in 1 click from the versions panel, with a **confirmation dialog** ("Revert to version 6? The published system will immediately start serving v6."), showing what changes. Executes in < 100ms (acceptance criterion 3) and confirms via toast.
+- **Destructive actions** (delete system, delete component, delete rule) require explicit confirmation; the destructive button is red and never the dialog's default focus.
+- **Builder**: every mutation is reversible via **Undo/Redo** (`Cmd+Z` / `Cmd+Shift+Z`); since persistence is write-behind with a 5s debounce (BR06), local undo is instantaneous before the flush.
+- **Form (Player)**: "Back" always visible in multi-step flows; no data is lost when going back.
 
-## 3. Lógica Consistente
+## 3. Consistent Logic
 
-- Um mesmo tipo de componente (ex.: `input_texto`) renderiza igual no canvas do Builder e no Player — **paridade de renderização** garantida pelo mesmo contrato de árvore Composite (RF01).
-- Estados de interação uniformes em todo o produto: `hover` (elevação sutil + borda de acento), `focus` (anel de foco de 2 px acessível), `disabled` (opacidade 0.4, cursor `not-allowed`), `selected` (borda de acento sólida).
-- Posições fixas: barra superior (contexto do tenant + ações globais) sempre no topo; ações de linha de tabela sempre à direita; breadcrumb sempre abaixo da barra superior.
+- The same component type (e.g., `text_input`) renders identically on the Builder canvas and in the Player — **rendering parity** guaranteed by the same Composite tree contract (FR01).
+- Uniform interaction states across the whole product: `hover` (subtle elevation + accent border), `focus` (accessible 2px focus ring), `disabled` (0.4 opacity, `not-allowed` cursor), `selected` (solid accent border).
+- Fixed positions: top bar (tenant context + global actions) always at the top; table row actions always on the right; breadcrumb always below the top bar.
 
-## 4. Observar Convenções
+## 4. Follow Conventions
 
-- **Ícones semânticos universais**: 🗑 lixeira = excluir, ✏️ lápis = editar, ＋ = adicionar, ⎘ = duplicar, ⤺ = reverter/rollback, ↑ = publicar, ⭳ = exportar. (Set: Lucide — padrão de dev-tools.)
-- **Material 3 / HIG** para campos de formulário, chips, switches e diálogos.
-- **Terminologia do domínio** que o utilizador já conhece: "Sistema", "Versão", "Publicar", "Rollback", "Colaboradores", "Regras" — exatamente os termos da spec, sem jargão de infra (o utilizador nunca vê "gRPC", "GenServer" ou "blind_index" cru; este último aparece apenas em ferramentas de admin/debug como *badge* mono).
-- **Command palette `Cmd+K`** (convenção Linear/Figma) para navegação e ações rápidas.
+- **Universal semantic icons**: 🗑 trash = delete, ✏️ pencil = edit, ＋ = add, ⎘ = duplicate, ⤺ = revert/rollback, ↑ = publish, ⭳ = export. (Set: Lucide — dev-tools standard.)
+- **Material 3 / HIG** for form fields, chips, switches, and dialogs.
+- **Domain terminology** the user already knows: "System", "Version", "Publish", "Rollback", "Collaborators", "Rules" — exactly the spec's terms, with no infra jargon (the user never sees raw "gRPC", "GenServer", or "blind_index"; the latter appears only in admin/debug tools as a mono *badge*).
+- **`Cmd+K` command palette** (Linear/Figma convention) for navigation and quick actions.
 
-## 5. Feedback e Marcos
+## 5. Feedback and Milestones
 
-- **Estados explícitos** em toda superfície: `loading` (skeleton screens, não spinners), `success` (toast verde não intrusivo), `error` (toast/campo vermelho com mensagem acionável), `empty` (ilustração + CTA).
-- **Colaboração (RF06)**: presença sempre visível (avatares empilhados no topo), cursores nomeados coloridos no canvas, badge "🔒 em edição por Ana" no componente bloqueado (RN07), e indicador de estado de persistência: **"Todas as alterações salvas"** ↔ **"Salvando…"** (reflete o debounce de 5 s / `flush_ok`, RN06).
-- **Publicação (RF04)**: barra de progresso do publish; ao concluir, marco visível "Versão 7 publicada · ativa agora".
-- **Exportação (RF05)**: como é assíncrona (202 imediato), mostra job com estado `criado → coletando → pronto`; quando pronto, botão de download com aviso de expiração ("link expira em 10 min").
-- **Player**: validação inline no *blur* (NN/g); ao submeter, spinner no botão → confirmação; erros do servidor (422) mapeados ao campo exato via `blind_index` (RN08).
+- **Explicit states** across every surface: `loading` (skeleton screens, not spinners), `success` (unobtrusive green toast), `error` (toast/red field with actionable message), `empty` (illustration + CTA).
+- **Collaboration (FR06)**: presence always visible (stacked avatars at the top), named colored cursors on the canvas, "🔒 being edited by Ana" badge on the locked component (BR07), and a persistence state indicator: **"All changes saved"** ↔ **"Saving…"** (reflects the 5s debounce / `flush_ok`, BR06).
+- **Publishing (FR04)**: publish progress bar; on completion, a visible milestone "Version 7 published · live now".
+- **Export (FR05)**: since it's asynchronous (immediate 202), shows a job with state `created → collecting → ready`; when ready, a download button with an expiration notice ("link expires in 10 min").
+- **Player**: inline validation on *blur* (NN/g); on submit, button spinner → confirmation; server errors (422) mapped to the exact field via `blind_index` (BR08).
 
-## 6. Proximidade e Adaptação
+## 6. Proximity and Adaptation
 
-- **Agrupamento**: no painel de propriedades do Builder, campos relacionados ficam em seções colapsáveis (Layout · Estilo · Dados · Regras) com espaçamento interno menor que o entre-seções.
-- **Ações contextuais próximas aos dados**: toolbar flutuante aparece sobre o componente selecionado no canvas (duplicar/excluir/bloquear), não numa barra distante.
-- **Responsividade**:
-  - Dashboard: grelha fluida (4 → 2 → 1 colunas).
-  - Builder: **desktop-only** honestamente assumido (canvas exige espaço); em telas menores, aviso "Abra num ecrã maior para editar".
-  - Player: **mobile-first**, um campo por linha, alvos de toque ≥ 44 px.
+- **Grouping**: in the Builder's properties panel, related fields sit in collapsible sections (Layout · Style · Data · Rules) with tighter internal spacing than between sections.
+- **Contextual actions near the data**: a floating toolbar appears over the selected component on the canvas (duplicate/delete/lock), not in a distant bar.
+- **Responsiveness**:
+  - Dashboard: fluid grid (4 → 2 → 1 columns).
+  - Builder: honestly **desktop-only** (canvas needs space); on smaller screens, a "Open on a larger screen to edit" notice.
+  - Player: **mobile-first**, one field per row, touch targets ≥ 44px.
 
-## 7. Interface é Conteúdo
+## 7. Interface Is Content
 
-- **Máximo de dados úteis sem scroll**: o canvas do Builder ocupa a maior área; barras laterais colapsáveis; header de 48 px de altura.
-- **Zero decoração vazia**: sem gradientes ornamentais, sombras pesadas ou ilustrações que não comuniquem estado. A cor de acento é reservada — quando tudo é colorido, nada tem prioridade (contenção Linear).
-- **Densidade calibrada por público**: densa no Builder/Dashboard (técnico); arejada no Player (leigo).
+- **Maximum useful data without scrolling**: the Builder canvas occupies the largest area; collapsible sidebars; 48px-tall header.
+- **Zero empty decoration**: no ornamental gradients, heavy shadows, or illustrations that don't communicate state. The accent color is reserved — when everything is colored, nothing has priority (Linear restraint).
+- **Density calibrated by audience**: dense in Builder/Dashboard (technical); airy in the Player (layperson).
 
-## 8. Princípios Gerais de Design Visual
+## 8. General Visual Design Principles
 
-- **Torne o assunto óbvio**: cada tela abre com título + ícone de contexto (nome do sistema no Builder; nome do formulário no Player; "Meus Sistemas" no Dashboard).
-- **Visualização de dados adequada**: histórico de versões como **linha do tempo vertical** (sequência temporal); estados de job de exportação como **stepper**; profundidade da fila/uso em cards numéricos — não gráficos decorativos.
-- **Forma e conteúdo integrados**: semântica de cor consistente — verde = sucesso/publicado, âmbar = rascunho/pendente, vermelho = erro/destrutivo, azul-info = neutro informativo, acento = ação primária/ativo.
-- **Metáforas para conceitos novos**: **árvore Composite** representada como uma *tree view* de arquivos (metáfora familiar); **Blind Index** como um cadeado/hash (privacidade); **versão ativa** como um interruptor de "no ar".
+- **Make the subject obvious**: every screen opens with a title + context icon (system name in the Builder; form name in the Player; "My Systems" in the Dashboard).
+- **Appropriate data visualization**: version history as a **vertical timeline** (temporal sequence); export job states as a **stepper**; queue depth/usage as numeric cards — not decorative charts.
+- **Integrated form and content**: consistent color semantics — green = success/published, amber = draft/pending, red = error/destructive, info-blue = neutral informational, accent = primary action/active.
+- **Metaphors for new concepts**: **Composite tree** represented as a file *tree view* (familiar metaphor); **Blind Index** as a lock/hash (privacy); **active version** as an "on air" switch.
 
-## 9. Matriz de Decisão de Design
+## 9. Design Decision Matrix
 
-| Decisão | Início Óbvio | Reversão Clara | Consistência | Convenção | Feedback | Proximidade | Conteúdo > Deco. |
+| Decision | Obvious Start | Clear Reversal | Consistency | Convention | Feedback | Proximity | Content > Deco. |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| CTA "+ Novo Sistema" (Dashboard) | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Card de Sistema c/ status de versão | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Layout 3-colunas do Builder | ✓ | ✗ | ✓ | ✓ | ✗ | ✓ | ✓ |
-| Cursores/presença de colaboração (RF06) | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Badge "🔒 em edição" (RN07) | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Indicador "Salvando…/Salvo" (RN06) | ✗ | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
-| Painel de versões + Rollback (RF04) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Diálogo de confirmação de Rollback | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Formulário do Player + validação inline (RF07) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Erro por campo via blind_index (RN08) | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Job de Exportação (stepper + expiração) | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Command palette `Cmd+K` | ✓ | ✗ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| "+ New System" CTA (Dashboard) | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| System card w/ version status | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Builder's 3-column layout | ✓ | ✗ | ✓ | ✓ | ✗ | ✓ | ✓ |
+| Collaboration cursors/presence (FR06) | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| "🔒 being edited" badge (BR07) | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| "Saving…/Saved" indicator (BR06) | ✗ | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Versions panel + Rollback (FR04) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Rollback confirmation dialog | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Player form + inline validation (FR07) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Per-field error via blind_index (BR08) | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Export job (stepper + expiration) | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `Cmd+K` command palette | ✓ | ✗ | ✓ | ✓ | ✓ | ✗ | ✓ |
 
-Legenda: ✓ = princípio aplicado nesta decisão; ✗ = não é o foco desta decisão (aplicado por outra).
+Legend: ✓ = principle applied in this decision; ✗ = not the focus of this decision (applied by another).

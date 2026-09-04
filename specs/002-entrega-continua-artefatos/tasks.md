@@ -1,20 +1,20 @@
-# Tarefas: Pipeline CI/CD por Entrega de Artefatos Compilados
+# Tasks: CI/CD Pipeline for Compiled Artifact Delivery
 
-<!-- Ordenadas por dependência de execução. Cada tarefa é atômica (≤ 1 dia). -->
+<!-- Ordered by execution dependency. Each task is atomic (≤ 1 day). -->
 
-- [x] 1. Refatorar o pipeline de validação para ser reutilizável como *gate* via `workflow_call`, preservando os jobs proto/go/elixir/player/integração (`.github/workflows/ci.yml`) [RF01, RF10]
-- [x] 2. Adicionar a configuração `releases:` (nome `collab`, `include_executables_for: [:unix]`) para `mix release` (`collab/mix.exs`) [RF02]
-- [x] 3. Criar as variáveis de runtime do release Elixir (porta, OTLP, Redis, DSN gRPC) (`collab/rel/env.sh.eex`) [RF02, RNF06]
-- [x] 4. Escrever o script de compilação de artefatos: `buf generate`, 7 binários Go `CGO_ENABLED=0`, `mix release`, `vite build`, empacotando só `dist/` em tarballs por sha (`build/build-artifacts.sh`) [RF02, RF03, RN01, RN05, RN06]
-- [x] 5. Criar as unidades `systemd` non-root para os 8 serviços, apontando a `/opt/machv4/current` com `EnvironmentFile` (`infra/systemd/machv4-*.service`) [RF08, RNF01]
-- [x] 6. Criar a configuração Nginx que serve o player estático e faz proxy ao gateway (`infra/nginx/machv4.conf`) [RF08]
-- [x] 7. Documentar o layout e pré-requisitos do host (`/opt/machv4/{releases,current}`, usuário de serviço) (`infra/deploy/README.md`) [RNF01, RNF04]
-- [x] 8. Escrever o script de entrega: rsync dos artefatos para `releases/<sha>`, extração, troca atômica de symlink e restart dos serviços (`build/deploy.sh`) [RF07, RF08, RN01, RN04]
-- [x] 9. Escrever o smoke test pós-deploy (healthcheck de cada serviço, exit ≠ 0 em falha) (`build/smoke-test.sh`) [RF11]
-- [x] 10. Escrever o script de rollback (repontar `current` ao release anterior/sha informado + restart, sem build) (`build/rollback.sh`) [RF09, RN07, RN08]
-- [x] 11. Criar o pipeline de release: gate de CI, build/empacotamento, publicação de artefatos e deploy a staging (push `main`) e produção (tag `v*`, com aprovação) (`.github/workflows/cd.yml`) [RF04, RF05, RF06, RN02, RN03]
-- [x] 12. Encadear o smoke test com rollback automático no job de deploy (`.github/workflows/cd.yml`, `build/smoke-test.sh`, `build/rollback.sh`) [RF11, RN08]
-- [x] 13. Configurar os GitHub Environments `staging` e `production` (secrets SSH; gate de produção por disparo manual `workflow_dispatch`, pois *required reviewers* exigem plano pago) — documentar em (`infra/deploy/README.md`) [RF06, RN03, RNF01]
-- [x] 14. Validar o build localmente: `build/build-artifacts.sh` produz tarballs só com executáveis; inspecionar ausência de fonte/`.git`/`node_modules`/`deps` (`build/build-artifacts.sh`) [Critério 1, RN01]
-- [x] 15. Ensaiar o fluxo fim-a-fim em um host de staging (deploy → smoke → rollback) e ajustar regressões (`build/deploy.sh`, `build/rollback.sh`, `.github/workflows/cd.yml`) [Critérios 2–7]
-- [x] 16. Executar a suíte de testes completa do repositório (`make test` + Elixir + player + integração/E2E) garantindo que a refatoração do `ci.yml` não regrediu nada
+- [x] 1. Refactor the validation pipeline to be reusable as a *gate* via `workflow_call`, preserving the proto/go/elixir/player/integration jobs (`.github/workflows/ci.yml`) [FR01, FR10]
+- [x] 2. Add the `releases:` configuration (name `collab`, `include_executables_for: [:unix]`) for `mix release` (`collab/mix.exs`) [FR02]
+- [x] 3. Create the Elixir release runtime variables (port, OTLP, Redis, gRPC DSN) (`collab/rel/env.sh.eex`) [FR02, NFR06]
+- [x] 4. Write the artifact compilation script: `buf generate`, 7 `CGO_ENABLED=0` Go binaries, `mix release`, `vite build`, packaging only `dist/` into tarballs by sha (`build/build-artifacts.sh`) [FR02, FR03, BR01, BR05, BR06]
+- [x] 5. Create the non-root `systemd` units for the 8 services, pointing to `/opt/machv4/current` with `EnvironmentFile` (`infra/systemd/machv4-*.service`) [FR08, NFR01]
+- [x] 6. Create the Nginx configuration that serves the static player and proxies to the gateway (`infra/nginx/machv4.conf`) [FR08]
+- [x] 7. Document the host layout and prerequisites (`/opt/machv4/{releases,current}`, service user) (`infra/deploy/README.md`) [NFR01, NFR04]
+- [x] 8. Write the delivery script: rsync the artifacts to `releases/<sha>`, extraction, atomic symlink swap, and service restart (`build/deploy.sh`) [FR07, FR08, BR01, BR04]
+- [x] 9. Write the post-deploy smoke test (healthcheck for each service, exit ≠ 0 on failure) (`build/smoke-test.sh`) [FR11]
+- [x] 10. Write the rollback script (repoint `current` to the previous release/a given sha + restart, no build) (`build/rollback.sh`) [FR09, BR07, BR08]
+- [x] 11. Create the release pipeline: CI gate, build/packaging, artifact publishing, and deploy to staging (push to `main`) and production (`v*` tag, with approval) (`.github/workflows/cd.yml`) [FR04, FR05, FR06, BR02, BR03]
+- [x] 12. Chain the smoke test with automatic rollback in the deploy job (`.github/workflows/cd.yml`, `build/smoke-test.sh`, `build/rollback.sh`) [FR11, BR08]
+- [x] 13. Configure the GitHub Environments `staging` and `production` (SSH secrets; production gate via manual `workflow_dispatch` trigger, since *required reviewers* require a paid plan) — document in (`infra/deploy/README.md`) [FR06, BR03, NFR01]
+- [x] 14. Validate the build locally: `build/build-artifacts.sh` produces tarballs with executables only; inspect for the absence of source/`.git`/`node_modules`/`deps` (`build/build-artifacts.sh`) [Criterion 1, BR01]
+- [x] 15. Rehearse the end-to-end flow on a staging host (deploy → smoke → rollback) and fix regressions (`build/deploy.sh`, `build/rollback.sh`, `.github/workflows/cd.yml`) [Criteria 2–7]
+- [x] 16. Run the repository's full test suite (`make test` + Elixir + player + integration/E2E) ensuring the `ci.yml` refactor caused no regressions

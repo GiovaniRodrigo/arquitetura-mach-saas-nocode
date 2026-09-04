@@ -1,110 +1,110 @@
-# USAGE — Como rodar o MACH V4 localmente
+# USAGE — How to run MACH V4 locally
 
-Guia de startup do monorepo. Ordem: **infra → proto → Go services → Gateway → Collab → Frontend**.
+Monorepo startup guide. Order: **infra → proto → Go services → Gateway → Collab → Frontend**.
 
-Todos os scripts de build/startup/deploy do repo vivem em **`build/`**.
+All build/startup/deploy scripts for the repo live in **`build/`**.
 
 ---
 
-## Startup guiado (recomendado)
+## Guided startup (recommended)
 
 ```bash
-./build/dev-up.sh              # sobe tudo, com checagens e prompts de confirmação
-./build/dev-up.sh --no-frontend  # sobe tudo menos o frontend (ex.: você já roda o Vite noutro terminal)
-./build/dev-up.sh --yes        # não pergunta nada, assume "sim" em todos os prompts
+./build/dev-up.sh              # brings everything up, with checks and confirmation prompts
+./build/dev-up.sh --no-frontend  # brings everything up except the frontend (e.g., you already run Vite in another terminal)
+./build/dev-up.sh --yes        # doesn't ask anything, assumes "yes" for every prompt
 ```
 
-O que ele faz, na ordem, com feedback visual (✓/✗/!) a cada etapa:
+What it does, in order, with visual feedback (✓/✗/!) at each step:
 
-1. **Pré-checagens** — confirma `docker`, `go`, `node`, `npm`, `mix`, `buf` no PATH e a versão do Go; ajusta o PATH automaticamente para as toolchains locais (`$HOME/.local/go`, `$HOME/.local/elixir1.17`).
-2. **Infra** (`make up` + `make migrate`) — avisa e pede confirmação se alguma porta já estiver ocupada (ex.: MinIO 9000 usado por outro projeto) antes de prosseguir.
-3. **Proto** (`make proto`) — regenera `gen/go`, `gen/elixir`, `gen/ts`.
-4. **Services gRPC** (iam, design, logic, deploy, export) — sobem em background, com espera ativa até cada porta responder.
+1. **Pre-checks** — confirms `docker`, `go`, `node`, `npm`, `mix`, `buf` are on the PATH and checks the Go version; automatically adjusts the PATH for the local toolchains (`$HOME/.local/go`, `$HOME/.local/elixir1.17`).
+2. **Infra** (`make up` + `make migrate`) — warns and asks for confirmation if any port is already in use (e.g., MinIO 9000 used by another project) before proceeding.
+3. **Proto** (`make proto`) — regenerates `gen/go`, `gen/elixir`, `gen/ts`.
+4. **gRPC Services** (iam, design, logic, deploy, export) — start up in background, with an active wait until each port responds.
 5. **Workers** (RabbitMQ).
 6. **Gateway** (`:8080`).
 7. **Collab** (Phoenix, `:4000`).
-8. **Frontend** — instala deps se faltarem e pergunta se quer abrir agora (`npm run dev`, foreground).
+8. **Frontend** — installs deps if missing and asks whether to open now (`npm run dev`, foreground).
 
-Ao final, mostra um resumo com as URLs de cada serviço. **Ctrl+C encerra todos os processos que o script iniciou.**
+At the end, it shows a summary with the URLs of each service. **Ctrl+C stops all processes started by the script.**
 
-**Logs**: tudo — inclusive `make up`, `make proto`, `npm install`, `mix deps.get` — é gravado em `.dev-logs/<nome>.log` (pasta única, gitignored), além de aparecer na tela.
+**Logs**: everything — including `make up`, `make proto`, `npm install`, `mix deps.get` — is recorded to `.dev-logs/<name>.log` (a single, gitignored folder), in addition to appearing on screen.
 
 ---
 
-## Passo a passo manual
+## Manual step-by-step
 
-Use isto se preferir rodar cada peça na mão, ou para debugar uma etapa específica que o `dev-up.sh` reportou com falha.
+Use this if you prefer running each piece by hand, or to debug a specific step reported as failed by `dev-up.sh`.
 
-### 0. Pré-requisitos de toolchain
+### 0. Toolchain prerequisites
 
-O apt do sistema é velho demais para as deps do repo — use as versões locais instaladas:
+The system's apt is too old for the repo's deps — use the locally installed versions:
 
 ```bash
-# Go 1.26 (apt tem 1.22, insuficiente para minio-go/x-net/protobuf)
+# Go 1.26 (apt has 1.22, insufficient for minio-go/x-net/protobuf)
 export PATH="$HOME/.local/go/bin:$PATH"
 
-# Elixir 1.17.3 / OTP 25 (apt tem 1.14, insuficiente para Phoenix/Plug/Bandit)
+# Elixir 1.17.3 / OTP 25 (apt has 1.14, insufficient for Phoenix/Plug/Bandit)
 export PATH="$HOME/.local/elixir1.17/bin:$PATH"
 export MIX_HOME="$HOME/.mix"
 export HEX_HOME="$HOME/.hex"
 ```
 
-Outras dependências: Docker + Docker Compose, Node 20, `buf` (`make tools` instala em `$(go env GOPATH)/bin`).
+Other dependencies: Docker + Docker Compose, Node 20, `buf` (`make tools` installs it into `$(go env GOPATH)/bin`).
 
-### 1. Sobe a infraestrutura (Docker Compose)
+### 1. Bring up the infrastructure (Docker Compose)
 
 ```bash
 make up        # postgres:5432, redis:6379, rabbitmq:5672/15672, jaeger:16686, otel-collector:4317/4318, minio:9000/9001
-make migrate   # aplica infra/postgres/migrations/*.sql
+make migrate   # applies infra/postgres/migrations/*.sql
 ```
 
-> **Gotcha de porta**: o `minio` do compose usa a porta host **9000/9001**. Se outro projeto já ocupar essa porta, suba um MinIO avulso (`docker run -p 9010:9000 ...` com creds `mach`/`machsecret`) e aponte `S3_ENDPOINT=localhost:9010` nas envs abaixo.
+> **Port gotcha**: compose's `minio` uses host port **9000/9001**. If another project already occupies that port, spin up a standalone MinIO (`docker run -p 9010:9000 ...` with creds `mach`/`machsecret`) and point `S3_ENDPOINT=localhost:9010` in the envs below.
 
-### 2. Gera os stubs de proto
+### 2. Generate the proto stubs
 
-Necessário antes de compilar Go e Elixir (o `collab` compila `gen/elixir`, que é gitignored):
+Required before compiling Go and Elixir (`collab` compiles `gen/elixir`, which is gitignored):
 
 ```bash
 make proto     # buf lint + buf generate → gen/go, gen/elixir, gen/ts
 ```
 
-Requer `buf` (`make tools`) e, para o alvo Elixir, `protoc-gen-elixir` no PATH:
+Requires `buf` (`make tools`) and, for the Elixir target, `protoc-gen-elixir` on the PATH:
 
 ```bash
-mix escript.install hex protobuf   # uma vez, com o Elixir 1.17 já no PATH
+mix escript.install hex protobuf   # once, with Elixir 1.17 already on the PATH
 export PATH="$HOME/.mix/escripts:$PATH"
 ```
 
-### 3. Sobe os serviços gRPC (Go)
+### 3. Bring up the gRPC services (Go)
 
-Cada serviço em um terminal, a partir da raiz do repo. Todos leem `DATABASE_URL` e `OTEL_EXPORTER_OTLP_ENDPOINT` com defaults já apontando para a infra do compose — normalmente não precisa setar nada:
+Each service in its own terminal, from the repo root. All of them read `DATABASE_URL` and `OTEL_EXPORTER_OTLP_ENDPOINT` with defaults already pointing at the compose infra — you normally don't need to set anything:
 
 ```bash
 go run ./services/iam/cmd      # IAM      :50051
 go run ./services/design/cmd   # Design   :50052
-go run ./services/logic/cmd    # Logic    :50053 (usa RABBITMQ_URL)
+go run ./services/logic/cmd    # Logic    :50053 (uses RABBITMQ_URL)
 go run ./services/deploy/cmd   # Deploy   :50054
-go run ./services/export/cmd   # Export   :50055 (usa S3_ENDPOINT/S3_ACCESS_KEY/S3_SECRET_KEY/S3_BUCKET)
+go run ./services/export/cmd   # Export   :50055 (uses S3_ENDPOINT/S3_ACCESS_KEY/S3_SECRET_KEY/S3_BUCKET)
 ```
 
-#### Workers assíncronos (RabbitMQ)
+#### Asynchronous workers (RabbitMQ)
 
 ```bash
-go run ./services/workers/cmd  # consome filas via RABBITMQ_URL (default amqp://mach:mach@localhost:5672/)
+go run ./services/workers/cmd  # consumes queues via RABBITMQ_URL (default amqp://mach:mach@localhost:5672/)
 ```
 
-### 4. Sobe o Gateway HTTP
+### 4. Bring up the HTTP Gateway
 
 ```bash
 go run ./services/gateway/cmd  # :8080
 ```
 
-Lê os endereços dos services acima via env (defaults já corretos para local):
+Reads the addresses of the services above via env (defaults are already correct for local):
 `GATEWAY_HTTP_ADDR`, `IAM_GRPC_ADDR`, `DESIGN_GRPC_ADDR`, `LOGIC_GRPC_ADDR`, `DEPLOY_GRPC_ADDR`, `EXPORT_GRPC_ADDR`, `OTEL_EXPORTER_OTLP_ENDPOINT`.
 
-Para login social em dev, opcionalmente: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `OAUTH_ALLOWED_REDIRECT_URIS`.
+For social login in dev, optionally: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `OAUTH_ALLOWED_REDIRECT_URIS`.
 
-### 5. Sobe o Collab (Elixir/Phoenix — colaboração em tempo real)
+### 5. Bring up Collab (Elixir/Phoenix — real-time collaboration)
 
 ```bash
 cd services/collab
@@ -112,25 +112,25 @@ mix deps.get
 mix phx.server     # http://localhost:4000
 ```
 
-> `jose` está pinado em `1.11.5` no `mix.exs` (compat com OTP 25).
+> `jose` is pinned to `1.11.5` in `mix.exs` (compat with OTP 25).
 
-### 6. Sobe o Frontend (Vite/React)
+### 6. Bring up the Frontend (Vite/React)
 
 ```bash
 cd services/frontend
-npm install         # se node_modules ainda não existir
+npm install         # if node_modules doesn't exist yet
 npm run dev
 ```
 
-Config em `services/frontend/.env.local` (`VITE_BYPASS_AUTH=true` pula auth em dev). Config runtime injetada via `window.__FRONTEND_CONFIG__` (baseUrl/token/sistemaId do host).
+Config in `services/frontend/.env.local` (`VITE_BYPASS_AUTH=true` skips auth in dev). Runtime config injected via `window.__FRONTEND_CONFIG__` (host's baseUrl/token/sistemaId).
 
-Porta fixada em `5183` via `server.port` + `server.strictPort: true` em `vite.config.ts` — sem `strictPort`, o Vite cai silenciosamente para `5173` se a porta estiver ocupada. Editor visual (aba Telas — canvas, rich text, posicionamento livre, catálogo de componentes) documentado em `specs/007-editor-visual-canvas/`.
+Port fixed at `5183` via `server.port` + `server.strictPort: true` in `vite.config.ts` — without `strictPort`, Vite silently falls back to `5173` if the port is busy. Visual editor (Screens tab — canvas, rich text, free positioning, component catalog) documented in `specs/007-editor-visual-canvas/`.
 
 ---
 
-## Referência rápida de portas
+## Port quick reference
 
-| Serviço          | Porta   |
+| Service          | Port   |
 |-------------------|---------|
 | Postgres           | 5432    |
 | Redis              | 6379    |
@@ -149,41 +149,41 @@ Porta fixada em `5183` via `server.port` + `server.strictPort: true` em `vite.co
 | Collab (Phoenix)   | 4000    |
 | Frontend (Vite dev)| 5183    |
 
-## Comandos úteis (Makefile)
+## Useful commands (Makefile)
 
 ```bash
-make help            # lista todos os alvos
-make down             # derruba a infra do compose
+make help            # lists all targets
+make down             # tears down the compose infra
 make test             # go test ./...
 make tidy             # go mod tidy
 make proto-breaking   # buf breaking --against main
 ```
 
-## Build e deploy (CI/CD, spec 002)
+## Build and deploy (CI/CD, spec 002)
 
-Também em `build/`, usados pelo pipeline `.github/workflows/cd.yml` (e reaproveitáveis localmente para ensaiar um release):
+Also in `build/`, used by the `.github/workflows/cd.yml` pipeline (and reusable locally to rehearse a release):
 
 ```bash
-SHA=$(git rev-parse --short HEAD) build/build-artifacts.sh          # empacota os 7 binários + release Elixir + services/frontend/dist em dist/artifacts/
-build/deploy.sh --env staging --host <host> --user <user> --sha <sha>   # rsync + troca atômica de symlink + restart
-build/smoke-test.sh --host <host>                                    # healthcheck pós-deploy
-build/rollback.sh --env staging --host <host> [--sha <sha>]          # repontar current ao release anterior, sem rebuild
+SHA=$(git rev-parse --short HEAD) build/build-artifacts.sh          # packages the 7 binaries + Elixir release + services/frontend/dist into dist/artifacts/
+build/deploy.sh --env staging --host <host> --user <user> --sha <sha>   # rsync + atomic symlink swap + restart
+build/smoke-test.sh --host <host>                                    # post-deploy healthcheck
+build/rollback.sh --env staging --host <host> [--sha <sha>]          # point current back to the previous release, without a rebuild
 ```
 
-Detalhes completos em `specs/002-entrega-continua-artefatos/` e `infra/deploy/README.md`.
+Full details in `specs/002-entrega-continua-artefatos/` and `infra/deploy/README.md`.
 
-## Testes de integração / E2E
+## Integration / E2E tests
 
-Exigem a infra do compose de pé (`make up` + `make migrate`) e rodam serial (`-p 1`) para evitar race em `GRANT ... ON SCHEMA`:
+Require the compose infra to be up (`make up` + `make migrate`) and run serially (`-p 1`) to avoid a race on `GRANT ... ON SCHEMA`:
 
 ```bash
 DATABASE_URL=postgres://mach:mach@localhost:5432/machv4?sslmode=disable \
   go test -tags integration -p 1 ./...
 
-# E2E de tracing precisa de rabbitmq/jaeger/otel-collector rodando (via compose)
+# Tracing E2E needs rabbitmq/jaeger/otel-collector running (via compose)
 OTLP_ENDPOINT=localhost:4317 JAEGER_QUERY=localhost:16686 \
   RABBITMQ_URL=amqp://mach:mach@localhost:5672/ \
   go test -tags e2e ./tests/e2e/...
 ```
 
-Testes do frontend: `cd services/frontend && npm test` (vitest) e `npm run typecheck` (`tsc --noEmit`).
+Frontend tests: `cd services/frontend && npm test` (vitest) and `npm run typecheck` (`tsc --noEmit`).

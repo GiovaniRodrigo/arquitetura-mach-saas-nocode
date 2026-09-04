@@ -1,17 +1,17 @@
-# Contratos de API: Reestruturação de IA e Regras de Negócio
+# API Contracts: AI and Business Rules Restructuring
 
-Endpoints **assumidos** — hoje não existem no Gateway. Seguem a convenção já usada por
-`player/src/api/client.ts` (`Authorization: Bearer`, tenant nunca no corpo — RN01 de
-001) e o formato de erro de `ApiError` (`{ codigo, mensagem }`). Até serem
-implementados no backend, a Fase 2 de `tasks.md` desenvolve a UI contra este contrato
-com `fetch` mockado nos testes (mesmo padrão de `contracts/api.md` de 003, que também
-assumia campos "a fornecer pelo Gateway").
+**Assumed** endpoints — they do not exist in the Gateway today. They follow the convention already used by
+`player/src/api/client.ts` (`Authorization: Bearer`, tenant never in the body — BR01 from
+001) and the `ApiError` error format (`{ codigo, mensagem }`). Until they are
+implemented in the backend, Phase 2 of `tasks.md` builds the UI against this contract
+with mocked `fetch` in tests (same pattern as `contracts/api.md` from 003, which also
+assumed fields "to be provided by the Gateway").
 
 ---
 
 ## `GET /api/v1/dashboard/ultimos-acessos`
 
-**Descrição**: 10 logins mais recentes entre os tenants vinculados ao usuário autenticado (RF04, RN02).
+**Description**: the 10 most recent logins across the tenants linked to the authenticated user (FR04, BR02).
 
 **Response 200:**
 ```json
@@ -24,7 +24,7 @@ assumia campos "a fornecer pelo Gateway").
 
 ## `GET /api/v1/dashboard/feedback?status=pendente|respondido`
 
-**Descrição**: mensagens de feedback dos tenants vinculados (RF05, RN03).
+**Description**: feedback messages from the linked tenants (FR05, BR03).
 
 **Response 200:**
 ```json
@@ -39,11 +39,11 @@ assumia campos "a fornecer pelo Gateway").
 
 **Request:** `{ "status": "respondido" }`
 
-**Response 200:** item atualizado (mesmo shape acima).
+**Response 200:** updated item (same shape as above).
 
 ## `GET /api/v1/dashboard/resumo-financeiro`
 
-**Descrição**: receita de assinatura/cobrança agregada dos tenants vinculados (RF06, RN04).
+**Description**: aggregated subscription/billing revenue from the linked tenants (FR06, BR04).
 
 **Response 200:**
 ```json
@@ -52,17 +52,17 @@ assumia campos "a fornecer pelo Gateway").
 
 ## `GET /api/v1/tenants`
 
-**Descrição**: tenants (clientes/negócios) vinculados ao usuário autenticado (RF07).
+**Description**: tenants (customers/businesses) linked to the authenticated user (FR07).
 
 **Response 200:** `{ "tenants": [ { "id": "uuid", "nome": "string" } ] }`
 
 ## `GET /api/v1/sistemas?tenant_id={id}`
 
-**Descrição**: extensão de `listarSistemas()` já existente, com filtro por tenant (RF08).
+**Description**: extension of the existing `listarSistemas()`, filtered by tenant (FR08).
 
 ## `GET|POST /api/v1/sistemas/{id}/regras-negocio`
 
-**Descrição**: CRUD de regras de validação de componente (RF10/RF11).
+**Description**: CRUD for component validation rules (FR10/FR11).
 
 **Request (POST):**
 ```json
@@ -71,34 +71,34 @@ assumia campos "a fornecer pelo Gateway").
 
 ## `GET /api/v1/sistemas/{id}/versoes` · `POST /api/v1/sistemas/{id}/versoes/{versaoId}/publicar` · `POST /api/v1/sistemas/{id}/versoes/{versaoId}/reverter`
 
-**Descrição**: lista/publica/reverte versão (RF12) — reaproveita a semântica de RN04/RN05 já definida em `001-construtor-sistemas-mach-v4`.
+**Description**: list/publish/roll back a version (FR12) — reuses the BR04/BR05 semantics already defined in `001-construtor-sistemas-mach-v4`.
 
 ## `PUT /api/v1/configuracao/white-label`
 
-**Request:** `{ "logo_url": "string", "cor_primaria": "#rrggbb", "cor_secundaria": "#rrggbb", "dominio_proprio": "string" }` (RF13, RNF03 — `dominio_validado` é assíncrono, backend responde `202` até a validação concluir)
+**Request:** `{ "logo_url": "string", "cor_primaria": "#rrggbb", "cor_secundaria": "#rrggbb", "dominio_proprio": "string" }` (FR13, NFR03 — `dominio_validado` is asynchronous, the backend responds `202` until validation completes)
 
 ## `PUT /api/v1/conta/senha`
 
-**Request:** `{ "senha_atual": "string", "senha_nova": "string" }` (RF14, RNF02)
+**Request:** `{ "senha_atual": "string", "senha_nova": "string" }` (FR14, NFR02)
 
 ## `POST /api/v1/conta/mfa/ativar` · `POST /api/v1/conta/mfa/confirmar` · `DELETE /api/v1/conta/mfa`
 
-**Descrição**: ativação TOTP em duas etapas — `ativar` devolve `{ "segredo_otp_auth_uri": "..." }` (exibição única); `confirmar` recebe `{ "codigo": "123456" }` (RF15, RNF01).
+**Description**: two-step TOTP activation — `ativar` returns `{ "segredo_otp_auth_uri": "..." }` (shown once); `confirmar` receives `{ "codigo": "123456" }` (FR15, NFR01).
 
 ## `DELETE /api/v1/conta`
 
-**Descrição**: exclui a conta autenticada (RF16, RN07).
+**Description**: deletes the authenticated account (FR16, BR07).
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 409 | `TENANT_ATIVO_VINCULADO` | Existem tenants ativos vinculados a esta conta. |
-| 401 | `REAUTENTICACAO_NECESSARIA` | Confirme sua senha para continuar. |
+| 409 | `TENANT_ATIVO_VINCULADO` | There are active tenants linked to this account. |
+| 401 | `REAUTENTICACAO_NECESSARIA` | Confirm your password to continue. |
 
 ## `PATCH /api/v1/conta/perfil`
 
-**Request:** `{ "nome": "string", "foto_url": "string" }` (RF17)
+**Request:** `{ "nome": "string", "foto_url": "string" }` (FR17)
 
 ## `POST /api/v1/conta/email` · `POST /api/v1/conta/email/confirmar`
 
-**Descrição**: `POST /email` envia o link/código ao novo endereço sem alterar o e-mail de login; `POST /email/confirmar` (com o token recebido) efetiva a troca (RF18, RN08).
+**Description**: `POST /email` sends the link/code to the new address without changing the login email; `POST /email/confirmar` (with the received token) applies the change (FR18, BR08).

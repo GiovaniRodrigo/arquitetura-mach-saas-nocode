@@ -1,83 +1,83 @@
-# Documento de Requisitos e Análise — Comando de Inicialização Local
+# Requirements and Analysis Document — Local Initialization Command
 
-## 1. Visão Geral
+## 1. Overview
 
-Hoje, subir o MACH V4 localmente exige executar manualmente, em ordem e em
-terminais separados: `make up`, `make migrate`, `make proto`, 5 serviços gRPC
-Go, os workers, o Gateway, o Collab (Elixir/Phoenix) e o Player (Vite) — sem
-checagem de pré-requisitos, sem detecção de conflito de porta e com logs
-espalhados por processo. Esta demanda especifica um **comando único e guiado**
-(`build/dev-up.sh`) que orquestra toda essa sequência, com feedback visual a
-cada etapa, confirmação do usuário em pontos de risco (porta ocupada, falha de
-uma etapa) e logs centralizados numa única pasta — reduzindo o startup a um
-único comando reexecutável.
+Today, bringing up MACH V4 locally requires manually running, in order and in
+separate terminals: `make up`, `make migrate`, `make proto`, the 5 Go gRPC
+services, the workers, the Gateway, Collab (Elixir/Phoenix), and the Player
+(Vite) — with no prerequisite checks, no port-conflict detection, and logs
+scattered across processes. This feature specifies a **single guided command**
+(`build/dev-up.sh`) that orchestrates this entire sequence, with visual
+feedback at every step, user confirmation at risk points (port in use, a step
+failing), and centralized logs in a single folder — reducing startup to a
+single, re-runnable command.
 
-Implementação de referência: `build/dev-up.sh`. Documentação de uso:
-`USAGE.md` (seção "Startup guiado").
+Reference implementation: `build/dev-up.sh`. Usage documentation:
+`USAGE.md` ("Guided startup" section).
 
 ---
 
-## 2. Regras de Negócio (RN)
+## 2. Business Rules (RN)
 
-| ID | Nome | Descrição |
+| ID | Name | Description |
 | :--- | :--- | :--- |
-| RN01 | Ordem de subida respeita dependências | A sequência é fixa e reflete as dependências reais entre camadas: infra (Docker) → contratos proto → serviços gRPC → workers → gateway → collab → player. Uma etapa só inicia depois que a anterior está pronta (porta respondendo). |
-| RN02 | Conflito de porta nunca falha silenciosamente | Se uma porta necessária já estiver em uso no host (ex.: MinIO 9000 ocupado por outro projeto), o comando avisa explicitamente e pede confirmação antes de prosseguir — nunca mata o processo que já a ocupa nem ignora o conflito sem aviso. |
-| RN03 | Processos em background são efêmeros ao comando | Todo processo que o comando inicia em background (services, workers, gateway, collab) deve ser encerrado automaticamente quando o comando é interrompido (Ctrl+C) ou termina, para não deixar processos órfãos ocupando portas. |
-| RN04 | Log único por execução | A saída (stdout/stderr) de cada etapa — síncrona (`make up`, `npm install`) ou em background (services, gateway, collab) — é centralizada em uma única pasta de logs, um arquivo por componente, para facilitar diagnóstico sem caçar terminais. |
-| RN05 | Execução não-interativa opcional | O comando deve poder rodar sem nenhum prompt (flag `--yes`, assume "sim" em todas as confirmações) para uso em automações, e sem subir o player (flag `--no-player`) quando ele já roda à parte. |
+| BR01 | Startup order respects dependencies | The sequence is fixed and reflects the real dependencies between layers: infra (Docker) → proto contracts → gRPC services → workers → gateway → collab → player. A step only starts once the previous one is ready (its port responding). |
+| BR02 | Port conflicts never fail silently | If a required port is already in use on the host (e.g., MinIO 9000 taken by another project), the command explicitly warns and asks for confirmation before proceeding — it never kills the process already using it, nor silently ignores the conflict. |
+| BR03 | Background processes are ephemeral to the command | Every process the command starts in the background (services, workers, gateway, collab) must be terminated automatically when the command is interrupted (Ctrl+C) or exits, so no orphaned processes are left holding ports. |
+| BR04 | A single log per run | The output (stdout/stderr) of each step — synchronous (`make up`, `npm install`) or background (services, gateway, collab) — is centralized in a single log folder, one file per component, to make diagnosis easier without hunting through terminals. |
+| BR05 | Optional non-interactive execution | The command must be able to run without any prompts (the `--yes` flag, assuming "yes" for every confirmation) for use in automation, and without starting the player (the `--no-player` flag) when it already runs separately. |
 
 ---
 
-## 3. Requisitos Funcionais (RF)
+## 3. Functional Requirements (RF)
 
-| ID | Nome | Descrição | Prioridade |
+| ID | Name | Description | Priority |
 | :--- | :--- | :--- | :--- |
-| RF01 | Pré-checagem de ferramentas | Verificar presença de `docker`, `go`, `node`, `npm`, `mix`, `buf` no PATH antes de iniciar qualquer etapa; abortar com instrução de correção específica para a ferramenta faltante. | Alta |
-| RF02 | Ajuste automático de PATH | Adicionar automaticamente ao PATH as toolchains locais exigidas pelo repo (Go 1.26 em `$HOME/.local/go`, Elixir 1.17 em `$HOME/.local/elixir1.17`), sem exigir que o usuário configure o shell manualmente. | Alta |
-| RF03 | Validação de versão do Go | Detectar a versão do `go` resolvida no PATH e avisar (com opção de prosseguir mesmo assim) se for anterior à mínima exigida pelo repo (1.23+). | Média |
-| RF04 | Subida da infraestrutura | Executar `make up` e `make migrate`; antes disso, detectar portas de infra já ocupadas no host e pedir confirmação (RN02). | Alta |
-| RF05 | Geração de contratos proto | Executar `make proto` (buf lint + generate) para regenerar `gen/go`, `gen/elixir`, `gen/ts` antes de compilar qualquer serviço. | Alta |
-| RF06 | Subida dos serviços gRPC | Subir em background os 5 serviços (`iam`, `design`, `logic`, `deploy`, `export`), aguardando ativamente (com timeout) cada porta responder antes de seguir para a etapa seguinte. | Alta |
-| RF07 | Subida dos workers | Subir em background o consumidor de filas RabbitMQ (`workers/cmd`). | Média |
-| RF08 | Subida do Gateway | Subir o Gateway HTTP em background, aguardando sua porta responder. | Alta |
-| RF09 | Subida do Collab | Instalar dependências (`mix deps.get`) e subir o Collab (Phoenix) em background, aguardando sua porta responder. | Alta |
-| RF10 | Preparação e subida do Player | Instalar dependências do Player (`npm install`, se `node_modules` ausente) e, mediante confirmação do usuário, iniciá-lo em foreground (`npm run dev`). | Média |
-| RF11 | Resumo final | Ao concluir, exibir um painel com as URLs de todos os serviços no ar (Gateway, Collab, Jaeger, RabbitMQ mgmt, MinIO console, Player) e o caminho da pasta de logs. | Média |
-| RF12 | Flags de execução | Suportar `--no-player` (não inicia o player) e `--yes`/`-y` (não interativo, assume "sim" em todas as confirmações). | Média |
-| RF13 | Log centralizado | Gravar a saída de cada etapa — em background ou síncrona — em `<pasta-de-logs>/<nome>.log`, além de exibi-la em tela quando síncrona. | Alta |
-| RF14 | Encerramento limpo | Ao receber Ctrl+C (ou ao sair por erro), encerrar todos os processos em background que o comando iniciou, na ordem inversa de criação. | Alta |
+| FR01 | Tooling pre-check | Verify that `docker`, `go`, `node`, `npm`, `mix`, `buf` are present on the PATH before starting any step; abort with a specific fix instruction for the missing tool. | High |
+| FR02 | Automatic PATH adjustment | Automatically add to the PATH the local toolchains required by the repo (Go 1.26 at `$HOME/.local/go`, Elixir 1.17 at `$HOME/.local/elixir1.17`), without requiring the user to configure the shell manually. | High |
+| FR03 | Go version validation | Detect the `go` version resolved on the PATH and warn (with the option to proceed anyway) if it's older than the minimum required by the repo (1.23+). | Medium |
+| FR04 | Bringing up the infrastructure | Run `make up` and `make migrate`; before that, detect infra ports already in use on the host and ask for confirmation (BR02). | High |
+| FR05 | Proto contract generation | Run `make proto` (buf lint + generate) to regenerate `gen/go`, `gen/elixir`, `gen/ts` before compiling any service. | High |
+| FR06 | Bringing up the gRPC services | Start the 5 services (`iam`, `design`, `logic`, `deploy`, `export`) in the background, actively waiting (with a timeout) for each port to respond before moving on to the next step. | High |
+| FR07 | Bringing up the workers | Start the RabbitMQ queue consumer (`workers/cmd`) in the background. | Medium |
+| FR08 | Bringing up the Gateway | Start the HTTP Gateway in the background, waiting for its port to respond. | High |
+| FR09 | Bringing up Collab | Install dependencies (`mix deps.get`) and start Collab (Phoenix) in the background, waiting for its port to respond. | High |
+| FR10 | Player preparation and startup | Install the Player's dependencies (`npm install`, if `node_modules` is missing) and, pending user confirmation, start it in the foreground (`npm run dev`). | Medium |
+| FR11 | Final summary | Upon completion, display a panel with the URLs of every running service (Gateway, Collab, Jaeger, RabbitMQ mgmt, MinIO console, Player) and the path to the log folder. | Medium |
+| FR12 | Execution flags | Support `--no-player` (doesn't start the player) and `--yes`/`-y` (non-interactive, assumes "yes" for every confirmation). | Medium |
+| FR13 | Centralized logging | Write the output of each step — background or synchronous — to `<pasta-de-logs>/<nome>.log`, in addition to displaying it on screen when synchronous. | High |
+| FR14 | Clean shutdown | Upon receiving Ctrl+C (or exiting on error), terminate every background process the command started, in reverse order of creation. | High |
 
 ---
 
-## 4. Requisitos Não Funcionais (RNF)
+## 4. Non-Functional Requirements (RNF)
 
-| ID | Nome | Descrição | Categoria |
+| ID | Name | Description | Category |
 | :--- | :--- | :--- | :--- |
-| RNF01 | Reexecutabilidade | O comando pode ser rodado múltiplas vezes seguidas sem exigir limpeza manual prévia (infra/migrações já aplicadas não devem quebrar uma nova execução). | Confiabilidade |
-| RNF02 | Feedback visual degradável | Indicadores visuais (✓/✗/!, cores) devem funcionar em terminal interativo e degradar para texto plano quando a saída não é um TTY (ex.: redirecionada para arquivo ou CI). | Usabilidade |
-| RNF03 | Timeout de espera | A espera ativa por uma porta tem um limite (60s por padrão); ao expirar, o comando reporta falha apontando o log específico daquela etapa, em vez de travar indefinidamente. | Confiabilidade |
-| RNF04 | Sem dependências externas novas | O comando usa apenas ferramentas já exigidas pelo projeto (bash, docker, go, node, mix, buf) — nenhuma dependência adicional a instalar só para rodar o startup. | Portabilidade |
-| RNF05 | Localização única | O comando e os demais scripts de build/startup/deploy do repositório residem todos em `build/`, evitando dispersão de scripts operacionais pelo repositório. | Manutenibilidade |
+| NFR01 | Re-runnability | The command can be run multiple times in a row without requiring prior manual cleanup (already-applied infra/migrations must not break a new run). | Reliability |
+| NFR02 | Degradable visual feedback | Visual indicators (✓/✗/!, colors) must work in an interactive terminal and degrade to plain text when the output is not a TTY (e.g., redirected to a file or CI). | Usability |
+| NFR03 | Wait timeout | Actively waiting for a port has a limit (60s by default); upon expiry, the command reports a failure pointing to that step's specific log, instead of hanging indefinitely. | Reliability |
+| NFR04 | No new external dependencies | The command uses only tools already required by the project (bash, docker, go, node, mix, buf) — no additional dependency to install just to run the startup. | Portability |
+| NFR05 | Single location | The command and the repository's other build/startup/deploy scripts all live in `build/`, avoiding scattering operational scripts across the repository. | Maintainability |
 
 ---
 
-## 5. Diagramas UML (Mermaid)
+## 5. UML Diagrams (Mermaid)
 
-### 5.1 Diagrama de Caso de Uso
+### 5.1 Use Case Diagram
 
 ```mermaid
 flowchart LR
-  dev((Desenvolvedor))
+  dev((Developer))
   subgraph Sistema["build/dev-up.sh"]
-    UC1[RF01/RF02/RF03 - Pré-checar ferramentas e toolchain]
-    UC2[RF04 - Subir infraestrutura Docker]
-    UC3[RF05 - Gerar contratos proto]
-    UC4[RF06/RF07 - Subir services gRPC e workers]
-    UC5[RF08 - Subir Gateway]
-    UC6[RF09 - Subir Collab]
-    UC7[RF10 - Subir Player]
-    UC8[RF11 - Exibir resumo final]
+    UC1[FR01/FR02/FR03 - Pre-check tools and toolchain]
+    UC2[FR04 - Bring up Docker infrastructure]
+    UC3[FR05 - Generate proto contracts]
+    UC4[FR06/FR07 - Bring up gRPC services and workers]
+    UC5[FR08 - Bring up Gateway]
+    UC6[FR09 - Bring up Collab]
+    UC7[FR10 - Bring up Player]
+    UC8[FR11 - Display final summary]
   end
   dev --> UC1
   dev --> UC2
@@ -89,11 +89,11 @@ flowchart LR
   dev --> UC8
 ```
 
-### 5.2 Diagrama de Sequência
+### 5.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
-  actor Desenvolvedor as dev
+  actor Developer as dev
   participant Script as devup
   participant Docker as docker
   participant Go as goservices
@@ -102,45 +102,45 @@ sequenceDiagram
   participant Player as player
 
   dev->>devup: ./build/dev-up.sh
-  devup->>devup: checar docker/go/node/mix/buf (RF01)
-  alt ferramenta ausente
-    devup-->>dev: aborta com instrução de correção
+  devup->>devup: check docker/go/node/mix/buf (FR01)
+  alt missing tool
+    devup-->>dev: aborts with a fix instruction
   end
-  devup->>docker: make up + make migrate (RF04)
-  alt porta já em uso
-    devup-->>dev: pede confirmação (RN02)
+  devup->>docker: make up + make migrate (FR04)
+  alt port already in use
+    devup-->>dev: asks for confirmation (BR02)
   end
-  docker-->>devup: infra pronta
-  devup->>devup: make proto (RF05)
-  devup->>Go: sobe iam/design/logic/deploy/export em background (RF06)
-  Go-->>devup: portas respondendo
-  devup->>Gateway: sobe gateway em background (RF08)
-  Gateway-->>devup: porta respondendo
-  devup->>Collab: mix deps.get + mix phx.server (RF09)
-  Collab-->>devup: porta respondendo
-  devup->>Player: npm install + confirma início (RF10)
-  devup-->>dev: resumo com URLs (RF11)
+  docker-->>devup: infra ready
+  devup->>devup: make proto (FR05)
+  devup->>Go: starts iam/design/logic/deploy/export in the background (FR06)
+  Go-->>devup: ports responding
+  devup->>Gateway: starts gateway in the background (FR08)
+  Gateway-->>devup: port responding
+  devup->>Collab: mix deps.get + mix phx.server (FR09)
+  Collab-->>devup: port responding
+  devup->>Player: npm install + confirms startup (FR10)
+  devup-->>dev: summary with URLs (FR11)
   dev->>devup: Ctrl+C
-  devup->>Go: encerra processos em background (RF14)
-  devup->>Gateway: encerra
-  devup->>Collab: encerra
+  devup->>Go: terminates background processes (FR14)
+  devup->>Gateway: terminates
+  devup->>Collab: terminates
 ```
 
-*(Diagrama de Classes omitido — a funcionalidade não introduz nem altera modelos de dados.)*
+*(Class Diagram omitted — this feature does not introduce or change data models.)*
 
 ---
 
-## 6. Mapeamento para Plane (Cards)
+## 6. Mapping to Plane (Cards)
 
-| Título do Card | Descrição (HTML) | Prioridade |
+| Card Title | Description (HTML) | Priority |
 | :--- | :--- | :--- |
-| Pré-checagem de ferramentas e toolchain no startup local | `<h3>Tarefas</h3><ul><li>Verificar docker/go/node/npm/mix/buf no PATH</li><li>Abortar com instrução de correção quando faltar ferramenta</li><li>Ajustar PATH automaticamente para Go 1.26 e Elixir 1.17 locais</li><li>Validar versão mínima do Go (1.23+) com aviso e opção de prosseguir</li></ul>` | high |
-| Subida guiada da infraestrutura Docker | `<h3>Tarefas</h3><ul><li>Detectar portas de infra já ocupadas antes do make up</li><li>Pedir confirmação do usuário em caso de conflito</li><li>Executar make up e make migrate</li><li>Aguardar postgres/rabbitmq/minio responderem antes de seguir</li></ul>` | high |
-| Subida orquestrada dos serviços gRPC e workers | `<h3>Tarefas</h3><ul><li>Rodar make proto antes de compilar os serviços</li><li>Subir iam/design/logic/deploy/export em background</li><li>Aguardar ativamente cada porta responder, com timeout</li><li>Subir o worker de RabbitMQ em background</li></ul>` | high |
-| Subida do Gateway e do Collab no startup local | `<h3>Tarefas</h3><ul><li>Subir o Gateway HTTP em background e aguardar a porta</li><li>Rodar mix deps.get e subir o Collab (Phoenix) em background</li><li>Aguardar a porta do Collab responder</li></ul>` | high |
-| Subida opcional do Player e resumo final | `<h3>Tarefas</h3><ul><li>Instalar dependências do player quando node_modules ausente</li><li>Perguntar ao usuário se deseja iniciar o player agora</li><li>Exibir painel final com as URLs de todos os serviços</li></ul>` | medium |
-| Flags de execução e encerramento limpo | `<h3>Tarefas</h3><ul><li>Implementar flag --no-player</li><li>Implementar flag --yes para modo não interativo</li><li>Encerrar todos os processos em background ao sair (Ctrl+C ou erro)</li></ul>` | medium |
-| Log centralizado do startup local | `<h3>Tarefas</h3><ul><li>Gravar saída de cada etapa síncrona e em background em pasta única de logs</li><li>Exibir saída em tela simultaneamente para etapas síncronas</li><li>Adicionar a pasta de logs ao gitignore</li></ul>` | medium |
-| Reorganização dos scripts de build/deploy em build/ | `<h3>Tarefas</h3><ul><li>Mover scripts/*.sh (build-artifacts, deploy, rollback, smoke-test) para build/</li><li>Atualizar referências em .github/workflows/cd.yml</li><li>Atualizar referências em infra/deploy/README.md e provision-host.sh</li><li>Atualizar referências nos docs da spec 002</li></ul>` | low |
+| Tooling and toolchain pre-check on local startup | `<h3>Tasks</h3><ul><li>Check for docker/go/node/npm/mix/buf on the PATH</li><li>Abort with a fix instruction when a tool is missing</li><li>Automatically adjust PATH for the local Go 1.26 and Elixir 1.17</li><li>Validate the minimum Go version (1.23+) with a warning and the option to proceed</li></ul>` | high |
+| Guided startup of the Docker infrastructure | `<h3>Tasks</h3><ul><li>Detect infra ports already in use before make up</li><li>Ask for user confirmation in case of a conflict</li><li>Run make up and make migrate</li><li>Wait for postgres/rabbitmq/minio to respond before proceeding</li></ul>` | high |
+| Orchestrated startup of the gRPC services and workers | `<h3>Tasks</h3><ul><li>Run make proto before compiling the services</li><li>Start iam/design/logic/deploy/export in the background</li><li>Actively wait for each port to respond, with a timeout</li><li>Start the RabbitMQ worker in the background</li></ul>` | high |
+| Bringing up the Gateway and Collab in the local startup | `<h3>Tasks</h3><ul><li>Start the HTTP Gateway in the background and wait for the port</li><li>Run mix deps.get and start Collab (Phoenix) in the background</li><li>Wait for the Collab port to respond</li></ul>` | high |
+| Optional Player startup and final summary | `<h3>Tasks</h3><ul><li>Install the player's dependencies when node_modules is missing</li><li>Ask the user whether they want to start the player now</li><li>Display a final panel with the URLs of every service</li></ul>` | medium |
+| Execution flags and clean shutdown | `<h3>Tasks</h3><ul><li>Implement the --no-player flag</li><li>Implement the --yes flag for non-interactive mode</li><li>Terminate every background process on exit (Ctrl+C or error)</li></ul>` | medium |
+| Centralized logging for the local startup | `<h3>Tasks</h3><ul><li>Write the output of every synchronous and background step to a single log folder</li><li>Simultaneously display the output on screen for synchronous steps</li><li>Add the log folder to gitignore</li></ul>` | medium |
+| Reorganization of build/deploy scripts into build/ | `<h3>Tasks</h3><ul><li>Move scripts/*.sh (build-artifacts, deploy, rollback, smoke-test) to build/</li><li>Update references in .github/workflows/cd.yml</li><li>Update references in infra/deploy/README.md and provision-host.sh</li><li>Update references in the spec 002 docs</li></ul>` | low |
 
-> Status de implementação: todos os itens acima já foram implementados nesta sessão (`build/dev-up.sh`, `USAGE.md`, migração `scripts/` → `build/`). Os cards ficam disponíveis para registro/rastreabilidade retroativa no Plane, se desejado.
+> Implementation status: all items above have already been implemented in this session (`build/dev-up.sh`, `USAGE.md`, `scripts/` → `build/` migration). The cards remain available for retroactive registration/traceability in Plane, if desired.

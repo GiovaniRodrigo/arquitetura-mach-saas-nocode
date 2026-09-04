@@ -1,24 +1,24 @@
-# Referências Populares (web)
+# Popular References (web)
 
-Referências do **mesmo domínio** (builders no-code/low-code) e guidelines oficiais de login
-social. Todas com evidência de adoção — sem blogs genéricos.
+References from the **same domain** (no-code/low-code builders) and official social-login
+guidelines. All with evidence of adoption — no generic blogs.
 
-| Referência | URL | Popularidade | Aplicabilidade ao player MACH |
+| Reference | URL | Popularity | Applicability to the MACH player |
 |---|---|---|---|
-| **Appsmith** — login/app templates | https://www.appsmith.com/blog/open-source-low-code-platforms | ~30.000+ stars GitHub; Discord 5.000+ | Padrão de tela de login e de app renderizado por builder; grid consistente |
-| **Budibase** — auth + auto-CRUD | https://budibase.com/blog/alternatives/appsmith-vs-budibase/ | ~300.000 equipes na plataforma | Estados de formulário/CRUD e telas de acesso para usuário final leigo |
-| **ToolJet** — UI builder low-code | https://blog.tooljet.com/appsmith-vs-budibase-vs-tooljet/ | 500+ contribuidores | Biblioteca de componentes consistente; feedback de ações |
-| **Bubble** — no-code customer-facing | https://blog.tooljet.com/appsmith-vs-budibase-vs-tooljet/ | Líder de mercado no-code, milhões de apps | Casca voltada ao cliente final; identidade de marca no login |
-| **Retool** — 100+ componentes | https://www.appsmith.com/blog/retool-alternatives | Milhares de empresas (padrão internal tools) | Estados de tabela/form e consistência de componentes |
-| **Material Design 3** — botões/estados | https://m3.material.io/ | Design system oficial Google/Android | Especificação de botão, foco/hover/disabled, cores semânticas |
-| **Sign in with Google (guideline)** | https://developers.google.com/identity/siwg/best-practices | Documentação oficial Google Identity | Hierarquia e posicionamento do botão social primário |
-| **Login/Signup UX Guide 2025** | https://www.authgear.com/post/login-signup-ux-guide/ | Guia de referência citado no setor | Limitar a 2–3 métodos; mobile-first; alvos grandes |
-| **SaaS login page design 2025 (Lollypop)** | https://lollypop.design/blog/2025/october/saas-login-page-design/ | Estúdio de design premiado | Card centrado, microcopy, identidade de marca |
+| **Appsmith** — login/app templates | https://www.appsmith.com/blog/open-source-low-code-platforms | ~30,000+ GitHub stars; 5,000+ Discord | Login screen and builder-rendered app pattern; consistent grid |
+| **Budibase** — auth + auto-CRUD | https://budibase.com/blog/alternatives/appsmith-vs-budibase/ | ~300,000 teams on the platform | Form/CRUD states and access screens for a lay end user |
+| **ToolJet** — low-code UI builder | https://blog.tooljet.com/appsmith-vs-budibase-vs-tooljet/ | 500+ contributors | Consistent component library; action feedback |
+| **Bubble** — customer-facing no-code | https://blog.tooljet.com/appsmith-vs-budibase-vs-tooljet/ | No-code market leader, millions of apps | Customer-facing shell; brand identity in the login |
+| **Retool** — 100+ components | https://www.appsmith.com/blog/retool-alternatives | Thousands of companies (internal-tools standard) | Table/form states and component consistency |
+| **Material Design 3** — buttons/states | https://m3.material.io/ | Google/Android's official design system | Button spec, focus/hover/disabled, semantic colors |
+| **Sign in with Google (guideline)** | https://developers.google.com/identity/siwg/best-practices | Official Google Identity documentation | Hierarchy and placement of the primary social button |
+| **Login/Signup UX Guide 2025** | https://www.authgear.com/post/login-signup-ux-guide/ | Reference guide cited in the industry | Limit to 2–3 methods; mobile-first; large targets |
+| **SaaS login page design 2025 (Lollypop)** | https://lollypop.design/blog/2025/october/saas-login-page-design/ | Award-winning design studio | Centered card, microcopy, brand identity |
 
-## Síntese aplicável
-- **Hierarquia**: destacar 1 método primário; máximo 2–3 no total (temos exatamente 2 — bom).
-- **Marca dos IDPs**: Google exige o "G" de 4 cores; GitHub usa o mark oficial. Hoje o player
-  usa **só texto**, sem logo — desvio das guidelines de ambos os IDPs.
-- **Card + identidade**: envolver o login num card centrado com logo/nome MACH.
-- **Mobile-first**: alvos ≥44px, largura fluida com `max-width`.
-- **Estados**: skeleton/loading, empty com ação, erro com retry — hoje ausentes.
+## Applicable synthesis
+- **Hierarchy**: highlight 1 primary method; max 2–3 total (we have exactly 2 — good).
+- **IDP branding**: Google requires the 4-color "G"; GitHub uses its official mark. Today the
+  player uses **text only**, no logo — a deviation from both IDPs' guidelines.
+- **Card + identity**: wrap the login in a centered card with the MACH logo/name.
+- **Mobile-first**: targets ≥44px, fluid width with `max-width`.
+- **States**: skeleton/loading, empty with an action, error with retry — currently absent.

@@ -1,41 +1,41 @@
-# Referências Populares
+# Popular References
 
-Todas as referências abaixo pertencem ao **mesmo domínio** do produto (visual/no-code builders, ferramentas de colaboração e design systems de dev-tools) e trazem métrica de popularidade — conforme a regra de escopo do skill (só recomendar o que tem evidência de adoção).
+All the references below belong to the **same domain** as the product (visual/no-code builders, collaboration tools, and dev-tools design systems) and carry popularity metrics — per the skill's scoping rule (only recommend what has evidence of adoption).
 
-## Produtos e Design Systems
+## Products and Design Systems
 
-| Referência | URL | Popularidade | Aplicabilidade |
+| Reference | URL | Popularity | Applicability |
 |---|---|---|---|
-| **Figma — Multiplayer Editing** | https://www.figma.com/blog/multiplayer-editing-in-figma/ | Avaliação ~US$ 20 bi; co-edição eleva velocidade de projeto ~35%; cursores fluidos com 10+ editores simultâneos | Modelo dos **cursores nomeados coloridos, presença e follow-mode** do Builder (RF06). Diffs otimizados por operação = base conceitual do batching (RNF07) |
-| **Vercel Geist Design System** | https://vercel.com/geist/colors | Design system público de referência 2024–25; adotado por milhares de projetos shadcn | **Paleta dark-first**: ink `#171717`, body `#0A0A0A`/`#fafafa`, escala de cinza de 200 passos para bordas/dividers/disabled. Base da paleta neutra do Dashboard/Builder |
-| **Linear** | https://linear.app | Benchmark de mercado citado como padrão "dark-first" 2025 | Contenção: 1 cor de acento sobre superfícies quase-pretas; densidade sem ruído; comando `Cmd+K`. Modelo da barra de comando e da hierarquia visual do Dashboard |
-| **Retool** | https://retool.com | Líder de mercado em internal tooling | **Layout de builder de 3 colunas** (biblioteca · canvas · propriedades); Inter em tamanhos densos; acento laranja `#EF5350` + azul `#3D5AFE`. Molde direto do Construtor Visual |
-| **Framer** | https://www.framer.com | Premiado (Awwwards); prototipagem interativa com animação no núcleo | Preview de transições/microinterações em tempo real no canvas. Referência para o **modo Preview** do Builder e as animações de 60 Hz do Player (RNF07) |
-| **WeWeb** | https://www.weweb.io/blog/drag-and-drop-app-builder-tools | Listado entre os "25 melhores drag-and-drop app builders 2026" | Padrões de **publish/ambientes** e lista de projetos multi-tenant. Base do Dashboard e do fluxo Publicar/Rollback (RF04) |
-| **Budibase / Appsmith** | https://uibakery.io/blog/drag-and-drop-app-builders | Reviews "top drag-and-drop app builders 2025" (UI Bakery) | Padrões open-source de builder no-code multi-tenant: painel de dados, binding por configuração. Referência do painel de **Regras de Negócio** (RF02) |
-| **Typeform / Google Forms** | https://www.typeform.com | Referência de UX de formulários de massa | Modelo do **Headless Player**: um campo em foco, validação inline, indicador de progresso, mobile-first (RF07) |
+| **Figma — Multiplayer Editing** | https://www.figma.com/blog/multiplayer-editing-in-figma/ | ~US$20B valuation; co-editing raises project speed ~35%; fluid cursors with 10+ simultaneous editors | Model for the Builder's **named colored cursors, presence, and follow-mode** (FR06). Operation-optimized diffs = conceptual basis for batching (NFR07) |
+| **Vercel Geist Design System** | https://vercel.com/geist/colors | Reference public design system 2024–25; adopted by thousands of shadcn projects | **Dark-first palette**: ink `#171717`, body `#0A0A0A`/`#fafafa`, 200-step gray scale for borders/dividers/disabled. Basis for the Dashboard/Builder neutral palette |
+| **Linear** | https://linear.app | Market benchmark cited as the "dark-first" standard for 2025 | Restraint: 1 accent color over near-black surfaces; density without noise; `Cmd+K` command. Model for the command bar and the Dashboard's visual hierarchy |
+| **Retool** | https://retool.com | Market leader in internal tooling | **3-column builder layout** (library · canvas · properties); Inter at dense sizes; orange accent `#EF5350` + blue `#3D5AFE`. Direct template for the Visual Builder |
+| **Framer** | https://www.framer.com | Award-winning (Awwwards); interactive prototyping with animation at its core | Real-time transition/microinteraction preview on the canvas. Reference for the Builder's **Preview mode** and the Player's 60Hz animations (NFR07) |
+| **WeWeb** | https://www.weweb.io/blog/drag-and-drop-app-builder-tools | Listed among the "25 best drag-and-drop app builders 2026" | **Publish/environments** patterns and multi-tenant project lists. Basis for the Dashboard and the Publish/Rollback flow (FR04) |
+| **Budibase / Appsmith** | https://uibakery.io/blog/drag-and-drop-app-builders | "Top drag-and-drop app builders 2025" reviews (UI Bakery) | Open-source multi-tenant no-code builder patterns: data panel, configuration-based binding. Reference for the **Business Rules** panel (FR02) |
+| **Typeform / Google Forms** | https://www.typeform.com | Reference for mass-form UX | Model for the **Headless Player**: one field in focus, inline validation, progress indicator, mobile-first (FR07) |
 
-## Guidelines e Pesquisa de UX
+## Guidelines and UX Research
 
-| Fonte | URL | Autoridade | O que aplicar |
+| Source | URL | Authority | What to apply |
 |---|---|---|---|
-| **Nielsen Norman Group — Form Design** | https://www.nngroup.com/articles/web-form-design/ | Pesquisa de UX com evidência | Labels top-aligned (preenchimento mais rápido); validação inline no *blur*; menos campos = maior taxa de conclusão. Aplicado ao Player (RF07) |
-| **Inline Validation — SubUX** | https://subux.pro/guides/article/inline-validation | Guia consolidado | Validar ao **sair do campo (blur)**, não durante a digitação; mensagem específica próxima ao campo. Aplicado ao mapa de erros por `blind_index` (RN08) |
-| **Material Design 3** | https://m3.material.io | Google HIG | Estados de componente (hover/focus/disabled), elevação, campos de texto, chips. Convenções do Player e dos controlos do Builder |
-| **Apple HIG** | https://developer.apple.com/design/human-interface-guidelines | Apple HIG | Semântica de ícones, hierarquia de ações destrutivas/confirmação (Rollback, Delete) |
-| **Multi-Step Form UX (Growform)** | https://www.growform.co/must-follow-ux-best-practices-when-designing-a-multi-step-form/ | Guia de conversão | Indicador "Passo 2 de 4", ordem de campos, remover campos supérfluos. Aplicado a formulários multi-etapa no Player |
+| **Nielsen Norman Group — Form Design** | https://www.nngroup.com/articles/web-form-design/ | Evidence-based UX research | Top-aligned labels (faster completion); inline validation on *blur*; fewer fields = higher completion rate. Applied to the Player (FR07) |
+| **Inline Validation — SubUX** | https://subux.pro/guides/article/inline-validation | Consolidated guide | Validate on **field blur**, not while typing; specific message near the field. Applied to the error map by `blind_index` (BR08) |
+| **Material Design 3** | https://m3.material.io | Google HIG | Component states (hover/focus/disabled), elevation, text fields, chips. Conventions for the Player and the Builder's controls |
+| **Apple HIG** | https://developer.apple.com/design/human-interface-guidelines | Apple HIG | Icon semantics, hierarchy of destructive actions/confirmation (Rollback, Delete) |
+| **Multi-Step Form UX (Growform)** | https://www.growform.co/must-follow-ux-best-practices-when-designing-a-multi-step-form/ | Conversion guide | "Step 2 of 4" indicator, field order, removing superfluous fields. Applied to multi-step forms in the Player |
 
-## Síntese de decisões extraídas das referências
+## Synthesis of decisions drawn from the references
 
-- **Tema**: dark-first (Geist/Linear) para Dashboard/Builder; light-first para o Player (público leigo).
-- **Layout do Builder**: 3 colunas Retool (biblioteca · canvas · propriedades) + camada de colaboração Figma por cima.
-- **Tipografia**: Inter (corpo/UI densa, padrão dev-tools) + Geist/Inter Display para títulos; JetBrains Mono para `blind_index` e valores técnicos.
-- **Cor de acento**: um único acento (contenção Linear) — violeta/índigo, distinto do azul-genérico, reservado para CTA primário e estado ativo.
-- **Formulários**: validação inline no blur (NN/g + SubUX), erros por campo, progresso visível.
+- **Theme**: dark-first (Geist/Linear) for Dashboard/Builder; light-first for the Player (layperson audience).
+- **Builder layout**: Retool's 3 columns (library · canvas · properties) + a Figma-style collaboration layer on top.
+- **Typography**: Inter (body/dense UI, dev-tools standard) + Geist/Inter Display for titles; JetBrains Mono for `blind_index` and technical values.
+- **Accent color**: a single accent (Linear restraint) — violet/indigo, distinct from generic blue, reserved for the primary CTA and active state.
+- **Forms**: inline validation on blur (NN/g + SubUX), per-field errors, visible progress.
 
 ---
 
-**Fontes**:
+**Sources**:
 - [Multiplayer Editing in Figma](https://www.figma.com/blog/multiplayer-editing-in-figma/)
 - [Vercel Geist — Colors](https://vercel.com/geist/colors)
 - [Geist Design System Breakdown (DesignSystems.one)](https://www.designsystems.one/design-systems/vercel-geist)

@@ -1,61 +1,61 @@
-# Deploy por artefatos — layout do host e pré-requisitos (spec 002)
+# Artifact-based deploy — host layout and prerequisites (spec 002)
 
-Este documento descreve o alvo da entrega contínua: um host Linux com `systemd` e
-Nginx que recebe **apenas artefatos compilados** (binários Go, release OTP do
-`collab`, bundle estático do `frontend`) via `rsync`/SSH. O host nunca clona o
-repositório nem possui toolchain de build (RNF01, RN01).
+This document describes the target of continuous delivery: a Linux host with `systemd` and
+Nginx that receives **only compiled artifacts** (Go binaries, `collab`'s OTP
+release, `frontend`'s static bundle) via `rsync`/SSH. The host never clones the
+repository and has no build toolchain (NFR01, BR01).
 
-## 1. Layout do sistema de arquivos
+## 1. Filesystem layout
 
 ```
 /opt/machv4/
 ├── releases/
-│   ├── <sha>/                # um diretório por release, imutável (RN04)
+│   ├── <sha>/                # one directory per release, immutable (BR04)
 │   │   ├── bin/{gateway,iam,design,logic,deploy,export,workers}
-│   │   ├── collab/           # release OTP autocontido (bin/, lib/, releases/, erts-*)
-│   │   └── frontend/         # dist estático (docroot do Nginx)
-│   └── <sha-anterior>/       # retido para rollback (RELEASES_KEEP, padrão 5)
-└── current -> releases/<sha> # symlink trocado atomicamente na ativação (RN04, RN07)
+│   │   ├── collab/           # self-contained OTP release (bin/, lib/, releases/, erts-*)
+│   │   └── frontend/         # static dist (Nginx docroot)
+│   └── <previous-sha>/       # kept for rollback (RELEASES_KEEP, default 5)
+└── current -> releases/<sha> # symlink swapped atomically on activation (BR04, BR07)
 
-/etc/machv4/                  # EnvironmentFiles por serviço (segredos; fora do artefato)
+/etc/machv4/                  # per-service EnvironmentFiles (secrets; outside the artifact)
 ├── gateway.env  iam.env  design.env  logic.env  deploy.env  export.env
 ├── workers.env
 └── collab.env
 ```
 
-## 2. Pré-requisitos do host (provisionamento — fora do escopo desta demanda)
+## 2. Host prerequisites (provisioning — out of scope for this task)
 
-O script idempotente [`provision-host.sh`](./provision-host.sh) cria e configura
-tudo o que segue. Rode-o como root **em cada host** (staging e produção), passando
-a chave pública do CI correspondente ao ambiente:
+The idempotent [`provision-host.sh`](./provision-host.sh) script creates and configures
+everything below. Run it as root **on each host** (staging and production), passing
+the CI public key corresponding to the environment:
 
 ```bash
 sudo ./infra/deploy/provision-host.sh --pubkey ~/ci_machv4_staging.pub
 ```
 
-Ele executa, de forma reexecutável:
+It performs, in a re-runnable way:
 
-- Usuário de serviço non-root `machv4` (dono de `/opt/machv4`).
-- Usuário de deploy SSH (ex.: `deploy`) membro do grupo `machv4`, com escrita em
-  `/opt/machv4` (dir `2775`/setgid) e autorização para `systemctl restart 'machv4-*'`
-  via `sudo` sem senha (regra `sudoers` restrita — `/etc/sudoers.d/machv4-deploy`,
-  validada com `visudo -cf`).
-- Chave pública do CI autorizada em `~deploy/.ssh/authorized_keys` (via `--pubkey`).
-- `/etc/machv4/` (0750) com um stub `<serviço>.env` por unidade (a preencher — §3).
-- Unidades de `infra/systemd/*.service` instaladas em `/etc/systemd/system/` e
-  habilitadas (sem `start` — só após o 1º deploy criar `current`).
-- Nginx apontando para `infra/nginx/machv4.conf` (`sites-enabled/` ou `conf.d/`),
-  com `nginx -t` + reload.
+- Non-root service user `machv4` (owner of `/opt/machv4`).
+- SSH deploy user (e.g., `deploy`) member of the `machv4` group, with write access to
+  `/opt/machv4` (dir `2775`/setgid) and authorization to `systemctl restart 'machv4-*'`
+  via `sudo` without a password (restricted `sudoers` rule — `/etc/sudoers.d/machv4-deploy`,
+  validated with `visudo -cf`).
+- CI public key authorized in `~deploy/.ssh/authorized_keys` (via `--pubkey`).
+- `/etc/machv4/` (0750) with a `<service>.env` stub per unit (to be filled in — §3).
+- `infra/systemd/*.service` units installed in `/etc/systemd/system/` and
+  enabled (without `start` — only after the 1st deploy creates `current`).
+- Nginx pointing to `infra/nginx/machv4.conf` (`sites-enabled/` or `conf.d/`),
+  with `nginx -t` + reload.
 
 Flags: `--service-user`, `--deploy-user`, `--base`, `--env-dir`, `--no-systemd`,
-`--no-nginx`, `--repo-dir`, `--help`. Pré-requisitos do SO que **não** são criados
-pelo script: `systemd`, `rsync`, `tar`, Nginx instalados, e o OTel Collector
-alcançável (endpoint em cada `*.env`).
+`--no-nginx`, `--repo-dir`, `--help`. OS prerequisites that are **not** created
+by the script: `systemd`, `rsync`, `tar`, Nginx installed, and the OTel Collector
+reachable (endpoint in each `*.env`).
 
-## 3. EnvironmentFiles (`/etc/machv4/<serviço>.env`)
+## 3. EnvironmentFiles (`/etc/machv4/<service>.env`)
 
-Cada arquivo carrega os segredos/endpoints em runtime — **nunca** versionados nem
-incluídos no artefato. Exemplos mínimos:
+Each file loads secrets/endpoints at runtime — **never** versioned or
+included in the artifact. Minimal examples:
 
 ```ini
 # /etc/machv4/gateway.env
@@ -66,7 +66,7 @@ LOGIC_GRPC_ADDR=127.0.0.1:50053
 OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector.internal:4317
 
 # /etc/machv4/collab.env
-SECRET_KEY_BASE=<gerar com: mix phx.gen.secret>
+SECRET_KEY_BASE=<generate with: mix phx.gen.secret>
 PHX_HOST=app.exemplo.com
 PORT=4000
 REDIS_URL=redis://127.0.0.1:6379
@@ -74,42 +74,42 @@ DESIGN_GRPC_ADDR=127.0.0.1:50052
 OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector.internal:4317
 ```
 
-## 4. GitHub Environments e segredos (task 13)
+## 4. GitHub Environments and secrets (task 13)
 
-Configurar dois *environments* no repositório (**Settings → Environments**):
+Configure two *environments* in the repository (**Settings → Environments**):
 
-| Environment | Acionado por | Gate |
+| Environment | Triggered by | Gate |
 |-------------|--------------|------|
-| `staging` | push em `main` | — (deploy automático) |
-| `production` | **disparo manual** (`workflow_dispatch`) | o próprio ato de disparar é a aprovação humana — RN03 |
+| `staging` | push to `main` | — (automatic deploy) |
+| `production` | **manual trigger** (`workflow_dispatch`) | the act of triggering itself is the human approval — BR03 |
 
-> Nota: *required reviewers* de environment exigem repo público ou plano pago
-> (Pro/Team/Enterprise). Neste repositório privado no plano free, o gate de
-> produção é o **disparo manual** do `cd.yml`. Para promover uma tag:
+> Note: environment *required reviewers* require a public repo or a paid plan
+> (Pro/Team/Enterprise). On this private repo on the free plan, the production
+> gate is the **manual trigger** of `cd.yml`. To promote a tag:
 >
 > ```bash
 > gh workflow run cd.yml --ref vX.Y.Z
 > ```
 
-Secrets por environment (mesmos nomes; valores distintos):
+Secrets per environment (same names; different values):
 
-| Secret | Descrição |
+| Secret | Description |
 |--------|-----------|
-| `SSH_PRIVATE_KEY` | Chave privada dedicada ao ambiente (par cadastrado no `authorized_keys` do usuário de deploy) |
-| `SSH_HOST` | Host/IP alvo |
-| `SSH_USER` | Usuário de deploy (ex.: `deploy`) |
-| `SSH_KNOWN_HOSTS` | Saída de `ssh-keyscan <host>` (evita TOFU no runner) |
+| `SSH_PRIVATE_KEY` | Private key dedicated to the environment (pair registered in the deploy user's `authorized_keys`) |
+| `SSH_HOST` | Target host/IP |
+| `SSH_USER` | Deploy user (e.g., `deploy`) |
+| `SSH_KNOWN_HOSTS` | Output of `ssh-keyscan <host>` (avoids TOFU on the runner) |
 
-Princípios: chave por ambiente, escopo mínimo, `production` sempre atrás de
-aprovação. O runner é o único ponto com toolchain e segredos de build; o host só
-recebe os tarballs.
+Principles: one key per environment, minimal scope, `production` always behind
+approval. The runner is the only place with build toolchain and secrets; the host
+only receives the tarballs.
 
-## 5. Operação manual
+## 5. Manual operation
 
 ```bash
-# Deploy de um sha específico (normalmente feito pelo cd.yml)
+# Deploy of a specific sha (normally done by cd.yml)
 build/deploy.sh --env staging --host "$SSH_HOST" --user deploy --sha <sha>
 
-# Rollback para o release anterior
+# Rollback to the previous release
 build/rollback.sh --env production --host "$SSH_HOST" --user deploy
 ```

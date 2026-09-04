@@ -1,68 +1,68 @@
-# Tarefas: Reestruturação de IA e Regras de Negócio
+# Tasks: AI and Business Rules Restructuring
 
-Ordenadas por dependência de execução, padrão specs + TDD (teste antes da
-implementação correspondente, como em `specs/001` e `specs/003`). Cada tarefa é
-atômica (≤ 1 dia) e referencia os arquivos afetados. Fase 1 não depende de contrato de
-API novo; Fases 2–5 implementam contra `contracts/api.md` (assumido — ver `plan.md §3`)
-com `fetch` mockado nos testes até o backend expor os endpoints reais.
+Ordered by execution dependency, spec-kit + TDD pattern (test before the
+corresponding implementation, as in `specs/001` and `specs/003`). Each task is
+atomic (≤1 day) and references the affected files. Phase 1 does not depend on a new
+API contract; Phases 2–5 implement against `contracts/api.md` (assumed — see `plan.md §3`)
+with mocked `fetch` in tests until the backend exposes the real endpoints.
 
-## Fase 1 — Renomeação da IA existente + Home e Ajuda (sem backend novo)
+## Phase 1 — Renaming the existing IA + Home and Help (no new backend)
 
-- [x] 1. Atualizar `DashboardLayout.test.tsx` para esperar os rótulos/rotas novos (Dashboard `/dashboard`, Clientes `/dashboard/clientes`, Configuração `/dashboard/configuracao`, + itens Cadastro/Perfil `/dashboard/perfil` e Ajuda `/dashboard/ajuda`) (RF03, RF07, RF13, RF17, RF20) (`player/src/layout/DashboardLayout.test.tsx`)
-- [x] 2. Renomear os itens da sidebar e os dois links do menu do avatar em `DashboardLayout.tsx` para os novos rótulos/rotas, adicionando os itens Cadastro/Perfil e Ajuda (RF03, RF07, RF13, RF17, RF20) (`player/src/layout/DashboardLayout.tsx`)
-- [x] 3. Renomear `Overview.tsx`/`Overview.test.tsx` para `Dashboard.tsx`/`Dashboard.test.tsx` e `Projects.tsx`/`Projects.test.tsx` para `Clientes.tsx`/`Clientes.test.tsx` (apenas rename + ajuste de imports; comportamento existente preservado) (`player/src/pages/Dashboard/Dashboard.tsx`, `Dashboard.test.tsx`, `Clientes.tsx`, `Clientes.test.tsx`)
-- [x] 4. Renomear `Settings.tsx`/`Settings.test.tsx` para `Configuracao.tsx`/`Configuracao.test.tsx`, removendo o card "Perfil do Usuário" (migra para a Fase 2) (`player/src/pages/Dashboard/Configuracao.tsx`, `Configuracao.test.tsx`)
-- [x] 5. Atualizar `App.tsx`: trocar imports/rotas para `Dashboard`/`Clientes`/`Configuracao`, mover `settings/perfil` para rota de topo `perfil`, adicionar rotas vazias `clientes/:tenantId`, `clientes/:tenantId/sistemas/:sistemaId/*`, `configuracao`, `ajuda` (RF07-RF21) (`player/src/App.tsx`)
-- [x] 6. Escrever teste de `Home.test.tsx` cobrindo renderização pública (sem `AppProvider`) e presença dos CTAs "Entrar"/"Cadastrar" com os `href`/rota corretos (RF01, RF02) (`player/src/pages/Home/Home.test.tsx`)
-- [x] 7. Implementar `Home.tsx` (landing pública de apresentação do produto, CTAs "Entrar" → login, "Cadastrar/Testar grátis" → fluxo de trial) e registrar a rota pública em `App.tsx` fora do `AppProvider` (RF01, RF02) (`player/src/pages/Home/Home.tsx`, `player/src/App.tsx`)
-- [x] 8. Escrever teste de `Ajuda.test.tsx` cobrindo listagem de artigos por categoria e filtro por termo de busca (RF20, RF21) (`player/src/pages/Dashboard/Ajuda.test.tsx`)
-- [x] 9. Implementar `artigos.ts` (conteúdo estático inicial) e `Ajuda.tsx` (busca + lista por categoria, `StateViews` para vazio) (RF20, RF21, RN09) (`player/src/ajuda/artigos.ts`, `player/src/pages/Dashboard/Ajuda.tsx`)
+- [x] 1. Update `DashboardLayout.test.tsx` to expect the new labels/routes (Dashboard `/dashboard`, Clients `/dashboard/clientes`, Settings `/dashboard/configuracao`, + Registration/Profile `/dashboard/perfil` and Help `/dashboard/ajuda` items) (FR03, FR07, FR13, FR17, FR20) (`player/src/layout/DashboardLayout.test.tsx`)
+- [x] 2. Rename the sidebar items and the two avatar-menu links in `DashboardLayout.tsx` to the new labels/routes, adding the Registration/Profile and Help items (FR03, FR07, FR13, FR17, FR20) (`player/src/layout/DashboardLayout.tsx`)
+- [x] 3. Rename `Overview.tsx`/`Overview.test.tsx` to `Dashboard.tsx`/`Dashboard.test.tsx` and `Projects.tsx`/`Projects.test.tsx` to `Clientes.tsx`/`Clientes.test.tsx` (rename + import adjustment only; existing behavior preserved) (`player/src/pages/Dashboard/Dashboard.tsx`, `Dashboard.test.tsx`, `Clientes.tsx`, `Clientes.test.tsx`)
+- [x] 4. Rename `Settings.tsx`/`Settings.test.tsx` to `Configuracao.tsx`/`Configuracao.test.tsx`, removing the "User Profile" card (moves to Phase 2) (`player/src/pages/Dashboard/Configuracao.tsx`, `Configuracao.test.tsx`)
+- [x] 5. Update `App.tsx`: swap imports/routes for `Dashboard`/`Clientes`/`Configuracao`, move `settings/perfil` to the top-level `perfil` route, add empty routes `clientes/:tenantId`, `clientes/:tenantId/sistemas/:sistemaId/*`, `configuracao`, `ajuda` (FR07-FR21) (`player/src/App.tsx`)
+- [x] 6. Write a `Home.test.tsx` test covering public rendering (without `AppProvider`) and the presence of the "Sign In"/"Sign Up" CTAs with the correct `href`/route (FR01, FR02) (`player/src/pages/Home/Home.test.tsx`)
+- [x] 7. Implement `Home.tsx` (public product-presentation landing page, "Sign In" CTA → login, "Sign Up/Try for Free" CTA → trial flow) and register the public route in `App.tsx` outside `AppProvider` (FR01, FR02) (`player/src/pages/Home/Home.tsx`, `player/src/App.tsx`)
+- [x] 8. Write an `Ajuda.test.tsx` test covering article listing by category and filtering by search term (FR20, FR21) (`player/src/pages/Dashboard/Ajuda.test.tsx`)
+- [x] 9. Implement `artigos.ts` (initial static content) and `Ajuda.tsx` (search + list by category, `StateViews` for empty) (FR20, FR21, BR09) (`player/src/ajuda/artigos.ts`, `player/src/pages/Dashboard/Ajuda.tsx`)
 
-## Fase 2 — Cadastro/Perfil (edição de nome/foto + troca de e-mail com confirmação)
+## Phase 2 — Registration/Profile (name/photo editing + email change with confirmation)
 
-- [x] 10. Escrever teste de `client.test.ts` para `atualizarPerfil`, `solicitarTrocaEmail`, `confirmarTrocaEmail` (payload, headers, tratamento de `ApiError`) (RF17, RF18) (`player/src/api/client.test.ts`)
-- [x] 11. Implementar `atualizarPerfil`, `solicitarTrocaEmail`, `confirmarTrocaEmail` em `ApiClient` (RF17, RF18) (`player/src/api/client.ts`, `player/src/api/types.ts`)
-- [x] 12. Escrever teste de `Perfil.test.tsx` cobrindo: edição de nome/foto salva direto; alteração de e-mail dispara `solicitarTrocaEmail` e mostra aviso "confirme no novo e-mail" sem trocar o e-mail exibido; link "Alterar senha" navega para `/dashboard/configuracao#seguranca` (RF17-RF19, RN08) (`player/src/pages/Dashboard/Perfil.test.tsx`)
-- [x] 13. Atualizar `Perfil.tsx` (mover para rota de topo, campos nome/foto/e-mail, fluxo de confirmação, link de atalho para Segurança) (RF17-RF19, RN08) (`player/src/pages/Dashboard/Perfil.tsx`)
+- [x] 10. Write a `client.test.ts` test for `atualizarPerfil`, `solicitarTrocaEmail`, `confirmarTrocaEmail` (payload, headers, `ApiError` handling) (FR17, FR18) (`player/src/api/client.test.ts`)
+- [x] 11. Implement `atualizarPerfil`, `solicitarTrocaEmail`, `confirmarTrocaEmail` in `ApiClient` (FR17, FR18) (`player/src/api/client.ts`, `player/src/api/types.ts`)
+- [x] 12. Write a `Perfil.test.tsx` test covering: name/photo editing saves directly; changing the email triggers `solicitarTrocaEmail` and shows a "confirm at the new email" notice without changing the displayed email; the "Change password" link navigates to `/dashboard/configuracao#seguranca` (FR17-FR19, BR08) (`player/src/pages/Dashboard/Perfil.test.tsx`)
+- [x] 13. Update `Perfil.tsx` (move to the top-level route, name/photo/email fields, confirmation flow, shortcut link to Security) (FR17-FR19, BR08) (`player/src/pages/Dashboard/Perfil.tsx`)
 
-## Fase 3 — Configuração: White Label e Segurança
+## Phase 3 — Settings: White Label and Security
 
-- [x] 14. Escrever teste de `client.test.ts` para `atualizarWhiteLabel`, `atualizarSenha`, `ativarMfa`, `confirmarMfa`, `desativarMfa`, `excluirConta` — incluindo o caso `409 TENANT_ATIVO_VINCULADO` (RF13-RF16, RN07) (`player/src/api/client.test.ts`)
-- [x] 15. Implementar os métodos acima em `ApiClient` (RF13-RF16) (`player/src/api/client.ts`, `player/src/api/types.ts`)
-- [x] 16. Escrever teste de `WhiteLabelForm.test.tsx` (salvar logo/cores/domínio; exibir estado "validando domínio" quando a API responde 202) (RF13, RNF03) (`player/src/configuracao/WhiteLabelForm.test.tsx`)
-- [x] 17. Implementar `WhiteLabelForm.tsx` (RF13, RNF03) (`player/src/configuracao/WhiteLabelForm.tsx`)
-- [x] 18. Escrever teste de `SegurancaForm.test.tsx` cobrindo os 3 fluxos: troca de senha; ativação de MFA em duas etapas (QR code exibido uma única vez, depois some do DOM); exclusão de conta bloqueada quando a API retorna `TENANT_ATIVO_VINCULADO` (RF14-RF16, RN07, RNF01, RNF02) (`player/src/configuracao/SegurancaForm.test.tsx`)
-- [x] 19. Implementar `SegurancaForm.tsx` (RF14-RF16, RN07, RNF01, RNF02) (`player/src/configuracao/SegurancaForm.tsx`)
-- [x] 20. Compor `Configuracao.tsx` com as seções Aparência (existente) + White Label + Segurança, com âncora `#seguranca` (RF13-RF16) (`player/src/pages/Dashboard/Configuracao.tsx`)
+- [x] 14. Write a `client.test.ts` test for `atualizarWhiteLabel`, `atualizarSenha`, `ativarMfa`, `confirmarMfa`, `desativarMfa`, `excluirConta` — including the `409 TENANT_ATIVO_VINCULADO` case (FR13-FR16, BR07) (`player/src/api/client.test.ts`)
+- [x] 15. Implement the above methods in `ApiClient` (FR13-FR16) (`player/src/api/client.ts`, `player/src/api/types.ts`)
+- [x] 16. Write a `WhiteLabelForm.test.tsx` test (save logo/colors/domain; show a "validating domain" state when the API responds 202) (FR13, NFR03) (`player/src/configuracao/WhiteLabelForm.test.tsx`)
+- [x] 17. Implement `WhiteLabelForm.tsx` (FR13, NFR03) (`player/src/configuracao/WhiteLabelForm.tsx`)
+- [x] 18. Write a `SegurancaForm.test.tsx` test covering the 3 flows: password change; two-step MFA activation (QR code shown once, then removed from the DOM); account deletion blocked when the API returns `TENANT_ATIVO_VINCULADO` (FR14-FR16, BR07, NFR01, NFR02) (`player/src/configuracao/SegurancaForm.test.tsx`)
+- [x] 19. Implement `SegurancaForm.tsx` (FR14-FR16, BR07, NFR01, NFR02) (`player/src/configuracao/SegurancaForm.tsx`)
+- [x] 20. Compose `Configuracao.tsx` with the Appearance (existing) + White Label + Security sections, with a `#seguranca` anchor (FR13-FR16) (`player/src/pages/Dashboard/Configuracao.tsx`)
 
-## Fase 4 — Dashboard: cards Últimos Acessos, Feedback e Resumo Financeiro
+## Phase 4 — Dashboard: Recent Access, Feedback, and Financial Summary cards
 
-- [x] 21. Escrever teste de `client.test.ts` para `listarUltimosAcessos`, `listarFeedback` (com filtro de status), `atualizarStatusFeedback`, `resumoFinanceiro` (RF04-RF06) (`player/src/api/client.test.ts`)
-- [x] 22. Implementar os métodos acima em `ApiClient` (RF04-RF06) (`player/src/api/client.ts`, `player/src/api/types.ts`)
-- [x] 23. Escrever teste de `useUltimosAcessos.test.ts`, `useFeedback.test.ts`, `useResumoFinanceiro.test.ts` cobrindo os 4 estados (carregando/pronto/vazio/erro) com `fetch` mockado, no mesmo molde de `useSistemas.test.ts` (RF04-RF06, RNF05) (`player/src/dashboard/useUltimosAcessos.test.ts`, `useFeedback.test.ts`, `useResumoFinanceiro.test.ts`)
-- [x] 24. Implementar `useUltimosAcessos.ts`, `useFeedback.ts`, `useResumoFinanceiro.ts` (RF04-RF06, RN02-RN04) (`player/src/dashboard/useUltimosAcessos.ts`, `useFeedback.ts`, `useResumoFinanceiro.ts`)
-- [x] 25. Escrever teste de `CardUltimosAcessos.test.tsx`, `CardFeedback.test.tsx` (incluindo ação de marcar como respondido), `CardResumoFinanceiro.test.tsx` usando `StateViews` (RF04-RF06, RNF05) (`player/src/dashboard/CardUltimosAcessos.test.tsx`, `CardFeedback.test.tsx`, `CardResumoFinanceiro.test.tsx`)
-- [x] 26. Implementar os 3 componentes de card acima (RF04-RF06) (`player/src/dashboard/CardUltimosAcessos.tsx`, `CardFeedback.tsx`, `CardResumoFinanceiro.tsx`)
-- [x] 27. Compor `Dashboard.tsx` com os 3 cards novos junto às métricas existentes (RF03-RF06, RN01) (`player/src/pages/Dashboard/Dashboard.tsx`)
+- [x] 21. Write a `client.test.ts` test for `listarUltimosAcessos`, `listarFeedback` (with status filter), `atualizarStatusFeedback`, `resumoFinanceiro` (FR04-FR06) (`player/src/api/client.test.ts`)
+- [x] 22. Implement the above methods in `ApiClient` (FR04-FR06) (`player/src/api/client.ts`, `player/src/api/types.ts`)
+- [x] 23. Write `useUltimosAcessos.test.ts`, `useFeedback.test.ts`, `useResumoFinanceiro.test.ts` tests covering the 4 states (loading/ready/empty/error) with mocked `fetch`, following the same pattern as `useSistemas.test.ts` (FR04-FR06, NFR05) (`player/src/dashboard/useUltimosAcessos.test.ts`, `useFeedback.test.ts`, `useResumoFinanceiro.test.ts`)
+- [x] 24. Implement `useUltimosAcessos.ts`, `useFeedback.ts`, `useResumoFinanceiro.ts` (FR04-FR06, BR02-BR04) (`player/src/dashboard/useUltimosAcessos.ts`, `useFeedback.ts`, `useResumoFinanceiro.ts`)
+- [x] 25. Write `CardUltimosAcessos.test.tsx`, `CardFeedback.test.tsx` (including the mark-as-answered action), `CardResumoFinanceiro.test.tsx` tests using `StateViews` (FR04-FR06, NFR05) (`player/src/dashboard/CardUltimosAcessos.test.tsx`, `CardFeedback.test.tsx`, `CardResumoFinanceiro.test.tsx`)
+- [x] 26. Implement the 3 card components above (FR04-FR06) (`player/src/dashboard/CardUltimosAcessos.tsx`, `CardFeedback.tsx`, `CardResumoFinanceiro.tsx`)
+- [x] 27. Compose `Dashboard.tsx` with the 3 new cards alongside the existing metrics (FR03-FR06, BR01) (`player/src/pages/Dashboard/Dashboard.tsx`)
 
-## Fase 5 — Clientes: navegação Tenant → Sistema → abas
+## Phase 5 — Clients: Tenant → System → tabs navigation
 
-- [x] 28. Escrever teste de `client.test.ts` para `listarTenants`, `listarSistemas` com filtro `tenant_id`, `listarRegrasNegocio`/`criarRegraNegocio`, `listarVersoes`/`publicarVersao`/`reverterVersao` (RF07, RF08, RF10, RF12) (`player/src/api/client.test.ts`)
-- [x] 29. Implementar os métodos acima em `ApiClient` (RF07, RF08, RF10, RF12) (`player/src/api/client.ts`, `player/src/api/types.ts`)
-- [x] 30. Escrever teste de `useTenants.test.ts` (4 estados, molde de `useSistemas.test.ts`) (RF07) (`player/src/clientes/useTenants.test.ts`)
-- [x] 31. Implementar `useTenants.ts` e reescrever `Clientes.tsx` para listar tenants via `useTenants` + `StateViews`, "Abrir cliente" navegando para `clientes/:tenantId` (RF07, RN01) (`player/src/clientes/useTenants.ts`, `player/src/pages/Dashboard/Clientes.tsx`)
-- [x] 32. Escrever teste de `ClienteSistemas.test.tsx` (lista sistemas do tenant via `useSistemas` filtrado; "Abrir sistema" navega para as abas) (RF08, RN05) (`player/src/pages/Dashboard/ClienteSistemas.test.tsx`)
-- [x] 33. Implementar `ClienteSistemas.tsx` (RF08, RN05) (`player/src/pages/Dashboard/ClienteSistemas.tsx`)
-- [x] 34. Escrever teste de `SistemaAbas.test.tsx` (navegação entre as 3 abas via `<Outlet/>`, aba ativa destacada) (RF09-RF12) (`player/src/pages/Dashboard/SistemaAbas.test.tsx`)
-- [x] 35. Implementar `SistemaAbas.tsx` e as rotas aninhadas `telas`/`regras`/`versao` em `App.tsx` (RF09-RF12) (`player/src/pages/Dashboard/SistemaAbas.tsx`, `player/src/App.tsx`)
-- [x] 36. Escrever teste de `AbaVersao.test.tsx` (lista versões, publica, reverte, reaproveitando o padrão de `abrirSistema.ts`) (RF12) (`player/src/pages/Dashboard/abas/AbaVersao.test.tsx`)
-- [x] 37. Implementar `AbaVersao.tsx` (RF12) (`player/src/pages/Dashboard/abas/AbaVersao.tsx`)
-- [x] 38. Escrever teste de `AbaRegrasNegocio.test.tsx` cobrindo criação de regra de componente único (CPF numérico/11 caracteres como exemplo) e estado vazio/placeholder para regra multi-componente (RF10, RN06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.test.tsx`)
-- [x] 39. Implementar `AbaRegrasNegocio.tsx` — CRUD de regra de componente único; RF11 (multi-componente) como placeholder explícito ("em breve"), não como funcionalidade real (RF10, RN06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx`)
-- [x] 40. Escrever teste de `AbaTelas.test.tsx` cobrindo apenas a casca (layout de 3 colunas renderiza, estado vazio "nenhuma tela criada ainda") — sem simular drag-and-drop, que não existe nesta fase (RF09) (`player/src/pages/Dashboard/abas/AbaTelas.test.tsx`)
-- [x] 41. Implementar `AbaTelas.tsx` como casca de navegação (sidebar de telas vazia, área central com placeholder de canvas, painel de propriedades vazio) — o editor funcional fica para spec própria (ver `plan.md §2.3`/Riscos) (RF09) (`player/src/pages/Dashboard/abas/AbaTelas.tsx`)
-  - Editor funcional implementado em `specs/007-editor-visual-canvas` (fecha o RF09 por completo).
+- [x] 28. Write a `client.test.ts` test for `listarTenants`, `listarSistemas` with `tenant_id` filter, `listarRegrasNegocio`/`criarRegraNegocio`, `listarVersoes`/`publicarVersao`/`reverterVersao` (FR07, FR08, FR10, FR12) (`player/src/api/client.test.ts`)
+- [x] 29. Implement the above methods in `ApiClient` (FR07, FR08, FR10, FR12) (`player/src/api/client.ts`, `player/src/api/types.ts`)
+- [x] 30. Write a `useTenants.test.ts` test (4 states, following the `useSistemas.test.ts` pattern) (FR07) (`player/src/clientes/useTenants.test.ts`)
+- [x] 31. Implement `useTenants.ts` and rewrite `Clientes.tsx` to list tenants via `useTenants` + `StateViews`, "Open client" navigating to `clientes/:tenantId` (FR07, BR01) (`player/src/clientes/useTenants.ts`, `player/src/pages/Dashboard/Clientes.tsx`)
+- [x] 32. Write a `ClienteSistemas.test.tsx` test (lists the tenant's systems via filtered `useSistemas`; "Open system" navigates to the tabs) (FR08, BR05) (`player/src/pages/Dashboard/ClienteSistemas.test.tsx`)
+- [x] 33. Implement `ClienteSistemas.tsx` (FR08, BR05) (`player/src/pages/Dashboard/ClienteSistemas.tsx`)
+- [x] 34. Write a `SistemaAbas.test.tsx` test (navigation between the 3 tabs via `<Outlet/>`, active tab highlighted) (FR09-FR12) (`player/src/pages/Dashboard/SistemaAbas.test.tsx`)
+- [x] 35. Implement `SistemaAbas.tsx` and the nested `telas`/`regras`/`versao` routes in `App.tsx` (FR09-FR12) (`player/src/pages/Dashboard/SistemaAbas.tsx`, `player/src/App.tsx`)
+- [x] 36. Write an `AbaVersao.test.tsx` test (lists versions, publishes, rolls back, reusing the `abrirSistema.ts` pattern) (FR12) (`player/src/pages/Dashboard/abas/AbaVersao.test.tsx`)
+- [x] 37. Implement `AbaVersao.tsx` (FR12) (`player/src/pages/Dashboard/abas/AbaVersao.tsx`)
+- [x] 38. Write an `AbaRegrasNegocio.test.tsx` test covering creation of a single-component rule (numeric CPF/11 characters as an example) and the empty/placeholder state for a multi-component rule (FR10, BR06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.test.tsx`)
+- [x] 39. Implement `AbaRegrasNegocio.tsx` — single-component rule CRUD; FR11 (multi-component) as an explicit placeholder ("coming soon"), not as real functionality (FR10, BR06) (`player/src/pages/Dashboard/abas/AbaRegrasNegocio.tsx`)
+- [x] 40. Write an `AbaTelas.test.tsx` test covering only the shell (3-column layout renders, "no screens created yet" empty state) — without simulating drag-and-drop, which does not exist at this stage (FR09) (`player/src/pages/Dashboard/abas/AbaTelas.test.tsx`)
+- [x] 41. Implement `AbaTelas.tsx` as a navigation shell (empty screens sidebar, central area with a canvas placeholder, empty properties panel) — the functional editor is left for a dedicated spec (see `plan.md §2.3`/Risks) (FR09) (`player/src/pages/Dashboard/abas/AbaTelas.tsx`)
+  - Functional editor implemented in `specs/007-editor-visual-canvas` (fully closes FR09).
 
-## Encerramento
+## Wrap-up
 
-- [x] 42. Rodar a suíte completa e o build: `npm run test`, `npm run typecheck` e `npm run build` devem passar sem erros (`player/`)
+- [x] 42. Run the full suite and the build: `npm run test`, `npm run typecheck`, and `npm run build` must all pass with no errors (`player/`)

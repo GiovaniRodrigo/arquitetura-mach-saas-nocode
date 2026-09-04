@@ -1,19 +1,20 @@
-# Plano de Implementação: Monitor de Recursos
+# Implementation Plan: Resource Monitor
 
-Estratégia: reaproveitar ao máximo os padrões já estabelecidos no monorepo (serviço Go
-`internal/app/cmd`, proto → `buf generate`, fachada REST no Gateway, hook + página no
-Player) e introduzir apenas dois componentes novos de fato — o serviço `services/monitor`
-e o pacote compartilhado `pkg/health` — em vez de reinventar convenções.
+Strategy: reuse as much as possible of the patterns already established in the monorepo
+(Go service `internal/app/cmd`, proto → `buf generate`, REST facade in the Gateway, hook +
+page in the Player) and introduce only two genuinely new components — the
+`services/monitor` service and the shared `pkg/health` package — instead of reinventing
+conventions.
 
 ---
 
-## 1. Arquitetura
+## 1. Architecture
 
-O Monitor é um serviço Go a mais, no mesmo nível dos demais (`services/monitor/`), que
-não guarda estado (sem Postgres) — só faz polling e agrega. Ele fala com os serviços Go
-existentes via uma nova RPC gRPC compartilhada (`RecursosService`, implementada por cada
-um deles através do pacote `pkg/health`) e com Collab/Workers via HTTP, porque nem todo
-serviço da plataforma fala gRPC nativamente hoje.
+The Monitor is one more Go service, at the same level as the others (`services/monitor/`),
+which holds no state (no Postgres) — it only polls and aggregates. It talks to the
+existing Go services via a new shared gRPC RPC (`RecursosService`, implemented by each of
+them through the `pkg/health` package) and to Collab/Workers via HTTP, because not every
+service in the platform speaks gRPC natively today.
 
 ```plantuml
 @startuml
@@ -27,16 +28,16 @@ package "Gateway" {
   [routes.ObterRecursos]
 }
 
-package "Monitor (novo)" {
+package "Monitor (new)" {
   [MonitorServiceServer]
-  [poller paralelo]
+  [parallel poller]
 }
 
-package "pkg/health (novo)" {
-  [RecursosServiceServer\n(implementação compartilhada)]
+package "pkg/health (new)" {
+  [RecursosServiceServer\n(shared implementation)]
 }
 
-package "Serviços gRPC existentes" {
+package "Existing gRPC services" {
   [IAM]
   [Design]
   [Logic]
@@ -44,199 +45,202 @@ package "Serviços gRPC existentes" {
   [Export]
 }
 
-package "Serviços HTTP" {
+package "HTTP services" {
   [Gateway /health]
   [Collab /healthz]
-  [Workers /health (novo)]
+  [Workers /health (new)]
 }
 
 [Monitor.tsx] --> [useRecursos.ts]
 [useRecursos.ts] --> [ApiClient.obterRecursos]
 [ApiClient.obterRecursos] --> [routes.ObterRecursos] : GET /api/v1/monitor/recursos
 [routes.ObterRecursos] --> [MonitorServiceServer] : gRPC ObterRecursos
-[MonitorServiceServer] --> [poller paralelo]
-[poller paralelo] --> [IAM]
-[poller paralelo] --> [Design]
-[poller paralelo] --> [Logic]
-[poller paralelo] --> [Deploy]
-[poller paralelo] --> [Export]
-[poller paralelo] --> [Gateway /health]
-[poller paralelo] --> [Collab /healthz]
-[poller paralelo] --> [Workers /health (novo)]
+[MonitorServiceServer] --> [parallel poller]
+[parallel poller] --> [IAM]
+[parallel poller] --> [Design]
+[parallel poller] --> [Logic]
+[parallel poller] --> [Deploy]
+[parallel poller] --> [Export]
+[parallel poller] --> [Gateway /health]
+[parallel poller] --> [Collab /healthz]
+[parallel poller] --> [Workers /health (new)]
 
-[IAM] .up.> [RecursosServiceServer] : embute
-[Design] .up.> [RecursosServiceServer] : embute
-[Logic] .up.> [RecursosServiceServer] : embute
-[Deploy] .up.> [RecursosServiceServer] : embute
-[Export] .up.> [RecursosServiceServer] : embute
+[IAM] .up.> [RecursosServiceServer] : embeds
+[Design] .up.> [RecursosServiceServer] : embeds
+[Logic] .up.> [RecursosServiceServer] : embeds
+[Deploy] .up.> [RecursosServiceServer] : embeds
+[Export] .up.> [RecursosServiceServer] : embeds
 @enduml
 ```
 
-**Por que Monitor fala gRPC com uns e HTTP com outros, em vez de padronizar tudo em um
-transporte só**: IAM/Design/Logic/Deploy/Export já são servidores gRPC puros (sem HTTP);
-Collab é Phoenix (HTTP) e já tem `/healthz`; Workers é um consumidor RabbitMQ sem servidor
-algum hoje. Forçar todos a gRPC exigiria adicionar um `grpc.Server` inteiro ao Collab
-(reescrever parte do Elixir) e ao Workers, para um único método — desproporcional ao
-ganho. Forçar todos a HTTP exigiria adicionar um `net/http` a 5 serviços gRPC puros só
-para isso. O caminho mais barato e consistente com o que cada serviço já é: estender o
-que cada um já tem (gRPC nos 5 Go-gRPC, HTTP no Collab, HTTP mínimo novo só no Workers,
-que é o único sem nenhum servidor).
+**Why the Monitor speaks gRPC with some and HTTP with others, instead of standardizing
+everything on a single transport**: IAM/Design/Logic/Deploy/Export are already pure gRPC
+servers (no HTTP); Collab is Phoenix (HTTP) and already has `/healthz`; Workers is a
+RabbitMQ consumer with no server at all today. Forcing everything onto gRPC would require
+adding a whole `grpc.Server` to Collab (rewriting part of the Elixir) and to Workers, for a
+single method — disproportionate to the gain. Forcing everything onto HTTP would require
+adding a `net/http` to 5 pure-gRPC services just for this. The cheapest path, and the one
+consistent with what each service already is: extend what each one already has (gRPC on
+the 5 Go-gRPC services, HTTP on Collab, a new minimal HTTP only on Workers, which is the
+only one with no server at all).
 
 ---
 
-## 2. Padrões de Design
+## 2. Design Patterns
 
-| Padrão | Onde se aplica | Justificativa | Alternativa descartada |
+| Pattern | Where it applies | Rationale | Alternative discarded |
 |--------|-----------------|----------------|-------------------------|
-| **Strategy** (implícito via interface Go) | `services/monitor/internal/poller` define uma interface `Coletor` com dois métodos concretos — `ColetorGRPC` (IAM/Design/Logic/Deploy/Export) e `ColetorHTTP` (Gateway/Collab/Workers) — cada um encapsulando como falar com seu tipo de serviço. | O poller principal não precisa saber *como* cada serviço é consultado, só chamar `Coletor.Coletar(ctx) (ServicoStatus, error)` — adicionar um 9º serviço no futuro (outro transporte, por exemplo) não muda o loop de agregação. | Um `switch` por tipo de serviço dentro do próprio poller: funciona para 8 casos, mas mistura a lógica de transporte com a de agregação/timeout, dificultando testar cada coletor isoladamente. |
-| **Fan-out/Fan-in** (goroutines + `sync.WaitGroup`/canal) | `services/monitor/internal/poller/agregador.go` | É literalmente o requisito RN04/RNF01 (paralelismo, timeout por serviço, um lento não trava os demais) — o padrão idiomático em Go para isso é disparar uma goroutine por coletor com `context.WithTimeout` e juntar os resultados em um canal, sem lib externa. | `errgroup` (golang.org/x/sync/errgroup): descartado porque `errgroup.Group.Wait()` retorna o primeiro erro e cancela o grupo — contrário ao requisito de que a falha de um serviço não deve interromper a coleta dos demais (RN01). O fan-out manual com canal é mais explícito para esse caso. |
-| **Shared Kernel** (pacote compartilhado) | `pkg/health` implementa `RecursosServiceServer` uma única vez; IAM/Design/Logic/Deploy/Export só chamam `health.Registrar(grpcServer, health.Config{ServiceName: "iam", StartedAt: ...})` no `main.go`, no mesmo ponto onde já registram seu próprio serviço de negócio. | Evita duplicar a leitura de `runtime.MemStats`/`runtime.NumGoroutine()`/cálculo de uptime em 5 `main.go` diferentes — já existe o precedente de `pkg/telemetry.Init` sendo chamado da mesma forma por todos. | Copiar o mesmo trecho de `runtime.MemStats` em cada serviço: rejeitado por violar DRY sem necessidade — os 5 serviços não têm nenhuma diferença legítima nessa lógica. |
-| **Adapter** | `services/monitor/internal/poller/http_collab.go` e `http_workers.go` traduzem o JSON HTTP de cada endpoint para o mesmo `ServicoStatus` (tipo gerado do proto) que os coletores gRPC produzem. | O restante do Monitor (agregação, resposta gRPC) trabalha só com o tipo único `ServicoStatus`; o formato específico de cada endpoint HTTP fica isolado no adapter correspondente. | N/A — é a forma direta de unificar dois protocolos de transporte diferentes em um mesmo modelo de saída. |
+| **Strategy** (implicit via a Go interface) | `services/monitor/internal/poller` defines a `Coletor` interface with two concrete implementations — `ColetorGRPC` (IAM/Design/Logic/Deploy/Export) and `ColetorHTTP` (Gateway/Collab/Workers) — each encapsulating how to talk to its kind of service. | The main poller doesn't need to know *how* each service is queried, only to call `Coletor.Coletar(ctx) (ServicoStatus, error)` — adding a 9th service in the future (another transport, for instance) doesn't change the aggregation loop. | A `switch` per service type inside the poller itself: works for 8 cases, but mixes transport logic with aggregation/timeout logic, making it harder to test each collector in isolation. |
+| **Fan-out/Fan-in** (goroutines + `sync.WaitGroup`/channel) | `services/monitor/internal/poller/agregador.go` | It is literally requirement BR04/NFR01 (parallelism, per-service timeout, one slow service doesn't block the others) — the idiomatic Go pattern for this is to fire one goroutine per collector with `context.WithTimeout` and join the results in a channel, no external library. | `errgroup` (golang.org/x/sync/errgroup): discarded because `errgroup.Group.Wait()` returns the first error and cancels the group — contrary to the requirement that one service's failure must not interrupt the collection of the others (BR01). Manual fan-out with a channel is more explicit for this case. |
+| **Shared Kernel** (shared package) | `pkg/health` implements `RecursosServiceServer` once; IAM/Design/Logic/Deploy/Export just call `health.Registrar(grpcServer, health.Config{ServiceName: "iam", StartedAt: ...})` in `main.go`, at the same point where they already register their own business service. | Avoids duplicating the reading of `runtime.MemStats`/`runtime.NumGoroutine()`/uptime calculation across 5 different `main.go` files — there's already a precedent with `pkg/telemetry.Init` being called the same way by all of them. | Copying the same `runtime.MemStats` snippet into each service: rejected for needlessly violating DRY — the 5 services have no legitimate difference in this logic. |
+| **Adapter** | `services/monitor/internal/poller/http_collab.go` and `http_workers.go` translate each endpoint's HTTP JSON into the same `ServicoStatus` (proto-generated type) that the gRPC collectors produce. | The rest of the Monitor (aggregation, gRPC response) works only with the single `ServicoStatus` type; each HTTP endpoint's specific format stays isolated in its corresponding adapter. | N/A — this is the direct way to unify two different transport protocols into the same output model. |
 
 ---
 
-## 3. Arquivos a Criar/Editar
+## 3. Files to Create/Edit
 
 ### 3.1. Proto (`proto/construtor/monitor/v1/`)
 
-* **`proto/construtor/monitor/v1/monitor.proto`** (novo): define `MonitorService` com RPC
-  `ObterRecursos(ObterRecursosRequest) returns (ObterRecursosResponse)`, mensagem
+* **`proto/construtor/monitor/v1/monitor.proto`** (new): defines `MonitorService` with the RPC
+  `ObterRecursos(ObterRecursosRequest) returns (ObterRecursosResponse)`, the message
   `ServicoStatus { nome, tipo, status, uptime_segundos, memoria_alocada_bytes,
-  memoria_sistema_bytes, goroutines, mensagem_erro }`; roda `make proto` para gerar
+  memoria_sistema_bytes, goroutines, mensagem_erro }`; run `make proto` to generate
   `gen/go/construtor/monitor/v1`, `gen/ts/construtor/monitor/v1`.
-* **`proto/construtor/health/v1/health.proto`** (novo, usado por `pkg/health`): define
-  `RecursosService` com RPC `ObterStatus(ObterStatusRequest) returns (ObterStatusResponse)`
-  — reaproveita a mesma mensagem `ServicoStatus` do pacote monitor (import cross-proto,
-  mesmo padrão de `common` já usado por outros pacotes do repo).
+* **`proto/construtor/health/v1/health.proto`** (new, used by `pkg/health`): defines
+  `RecursosService` with the RPC `ObterStatus(ObterStatusRequest) returns (ObterStatusResponse)`
+  — reuses the same `ServicoStatus` message from the monitor package (cross-proto import,
+  the same pattern already used by other packages in the repo for `common`).
 
-### 3.2. `pkg/health` (novo pacote compartilhado)
+### 3.2. `pkg/health` (new shared package)
 
-* **`pkg/health/server.go`**: implementa `healthv1.RecursosServiceServer.ObterStatus`,
-  lendo `runtime.MemStats`, `runtime.NumGoroutine()` e `time.Since(iniciadoEm)`.
-* **`pkg/health/server_test.go`**: testa que `ObterStatus` retorna status "servindo" e
-  valores não-negativos de memória/uptime.
-* **`pkg/health/registrar.go`**: função `Registrar(grpcServer *grpc.Server, nome string,
-  iniciadoEm time.Time)` — chamada por cada `main.go`.
+* **`pkg/health/server.go`**: implements `healthv1.RecursosServiceServer.ObterStatus`,
+  reading `runtime.MemStats`, `runtime.NumGoroutine()`, and `time.Since(iniciadoEm)`.
+* **`pkg/health/server_test.go`**: tests that `ObterStatus` returns "serving" status and
+  non-negative memory/uptime values.
+* **`pkg/health/registrar.go`**: `Registrar(grpcServer *grpc.Server, nome string,
+  iniciadoEm time.Time)` function — called by each `main.go`.
 
-### 3.3. Serviços Go existentes (IAM, Design, Logic, Deploy, Export)
+### 3.3. Existing Go services (IAM, Design, Logic, Deploy, Export)
 
 * **`services/iam/cmd/main.go`**, **`services/design/cmd/main.go`**,
   **`services/logic/cmd/main.go`**, **`services/deploy/cmd/main.go`**,
-  **`services/export/cmd/main.go`**: adicionar, logo após a criação do `grpcServer`,
-  `health.Registrar(grpcServer, "<nome-do-serviço>", inicioProcesso)` — 2 linhas por
-  arquivo, sem alterar nada existente.
+  **`services/export/cmd/main.go`**: add, right after the `grpcServer` is created,
+  `health.Registrar(grpcServer, "<service-name>", inicioProcesso)` — 2 lines per
+  file, no changes to existing code.
 
-### 3.4. `services/workers/` (endpoint HTTP novo)
+### 3.4. `services/workers/` (new HTTP endpoint)
 
-* **`services/workers/internal/health/server.go`** (novo): `net/http` mínimo, uma rota
-  `GET /health` retornando JSON `{status, uptime_segundos, memoria_alocada_bytes,
-  memoria_sistema_bytes, goroutines}` — mesmo shape de dados dos demais, formato HTTP
-  porque Workers não tem `grpc.Server`.
-* **`services/workers/internal/health/server_test.go`**: testa o handler isoladamente
+* **`services/workers/internal/health/server.go`** (new): minimal `net/http`, one
+  `GET /health` route returning JSON `{status, uptime_segundos, memoria_alocada_bytes,
+  memoria_sistema_bytes, goroutines}` — same data shape as the others, HTTP format
+  because Workers has no `grpc.Server`.
+* **`services/workers/internal/health/server_test.go`**: tests the handler in isolation
   (`httptest.NewRecorder`).
-* **`services/workers/cmd/main.go`**: sobe o servidor HTTP em uma goroutine, endereço via
-  `env("WORKERS_HTTP_ADDR", ":50056")`, com shutdown gracioso junto ao `signal.Notify`
-  já existente no arquivo.
+* **`services/workers/cmd/main.go`**: starts the HTTP server in a goroutine, address via
+  `env("WORKERS_HTTP_ADDR", ":50056")`, with graceful shutdown alongside the
+  `signal.Notify` already present in the file.
 
 ### 3.5. `services/collab/` (Elixir)
 
-* **`services/collab/lib/collab_web/endpoint.ex`**: estender a função privada `healthz/2`
-  (linha ~52) para incluir no corpo JSON `status`, `uptime_segundos` (calculado a partir
-  de um timestamp guardado em `Application.put_env` no boot, ou via
-  `:erlang.statistics(:wall_clock)`) e `memoria_bytes` (via `:erlang.memory(:total)`) —
-  mantendo o status HTTP 200 atual, só enriquecendo o corpo.
-* **`services/collab/test/collab_web/endpoint_test.exs`** (novo ou estendido): confirma
-  que `/healthz` retorna os novos campos.
+* **`services/collab/lib/collab_web/endpoint.ex`**: extend the private `healthz/2`
+  function (line ~52) to include in the JSON body `status`, `uptime_segundos` (calculated
+  from a timestamp stored via `Application.put_env` at boot, or via
+  `:erlang.statistics(:wall_clock)`), and `memoria_bytes` (via `:erlang.memory(:total)`) —
+  keeping the current HTTP 200 status, only enriching the body.
+* **`services/collab/test/collab_web/endpoint_test.exs`** (new or extended): confirms
+  that `/healthz` returns the new fields.
 
-### 3.6. `services/monitor/` (novo serviço)
+### 3.6. `services/monitor/` (new service)
 
-* **`services/monitor/cmd/main.go`**: sobe o gRPC server do Monitor
-  (`MONITOR_GRPC_ADDR`, default `:50056`... **nota**: colide com o `:50056` do Workers
-  HTTP acima — ver §6 Riscos; endereços finais definidos em `research.md`), injeta os
-  endereços dos 8 serviços monitorados via env vars (mesma convenção `<NOME>_GRPC_ADDR` /
-  `<NOME>_HTTP_ADDR` do Gateway).
-* **`services/monitor/app/app.go`**: monta o `MonitorServiceServer` a partir da lista de
-  coletores (padrão do `app.go` de Design/Deploy — pacote público para uso do binário e
-  dos testes de integração).
-* **`services/monitor/internal/server/grpc.go`**: implementa
-  `monitorv1.MonitorServiceServer.ObterRecursos`, delega ao agregador.
-* **`services/monitor/internal/server/grpc_test.go`**: testa a RPC com coletores fake
-  (um sempre ok, um sempre erro, um que estoura o timeout) — confirma RN01 (não propaga
-  erro do serviço individual como erro da RPC).
-* **`services/monitor/internal/poller/coletor.go`**: interface `Coletor` +
-  `ColetorGRPC` (usa `healthv1.RecursosServiceClient`) + `ColetorHTTP` (usa
-  `net/http.Client` com timeout).
-* **`services/monitor/internal/poller/coletor_test.go`**: testa cada coletor contra um
-  servidor gRPC/HTTP fake local.
-* **`services/monitor/internal/poller/agregador.go`**: fan-out/fan-in (§2) — recebe a
-  lista de `Coletor`, dispara todos em paralelo com `context.WithTimeout` (2s, RNF01),
-  devolve `[]ServicoStatus` na ordem fixa de configuração.
-* **`services/monitor/internal/poller/agregador_test.go`**: testa paralelismo (todos os
-  coletores levam ~mesmo tempo total, não soma) e que um coletor lento/travado não atrasa
-  os demais além do timeout.
+* **`services/monitor/cmd/main.go`**: starts the Monitor's gRPC server
+  (`MONITOR_GRPC_ADDR`, default `:50056`... **note**: collides with Workers HTTP's
+  `:50056` above — see §6 Risks; final addresses defined in `research.md`), injects the
+  addresses of the 8 monitored services via env vars (the same `<NAME>_GRPC_ADDR` /
+  `<NAME>_HTTP_ADDR` convention as the Gateway).
+* **`services/monitor/app/app.go`**: assembles the `MonitorServiceServer` from the list of
+  collectors (the same pattern as Design/Deploy's `app.go` — a public package for use by
+  the binary and by integration tests).
+* **`services/monitor/internal/server/grpc.go`**: implements
+  `monitorv1.MonitorServiceServer.ObterRecursos`, delegates to the aggregator.
+* **`services/monitor/internal/server/grpc_test.go`**: tests the RPC with fake collectors
+  (one always ok, one always erroring, one that blows the timeout) — confirms BR01 (does
+  not propagate an individual service's error as an RPC error).
+* **`services/monitor/internal/poller/coletor.go`**: `Coletor` interface +
+  `ColetorGRPC` (uses `healthv1.RecursosServiceClient`) + `ColetorHTTP` (uses
+  `net/http.Client` with a timeout).
+* **`services/monitor/internal/poller/coletor_test.go`**: tests each collector against a
+  local fake gRPC/HTTP server.
+* **`services/monitor/internal/poller/agregador.go`**: fan-out/fan-in (§2) — receives the
+  list of `Coletor`s, fires all of them in parallel with `context.WithTimeout` (2s, NFR01),
+  returns `[]ServicoStatus` in the fixed configuration order.
+* **`services/monitor/internal/poller/agregador_test.go`**: tests parallelism (all the
+  collectors take roughly the same total time, not the sum) and that one slow/stuck
+  collector doesn't delay the others beyond the timeout.
 
 ### 3.7. Gateway
 
-* **`services/gateway/internal/routes/monitor.go`** (novo): `ObterRecursos(monitor
-  monitorv1.MonitorServiceClient) http.HandlerFunc`, mesmo padrão de
-  `routes.ResumoFinanceiro` (chama a RPC, serializa `ServicoStatus[]` como JSON).
-* **`services/gateway/internal/routes/monitor_test.go`**: testa serialização e propagação
-  de erro do Monitor (RNF02 — vira um único erro HTTP, não crash).
-* **`services/gateway/internal/app/router.go`**: adiciona parâmetro `monitor
-  monitorv1.MonitorServiceClient` a `NewRouter` e a rota `r.Get("/api/v1/monitor/recursos",
-  routes.ObterRecursos(monitor))` dentro do grupo autenticado (RNF05).
-* **`services/gateway/cmd/main.go`**: cria o client gRPC do Monitor
-  (`MONITOR_GRPC_ADDR`), passa para `app.NewRouter` (mesmo padrão dos outros 5 clients já
-  criados ali).
+* **`services/gateway/internal/routes/monitor.go`** (new): `ObterRecursos(monitor
+  monitorv1.MonitorServiceClient) http.HandlerFunc`, the same pattern as
+  `routes.ResumoFinanceiro` (calls the RPC, serializes `ServicoStatus[]` as JSON).
+* **`services/gateway/internal/routes/monitor_test.go`**: tests serialization and
+  propagation of a Monitor error (NFR02 — becomes a single HTTP error, not a crash).
+* **`services/gateway/internal/app/router.go`**: adds a `monitor
+  monitorv1.MonitorServiceClient` parameter to `NewRouter` and the route
+  `r.Get("/api/v1/monitor/recursos", routes.ObterRecursos(monitor))` inside the
+  authenticated group (NFR05).
+* **`services/gateway/cmd/main.go`**: creates the Monitor's gRPC client
+  (`MONITOR_GRPC_ADDR`), passes it to `app.NewRouter` (the same pattern as the other 5
+  clients already created there).
 
 ### 3.8. Frontend
 
-* **`services/frontend/src/api/types.ts`**: adiciona tipo `ServicoStatus` (espelha o JSON
-  do Gateway).
-* **`services/frontend/src/api/client.ts`**: adiciona `async obterRecursos():
-  Promise<ServicoStatus[]>` (mesmo padrão de `resumoFinanceiro()`).
-* **`services/frontend/src/dashboard/useRecursos.ts`** (novo) +
-  **`useRecursos.test.ts`**: hook com o mesmo formato de `useResumoFinanceiro.ts`
-  (`carregando`/`pronto`/`erro`), acrescido de auto-refresh via `setInterval` (RF07) e
-  `recarregar()` manual.
-* **`services/frontend/src/dashboard/CardServicoStatus.tsx`** (novo) +
-  **`CardServicoStatus.test.tsx`**: um card por serviço (nome, indicador verde/vermelho,
-  uptime formatado, memória formatada, ou mensagem de erro).
-* **`services/frontend/src/pages/Dashboard/Monitor.tsx`** (novo) +
-  **`Monitor.test.tsx`**: página que usa `useRecursos`, renderiza os `CardServicoStatus`,
-  botão "Atualizar", distingue erro-da-tela-toda (RNF02) de indisponibilidade individual
-  (RN01).
-* **`services/frontend/src/App.tsx`**: importa `Monitor`, adiciona
-  `<Route path="monitor" element={<Monitor />} />` dentro do grupo `/dashboard`.
-* **`services/frontend/src/layout/DashboardLayout.tsx`**: novo item de sidebar "Monitor"
-  (ícone `Activity` de `lucide-react`, mesmo padrão de `SidebarMenuItem` dos existentes) e
-  novo `case` em `tituloDaPagina`.
-* **`services/frontend/src/layout/DashboardLayout.test.tsx`**: cobre o novo item de menu.
+* **`services/frontend/src/api/types.ts`**: adds the `ServicoStatus` type (mirrors the
+  Gateway's JSON).
+* **`services/frontend/src/api/client.ts`**: adds `async obterRecursos():
+  Promise<ServicoStatus[]>` (same pattern as `resumoFinanceiro()`).
+* **`services/frontend/src/dashboard/useRecursos.ts`** (new) +
+  **`useRecursos.test.ts`**: a hook with the same shape as `useResumoFinanceiro.ts`
+  (`carregando`/`pronto`/`erro`), plus auto-refresh via `setInterval` (FR07) and a manual
+  `recarregar()`.
+* **`services/frontend/src/dashboard/CardServicoStatus.tsx`** (new) +
+  **`CardServicoStatus.test.tsx`**: one card per service (name, green/red indicator,
+  formatted uptime, formatted memory, or an error message).
+* **`services/frontend/src/pages/Dashboard/Monitor.tsx`** (new) +
+  **`Monitor.test.tsx`**: a page that uses `useRecursos`, renders the `CardServicoStatus`
+  components, an "Update" button, distinguishes a whole-screen error (NFR02) from an
+  individual unavailability (BR01).
+* **`services/frontend/src/App.tsx`**: imports `Monitor`, adds
+  `<Route path="monitor" element={<Monitor />} />` inside the `/dashboard` group.
+* **`services/frontend/src/layout/DashboardLayout.tsx`**: a new "Monitor" sidebar item
+  (the `Activity` icon from `lucide-react`, the same pattern as the existing
+  `SidebarMenuItem`s) and a new `case` in `tituloDaPagina`.
+* **`services/frontend/src/layout/DashboardLayout.test.tsx`**: covers the new menu item.
 
 ### 3.9. Infra / build
 
-* **`build/dev-up.sh`**: adiciona `run_bg monitor go run ./services/monitor/cmd` à lista
-  de serviços subidos (após `export`, antes de `workers`/`gateway` — ordem não importa
-  funcionalmente, mas o Monitor deve subir depois dos serviços que ele consulta para os
-  logs iniciais não mostrarem erro de conexão transitório).
-* **`.github/workflows/ci.yml`**: nenhuma mudança estrutural — o job `go` já roda
-  `go build ./... && go vet ./... && go test ./...` sobre todo o monorepo, cobrindo o novo
-  módulo automaticamente; o job `elixir` já roda `mix test` em `services/collab`; o job
-  `player` já roda `npm test`/`typecheck` em `services/frontend`.
+* **`build/dev-up.sh`**: adds `run_bg monitor go run ./services/monitor/cmd` to the list
+  of services started (after `export`, before `workers`/`gateway` — the order doesn't
+  matter functionally, but the Monitor should start after the services it queries so the
+  initial logs don't show a transient connection error).
+* **`.github/workflows/ci.yml`**: no structural changes — the `go` job already runs
+  `go build ./... && go vet ./... && go test ./...` across the whole monorepo, covering the
+  new module automatically; the `elixir` job already runs `mix test` in
+  `services/collab`; the `player` job already runs `npm test`/`typecheck` in
+  `services/frontend`.
 
 ---
 
-## 4. Decisões Técnicas
+## 4. Technical Decisions
 
-### 4.1. Por que um proto `health.proto` separado do `monitor.proto`
+### 4.1. Why a `health.proto` separate from `monitor.proto`
 
-`RecursosService` (implementado pelos 5 serviços Go via `pkg/health`) e `MonitorService`
-(implementado só pelo Monitor) são interfaces diferentes: a primeira responde "como estou
-eu", a segunda responde "como estão todos". Um único proto com um único serviço faria o
-Monitor "implementar a si mesmo" de forma confusa (ele teria que registrar tanto
-`RecursosService.ObterStatus` — sobre si mesmo — quanto `MonitorService.ObterRecursos` —
-sobre todos). Separar deixa explícito que `ServicoStatus` é o contrato de dado
-compartilhado, e cada proto expõe só a RPC que faz sentido para quem o implementa.
+`RecursosService` (implemented by the 5 Go services via `pkg/health`) and `MonitorService`
+(implemented only by the Monitor) are different interfaces: the first answers "how am I
+doing," the second answers "how is everyone doing." A single proto with a single service
+would make the Monitor "implement itself" in a confusing way (it would have to register
+both `RecursosService.ObterStatus` — about itself — and `MonitorService.ObterRecursos` —
+about everyone). Separating them makes it explicit that `ServicoStatus` is the shared data
+contract, and each proto exposes only the RPC that makes sense for whoever implements it.
 
 ```protobuf
 // proto/construtor/health/v1/health.proto
@@ -253,10 +257,10 @@ message ObterRecursosResponse {
 }
 ```
 
-### 4.2. Timeout e paralelismo do poller (RNF01/RN04)
+### 4.2. Poller timeout and parallelism (NFR01/BR04)
 
 ```go
-// services/monitor/internal/poller/agregador.go (esboço)
+// services/monitor/internal/poller/agregador.go (sketch)
 func (a *Agregador) Coletar(ctx context.Context) []ServicoStatus {
 	resultados := make([]ServicoStatus, len(a.coletores))
 	var wg sync.WaitGroup
@@ -264,11 +268,11 @@ func (a *Agregador) Coletar(ctx context.Context) []ServicoStatus {
 		wg.Add(1)
 		go func(i int, c Coletor) {
 			defer wg.Done()
-			ctxTimeout, cancel := context.WithTimeout(ctx, a.timeout) // 2s, RNF01
+			ctxTimeout, cancel := context.WithTimeout(ctx, a.timeout) // 2s, NFR01
 			defer cancel()
 			status, err := c.Coletar(ctxTimeout)
 			if err != nil {
-				resultados[i] = ServicoStatus{Nome: c.Nome(), Status: "indisponivel", MensagemErro: err.Error()} // RN01
+				resultados[i] = ServicoStatus{Nome: c.Nome(), Status: "indisponivel", MensagemErro: err.Error()} // BR01
 				return
 			}
 			resultados[i] = status
@@ -278,39 +282,39 @@ func (a *Agregador) Coletar(ctx context.Context) []ServicoStatus {
 	return resultados
 }
 ```
-Escrever direto no slice por índice (em vez de canal) evita reordenar o resultado — a
-ordem final é sempre a ordem de configuração dos 8 serviços, sem lock extra, porque cada
-goroutine escreve em uma posição exclusiva do slice.
+Writing directly into the slice by index (instead of a channel) avoids having to reorder
+the result — the final order is always the services' configuration order, with no extra
+lock, because each goroutine writes to an exclusive position in the slice.
 
-### 4.3. Memória "de sistema" vs "alocada" (Go) e VM (Elixir)
+### 4.3. "System" vs. "allocated" memory (Go) and VM memory (Elixir)
 
-Go: `runtime.MemStats.Alloc` (heap atualmente em uso) e `.Sys` (memória total obtida do
-SO) — os dois nomes do proto (`memoria_alocada_bytes`/`memoria_sistema_bytes`) mapeiam
-direto para esses dois campos, sem cálculo adicional. Elixir/BEAM: `:erlang.memory(:total)`
-é o equivalente mais próximo de "memória alocada pela VM"; não há um segundo número
-diretamente comparável a `.Sys`, então o Collab preenche só `memoria_alocada_bytes` e
-deixa `memoria_sistema_bytes` como 0/ausente — o Frontend trata esse campo como opcional
-(RN02: cada serviço reporta só o que consegue).
-
----
-
-## 5. Dependências e Pré-requisitos
-
-- [ ] `pkg/health` e os dois protos novos existem e `make proto` roda sem erro antes de
-      tocar em qualquer `main.go` existente (os 5 serviços dependem de `pkg/health`
-      compilar primeiro).
-- [ ] Nenhuma migração de banco — o Monitor não persiste nada.
-- [ ] Confirmar em `research.md` a porta final de `MONITOR_GRPC_ADDR` vs
-      `WORKERS_HTTP_ADDR` antes de escrever os `main.go` (risco de colisão, ver §6).
+Go: `runtime.MemStats.Alloc` (heap currently in use) and `.Sys` (total memory obtained from
+the OS) — the proto's two names (`memoria_alocada_bytes`/`memoria_sistema_bytes`) map
+directly to these two fields, with no extra calculation. Elixir/BEAM: `:erlang.memory(:total)`
+is the closest equivalent to "memory allocated by the VM"; there's no second number
+directly comparable to `.Sys`, so Collab only fills in `memoria_alocada_bytes` and
+leaves `memoria_sistema_bytes` as 0/absent — the Frontend treats this field as optional
+(BR02: each service reports only what it can).
 
 ---
 
-## 6. Riscos e Pontos de Atenção
+## 5. Dependencies and Prerequisites
 
-| Risco | Impacto | Mitigação |
+- [ ] `pkg/health` and the two new protos exist and `make proto` runs without error before
+      touching any existing `main.go` (the 5 services depend on `pkg/health` compiling
+      first).
+- [ ] No database migration — the Monitor doesn't persist anything.
+- [ ] Confirm in `research.md` the final port for `MONITOR_GRPC_ADDR` vs.
+      `WORKERS_HTTP_ADDR` before writing the `main.go` files (collision risk, see §6).
+
+---
+
+## 6. Risks and Points of Attention
+
+| Risk | Impact | Mitigation |
 |-------|---------|-----------|
-| Colisão de porta: rascunho inicial usou `:50056` tanto para o gRPC do Monitor quanto para o HTTP do Workers. | Alto (serviço não sobe) | Resolvido em `research.md` §2 — Monitor gRPC fica em `:50056`, Workers HTTP em `:8081` (linha com o Gateway HTTP em `:8080`, não com a faixa gRPC 50051-50055). Task 1 de `tasks.md` fixa isso antes de qualquer código. |
-| Adicionar `RecursosService` a 5 `main.go` existentes, mesmo sendo 2 linhas cada, é uma mudança em arquivo compartilhado por outras specs em paralelo. | Médio (conflito de merge) | Mudança isolada e no fim do bloco de criação do `grpcServer` (mesmo padrão de "sempre no fim" documentado em memória do projeto para reduzir conflito); revisar `git status` antes de editar cada arquivo. |
-| BEAM não tem um equivalente direto a "memória de sistema" do Go — risco de inventar um número sem sentido. | Baixo | Decisão explícita em §4.3: Collab só reporta `memoria_alocada_bytes`; Frontend trata o campo de sistema como opcional. |
-| Timeout de 2s por serviço pode ser curto demais em ambientes de CI mais lentos, gerando falsos "indisponível" nos testes de integração. | Médio | Timeout é injetável (`Agregador{timeout: ...}`), não uma constante fixa — testes de integração passam um timeout maior via env var, testes unitários usam coletores fake (sem I/O real, RNF independente de rede). |
-| Workers ganhar um servidor HTTP muda seu perfil de processo (hoje só consome fila) — pode exigir liberar a porta em ambientes com firewall restrito. | Baixo | Mesmo padrão de `env("WORKERS_HTTP_ADDR", ...)` já usado nos outros serviços — documentado em `quickstart.md` e `.env.example` se existir. |
+| Port collision: the initial draft used `:50056` for both the Monitor's gRPC and the Workers' HTTP. | High (service won't start) | Resolved in `research.md` §2 — Monitor gRPC stays at `:50056`, Workers HTTP moves to `:8081` (in line with the Gateway HTTP at `:8080`, not with the 50051-50055 gRPC range). Task 1 of `tasks.md` fixes this before any code. |
+| Adding `RecursosService` to 5 existing `main.go` files, even at 2 lines each, is a change to a file shared with other specs in parallel. | Medium (merge conflict) | Isolated change at the end of the `grpcServer` creation block (the same "always at the end" pattern documented in the project's memory to reduce conflicts); check `git status` before editing each file. |
+| The BEAM has no direct equivalent to Go's "system memory" — risk of inventing a meaningless number. | Low | Explicit decision in §4.3: Collab only reports `memoria_alocada_bytes`; the Frontend treats the system field as optional. |
+| A 2s per-service timeout may be too short in slower CI environments, producing false "unavailable" results in integration tests. | Medium | The timeout is injectable (`Agregador{timeout: ...}`), not a fixed constant — integration tests pass a larger timeout via env var, unit tests use fake collectors (no real I/O, independent of network NFRs). |
+| Workers gaining an HTTP server changes its process profile (today it only consumes a queue) — may require opening the port in environments with a restrictive firewall. | Low | The same `env("WORKERS_HTTP_ADDR", ...)` pattern already used by the other services — documented in `quickstart.md` and `.env.example` if it exists. |

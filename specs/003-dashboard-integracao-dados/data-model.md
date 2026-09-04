@@ -1,79 +1,79 @@
-# Modelo de Dados: Dashboard — Integração de Dados e Funcionalidade
+# Data Model: Dashboard — Data Integration and Functionality
 
-Esta demanda é predominantemente de front-end e **não cria tabelas** no backend. O
-"modelo" aqui descreve os tipos de domínio consumidos pelo Player (em
-`player/src/api/types.ts`) e os tipos novos de estado de UI/tema/identidade. Também
-documenta a **extensão de contrato** necessária no `Sistema` para viabilizar RF07/RF09
-(Fase 2), a ser fornecida pelo Gateway.
+This effort is predominantly front-end and **does not create tables** on the backend. The
+"model" here describes the domain types consumed by the Player (in
+`player/src/api/types.ts`) and the new UI state/theme/identity types. It also
+documents the **contract extension** needed on `Sistema` to enable FR07/FR09
+(Phase 2), to be provided by the Gateway.
 
 ---
 
-## 1. Entidades (tipos de domínio no Player)
+## 1. Entities (domain types in the Player)
 
-### `Sistema` (existente — `api/types.ts`)
+### `Sistema` (existing — `api/types.ts`)
 
-| Campo | Tipo | Nulável | Padrão | Descrição |
+| Field | Type | Nullable | Default | Description |
 |-------|------|---------|--------|-----------|
-| id    | string (uuid) | não | — | Identificador do sistema |
-| nome  | string | não | — | Nome exibido |
+| id    | string (uuid) | no | — | System identifier |
+| nome  | string | no | — | Displayed name |
 
-### `Sistema` — extensão proposta (Fase 2, fornecida pelo Gateway)
+### `Sistema` — proposed extension (Phase 2, provided by the Gateway)
 
-| Campo | Tipo | Nulável | Padrão | Descrição |
+| Field | Type | Nullable | Default | Description |
 |-------|------|---------|--------|-----------|
-| status | `"publicado" \| "rascunho" \| "falha"` | sim | `"rascunho"` | Estado derivado da versão ativa (RN04) e da saúde de integração (RN09) |
-| versao_ativa | `{ numero: number; rotulo: string } \| null` | sim | `null` | Ex.: `{ numero: 7, rotulo: "v7 · ativa" }`; `null` = sem versão ativa |
-| atualizado_em | string (ISO 8601) | sim | — | Timestamp da última edição (ex.: "editado há 3 min") |
-| dlq_eventos | number | sim | `0` | Contagem de eventos na DLQ do tenant para o sistema (RN09) |
+| status | `"publicado" \| "rascunho" \| "falha"` | yes | `"rascunho"` | State derived from the active version (BR04) and integration health (BR09) |
+| versao_ativa | `{ numero: number; rotulo: string } \| null` | yes | `null` | E.g., `{ numero: 7, rotulo: "v7 · active" }`; `null` = no active version |
+| atualizado_em | string (ISO 8601) | yes | — | Timestamp of the last edit (e.g., "edited 3 min ago") |
+| dlq_eventos | number | yes | `0` | Count of events in the tenant's DLQ for the system (BR09) |
 
-> Enquanto o Gateway não retornar esses campos, o Player os trata como opcionais e
-> degrada graciosamente (sem status/versão no card).
+> Until the Gateway returns these fields, the Player treats them as optional and
+> degrades gracefully (no status/version on the card).
 
-### `UsuarioAutenticado` (novo — derivado do JWT, apenas exibição — RF03)
+### `UsuarioAutenticado` (new — derived from the JWT, display only — FR03)
 
-| Campo | Tipo | Nulável | Padrão | Descrição |
+| Field | Type | Nullable | Default | Description |
 |-------|------|---------|--------|-----------|
-| nome | string | sim | — | Claim `name` do JWT |
-| email | string | sim | — | Claim `email` do JWT |
-| iniciais | string | não | `"?"` | Derivadas do nome/e-mail para o avatar |
+| nome | string | yes | — | `name` claim from the JWT |
+| email | string | yes | — | `email` claim from the JWT |
+| iniciais | string | no | `"?"` | Derived from the name/email for the avatar |
 
-### `PreferenciaTema` (novo — persistido em `localStorage` — RF05/RNF04)
+### `PreferenciaTema` (new — persisted in `localStorage` — FR05/NFR04)
 
-| Campo | Tipo | Nulável | Padrão | Descrição |
+| Field | Type | Nullable | Default | Description |
 |-------|------|---------|--------|-----------|
-| tema | `"claro" \| "escuro"` | não | `"escuro"` | Chave `mach_theme` no `localStorage` |
+| tema | `"claro" \| "escuro"` | no | `"escuro"` | `mach_theme` key in `localStorage` |
 
-### `EstadoDados<T>` (novo — máquina de estados de UI — RF06)
+### `EstadoDados<T>` (new — UI state machine — FR06)
 
-| Variante | Campos | Descrição |
+| Variant | Fields | Description |
 |----------|--------|-----------|
-| `carregando` | — | Renderiza skeleton (`aria-busy`) |
-| `pronto` | `dados: T` | Renderiza conteúdo |
-| `vazio` | — | Renderiza empty state |
-| `erro` | `mensagem: string` | Renderiza alerta + botão repetir |
+| `carregando` | — | Renders a skeleton (`aria-busy`) |
+| `pronto` | `dados: T` | Renders the content |
+| `vazio` | — | Renders the empty state |
+| `erro` | `mensagem: string` | Renders an alert + retry button |
 
-### `Metricas` (novo — Overview — RF01)
+### `Metricas` (new — Overview — FR01)
 
-| Campo | Tipo | Nulável | Padrão | Descrição |
+| Field | Type | Nullable | Default | Description |
 |-------|------|---------|--------|-----------|
-| sistemas_total | number | não | `0` | Total de sistemas do tenant |
-| sistemas_ativos | number | sim | — | Sistemas publicados (requer status — Fase 2) |
-| sistemas_rascunho | number | sim | — | Sistemas sem versão ativa (Fase 2) |
+| sistemas_total | number | no | `0` | Total systems in the tenant |
+| sistemas_ativos | number | yes | — | Published systems (requires status — Phase 2) |
+| sistemas_rascunho | number | yes | — | Systems with no active version (Phase 2) |
 
 ---
 
-## 2. Relacionamentos
+## 2. Relationships
 
-| Entidade A | Cardinalidade | Entidade B | Chave |
+| Entity A | Cardinality | Entity B | Key |
 |------------|--------------|------------|-------|
-| Tenant | 1:N | Sistema | derivado do JWT (RN01) |
-| Sistema | 1:1 | VersaoAtiva | `versao_ativa` (RN04) |
-| Sistema | 1:N | ColaboradorPresente | tópico Phoenix `sistema:{id}` (RF08) |
-| UsuarioAutenticado | 1:1 | JWT | claims do token (RF03) |
+| Tenant | 1:N | Sistema | derived from the JWT (BR01) |
+| Sistema | 1:1 | VersaoAtiva | `versao_ativa` (BR04) |
+| Sistema | 1:N | ColaboradorPresente | Phoenix topic `sistema:{id}` (FR08) |
+| UsuarioAutenticado | 1:1 | JWT | token claims (FR03) |
 
 ---
 
-## 3. Diagrama ER
+## 3. ER Diagram
 
 ```plantuml
 @startuml
@@ -84,28 +84,28 @@ entity "Sistema" {
   * id : uuid
   --
   nome : string
-  status : enum   <<Fase 2>>
-  versao_ativa : obj?  <<Fase 2>>
-  atualizado_em : datetime?  <<Fase 2>>
-  dlq_eventos : int  <<Fase 2>>
+  status : enum   <<Phase 2>>
+  versao_ativa : obj?  <<Phase 2>>
+  atualizado_em : datetime?  <<Phase 2>>
+  dlq_eventos : int  <<Phase 2>>
 }
 entity "UsuarioAutenticado" {
   nome : string?
   email : string?
   iniciais : string
 }
-Tenant ||--o{ Sistema : possui (RN01)
-UsuarioAutenticado ||--|| Tenant : contexto ativo
+Tenant ||--o{ Sistema : owns (BR01)
+UsuarioAutenticado ||--|| Tenant : active context
 @enduml
 ```
 
 ---
 
-## 4. Migrações Necessárias
+## 4. Required Migrations
 
-Nenhuma migração de banco no escopo desta demanda (front-end).
+No database migration is in scope for this effort (front-end).
 
-| Alteração | Operação | Local |
+| Change | Operation | Location |
 |-----------|----------|-------|
-| Extensão do payload de `Sistema` (status, versao_ativa, atualizado_em, dlq_eventos) | Alteração de contrato/serializer no Gateway | Backend — **Fase 2**, fora desta demanda de front-end |
-| Chave `mach_theme` | `localStorage` (cliente) | Player |
+| `Sistema` payload extension (status, versao_ativa, atualizado_em, dlq_eventos) | Contract/serializer change on the Gateway | Backend — **Phase 2**, outside this front-end effort |
+| `mach_theme` key | `localStorage` (client) | Player |

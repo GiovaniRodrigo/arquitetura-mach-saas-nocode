@@ -1,73 +1,72 @@
-# Contexto do Projeto
+# Project Context
 
-## Domínio
+## Domain
 
-MACH V4 é a plataforma SaaS no-code "MAYS — Make Your SaaS": um construtor visual de sistemas
-(telas, componentes, fluxos) composto por 8 microsserviços (IAM, Design, Logic, Deploy, Export,
-Workers, Collab, Gateway) rodando em Kubernetes com service mesh Linkerd.
+MACH V4 is the no-code SaaS platform "MAYS — Make Your SaaS": a visual system builder
+(screens, components, flows) made up of 8 microservices (IAM, Design, Logic, Deploy, Export,
+Workers, Collab, Gateway) running on Kubernetes with a Linkerd service mesh.
 
-A tela **Monitor de Recursos** (`/dashboard/monitor`, spec `008-monitor-recursos`/`009`) é uma
-tela de **observabilidade interna de infraestrutura**: mostra, para cada um dos 8 serviços, se
-está no ar, CPU, memória, requisições/s, taxa de sucesso e latência p99 — dados vindos do
-metrics-server do Kubernetes e do Prometheus do Linkerd-viz via `services/gateway/internal/meshmetrics`.
-Não é uma tela de produto voltada ao cliente final do SaaS — é uma tela operacional, equivalente
-a um status board de DevOps/SRE embutido no próprio dashboard da plataforma.
+The **Resource Monitor** screen (`/dashboard/monitor`, spec `008-monitor-recursos`/`009`) is an
+**internal infrastructure observability** screen: for each of the 8 services, it shows whether
+it's up, CPU, memory, requests/s, success rate, and p99 latency — data coming from Kubernetes's
+metrics-server and Linkerd-viz's Prometheus via `services/gateway/internal/meshmetrics`.
+It is not a product screen aimed at the SaaS end customer — it's an operational screen, equivalent
+to a DevOps/SRE status board embedded in the platform's own dashboard.
 
-## Público-Alvo
+## Target Audience
 
-Qualquer usuário autenticado do dashboard (RN03 — não existe hoje papel de "administrador de
-plataforma" separado), mas o *uso real* esperado é de perfil técnico: quem opera/mantém a
-plataforma MACH V4, olhando a tela para diagnosticar "algo está fora do ar?" ou "algum serviço
-está sob carga?". A linguagem e a densidade de informação devem seguir o padrão de dashboards de
-observabilidade (Grafana, Datadog, Vercel, Railway) — não o padrão de telas de produto para
-usuário leigo.
+Any authenticated dashboard user (BR03 — there is currently no separate "platform administrator"
+role), but the *actual expected usage* is by a technical profile: whoever operates/maintains the
+MACH V4 platform, looking at the screen to diagnose "is something down?" or "is a service under
+load?". The language and information density should follow observability dashboard conventions
+(Grafana, Datadog, Vercel, Railway) — not the convention for layperson-facing product screens.
 
-## Stack Frontend (já implementada)
+## Frontend Stack (already implemented)
 
-- **React + TypeScript**, Tailwind CSS com tokens HSL via CSS custom properties (`--primary`,
-  `--secondary`, `--destructive`, `--muted-foreground`, etc.), suporte a tema claro/escuro
-  (`.dark` no root, alternância já implementada em `DashboardLayout.tsx`).
-- **Sistema de componentes "M3"** (`src/components/m3/`): `ElevatedCard` (fundo `--card`,
-  `rounded-3xl`, sombra), `TonalCard` (fundo `--secondary`, sem sombra, para destaque de seção),
-  `FabButton`, `NavPill` — nomenclatura inspirada em Material Design 3 (elevated/tonal/filled),
-  mas aplicada sobre um visual mais próximo de dashboards SaaS modernos (cantos muito
-  arredondados, `shadow-sm`, paleta indigo/teal) do que ao Material puro do Android.
-  `src/components/ui/`: primitives shadcn-like (`button`, `dialog`, `sheet`, `sidebar`,
-  `switch`, `tooltip`) + `StateViews.tsx` já padroniza `Skeleton`/`EmptyState`/`ErrorState`
-  reutilizados pelas telas do dashboard.
-- **Ícones**: `lucide-react` (mesmo pacote usado em toda a sidebar/header).
-- **Tipografia**: Inter (corpo), Outfit (`font-heading`, títulos), JetBrains Mono (código/atalhos
-  como `Ctrl K`).
-- Tela atual (`Monitor.tsx` + `CardServicoStatus.tsx` + `useRecursos.ts`) já implementa: card de
-  cabeçalho tonal com botão "Atualizar", grid de cards por serviço (indicador verde/vermelho +
-  lista de métricas), estado de erro único de página (RNF02) e auto-refresh a cada 10s (RF07).
-  Este documento propõe refinamentos visuais sobre essa base, não uma reconstrução.
+- **React + TypeScript**, Tailwind CSS with HSL tokens via CSS custom properties (`--primary`,
+  `--secondary`, `--destructive`, `--muted-foreground`, etc.), light/dark theme support
+  (`.dark` on the root, toggle already implemented in `DashboardLayout.tsx`).
+- **"M3" component system** (`src/components/m3/`): `ElevatedCard` (`--card` background,
+  `rounded-3xl`, shadow), `TonalCard` (`--secondary` background, no shadow, for section emphasis),
+  `FabButton`, `NavPill` — naming inspired by Material Design 3 (elevated/tonal/filled),
+  but applied over a visual style closer to modern SaaS dashboards (very rounded corners,
+  `shadow-sm`, indigo/teal palette) than to pure Android Material.
+  `src/components/ui/`: shadcn-like primitives (`button`, `dialog`, `sheet`, `sidebar`,
+  `switch`, `tooltip`) + `StateViews.tsx` already standardizes `Skeleton`/`EmptyState`/`ErrorState`
+  reused across the dashboard's screens.
+- **Icons**: `lucide-react` (the same package used throughout the sidebar/header).
+- **Typography**: Inter (body), Outfit (`font-heading`, titles), JetBrains Mono (code/shortcuts
+  such as `Ctrl K`).
+- The current screen (`Monitor.tsx` + `CardServicoStatus.tsx` + `useRecursos.ts`) already implements:
+  a tonal header card with a "Refresh" button, a grid of per-service cards (green/red indicator +
+  metrics list), a single page-level error state (NFR02), and auto-refresh every 10s (FR07).
+  This document proposes visual refinements on top of that base, not a rebuild.
 
-## Referências Visuais Encontradas
+## Visual References Found
 
-| Referência | Métrica de popularidade | Por que é relevante |
+| Reference | Popularity metric | Why it's relevant |
 |---|---|---|
-| [Uptime Kuma](https://github.com/louislam/uptime-kuma) | 90,1k stars no GitHub | Referência dominante em dashboards de status de serviço self-hosted; grid de cards por serviço com indicador de cor, mesma forma de agregação "N serviços, 1 fora do ar" que a tela do Monitor precisa comunicar. |
-| [Vercel Dashboard / Geist Design System](https://vercel.com/blog/dashboard-redesign) | Design system oficial de uma das plataformas dev mais usadas do mercado (referência de facto para dashboards técnicos) | Mostra que, para público técnico, a cor deve ser reservada ao status (verde/vermelho/âmbar) — o resto da UI é neutro (escala de cinza), evitando "ruído" visual competindo com o dado. |
-| [Railway Observability Dashboard](https://docs.railway.com/observability) | Plataforma PaaS popular entre devs (referência comparativa recorrente com Fly.io/Vercel em benchmarks de mercado) | Cards de métrica com gráfico/indicador visual leve (não só número) para CPU/memória/rede — reforça uso de barra de progresso ou sparkline em vez de número solto. |
-| [Grafana](https://grafana.com) | Ferramenta de observabilidade mais usada no mercado (base de comparação de todo dashboard de métricas) | Painel de "single stat" com cor semântica de fundo/borda conforme threshold — inspira o uso de cor no *card inteiro*, não só no indicador, quando um serviço está indisponível. |
-| [Nielsen Norman Group — Dashboard Design](https://www.nngroup.com/articles/dashboard-design/) | Pesquisa de UX com evidência (referência acadêmica, não estética) | Fundamenta a hierarquia: status geral > exceções > detalhes — a tela deve deixar óbvio primeiro "quantos serviços saudáveis" antes de exigir leitura card a card. |
+| [Uptime Kuma](https://github.com/louislam/uptime-kuma) | 90.1k stars on GitHub | Dominant reference for self-hosted service status dashboards; per-service card grid with color indicator, the same "N services, 1 down" aggregation the Monitor screen needs to communicate. |
+| [Vercel Dashboard / Geist Design System](https://vercel.com/blog/dashboard-redesign) | Official design system of one of the most-used dev platforms on the market (de facto reference for technical dashboards) | Shows that, for a technical audience, color should be reserved for status (green/red/amber) — the rest of the UI is neutral (gray scale), avoiding visual "noise" competing with the data. |
+| [Railway Observability Dashboard](https://docs.railway.com/observability) | PaaS platform popular among devs (recurring comparative reference alongside Fly.io/Vercel in market benchmarks) | Metric cards with a lightweight chart/visual indicator (not just a number) for CPU/memory/network — reinforces using a progress bar or sparkline instead of a bare number. |
+| [Grafana](https://grafana.com) | Most widely used observability tool on the market (comparison baseline for every metrics dashboard) | "Single stat" panel with semantic background/border color based on threshold — inspires using color on the *whole card*, not just the indicator, when a service is unavailable. |
+| [Nielsen Norman Group — Dashboard Design](https://www.nngroup.com/articles/dashboard-design/) | Evidence-based UX research (academic reference, not aesthetic) | Grounds the hierarchy: overall status > exceptions > details — the screen should make "how many services are healthy" obvious before requiring card-by-card reading. |
 
-## Tendências Identificadas
+## Trends Identified
 
-1. **Cor reservada ao significado**: em dashboards técnicos populares (Vercel, Grafana), a UI é
-   majoritariamente neutra/monocromática — cor é usada *só* para status (verde/vermelho/âmbar),
-   nunca decorativa. A tela atual já segue isso parcialmente (dot verde/vermelho); pode reforçar
-   estendendo a cor para a borda/fundo sutil do card quando indisponível.
-2. **Resumo agregado no topo**: dashboards de status (Uptime Kuma, status pages) sempre mostram
-   primeiro um resumo ("7/8 operacional") antes da grade detalhada — atende ao princípio de
-   Início Óbvio e à pesquisa da NN/g sobre hierarquia "visão geral → exceção → detalhe".
-3. **Métricas como barra/indicador visual, não só número**: Railway e Grafana usam barra de
-   progresso ou sparkline para CPU/memória, permitindo escanear "está alto?" sem fazer conta
-   mental — mais rápido que ler "0.25 núcleos" isoladamente.
-4. **Skeleton loading em vez de texto "Carregando…"**: já existe `Skeleton` em
-   `StateViews.tsx`, usado por outras telas do dashboard — a tela Monitor deveria reusá-lo
-   (consistência, Lógica Consistente) em vez do parágrafo de texto atual.
-5. **Timestamp de última atualização**: dashboards com auto-refresh (Grafana, Vercel, Railway)
-   sempre mostram "atualizado há Xs" perto do botão de refresh — comunica que o auto-refresh
-   (RF07) está de fato funcionando, sem o usuário precisar adivinhar.
+1. **Color reserved for meaning**: in popular technical dashboards (Vercel, Grafana), the UI is
+   predominantly neutral/monochrome — color is used *only* for status (green/red/amber),
+   never decoratively. The current screen already partially follows this (green/red dot); it can
+   be reinforced by extending the color to the card's subtle border/background when unavailable.
+2. **Aggregate summary at the top**: status dashboards (Uptime Kuma, status pages) always show
+   a summary first ("7/8 operational") before the detailed grid — satisfies the Obvious Starting
+   Point principle and NN/g's research on the "overview → exception → detail" hierarchy.
+3. **Metrics as a bar/visual indicator, not just a number**: Railway and Grafana use a progress
+   bar or sparkline for CPU/memory, letting the user scan "is it high?" without doing mental
+   math — faster than reading "0.25 cores" in isolation.
+4. **Skeleton loading instead of "Loading…" text**: `Skeleton` already exists in
+   `StateViews.tsx`, used by other dashboard screens — the Monitor screen should reuse it
+   (consistency, Consistent Logic) instead of the current plain text paragraph.
+5. **"Last updated" timestamp**: dashboards with auto-refresh (Grafana, Vercel, Railway)
+   always show "updated Xs ago" near the refresh button — communicates that auto-refresh
+   (FR07) is actually working, without the user having to guess.

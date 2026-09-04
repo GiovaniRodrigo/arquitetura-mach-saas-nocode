@@ -1,12 +1,12 @@
-# Contratos de API: Monitor de Recursos
+# API Contracts: Resource Monitor
 
 ## `GET /api/v1/monitor/recursos`
 
-**Descrição**: Fachada REST do Gateway sobre `MonitorService.ObterRecursos` (RF05).
-Consumida pela tela Monitor do Frontend (RF06/RF07).
+**Description**: The Gateway's REST facade over `MonitorService.ObterRecursos` (FR05).
+Consumed by the Frontend's Monitor screen (FR06/FR07).
 
-**Request:** headers `Authorization: Bearer <JWT>` (mesmo grupo autenticado das demais
-rotas — RNF05); sem corpo.
+**Request:** headers `Authorization: Bearer <JWT>` (the same authenticated group as the
+other routes — NFR05); no body.
 
 **Response 200:**
 ```json
@@ -36,25 +36,25 @@ rotas — RNF05); sem corpo.
   "coletado_em_unix": 1755158400
 }
 ```
-Um array sempre com as 8 entradas fixas (IAM, Design, Logic, Deploy, Export, Gateway,
-Workers, Collab), na mesma ordem — a falha de um serviço vira `status: "indisponivel"` na
-sua própria entrada, nunca reduz o array (RN01, critério de aceitação 2).
+An array always with the 8 fixed entries (IAM, Design, Logic, Deploy, Export, Gateway,
+Workers, Collab), in the same order — a service's failure becomes `status: "indisponivel"`
+on its own entry, never shrinks the array (BR01, acceptance criterion 2).
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 401 | `UNAUTHORIZED` | Token ausente/inválido |
-| 502/5xx | `MONITOR_INDISPONIVEL` | O serviço Monitor em si não respondeu — Frontend trata como erro único da tela (RNF02, critério de aceitação 3), distinto de uma entrada individual "indisponivel" dentro de um 200. |
+| 401 | `UNAUTHORIZED` | Missing/invalid token |
+| 502/5xx | `MONITOR_INDISPONIVEL` | The Monitor service itself didn't respond — the Frontend treats this as a single screen-wide error (NFR02, acceptance criterion 3), distinct from an individual "indisponivel" entry inside a 200. |
 
 ---
 
-## `GET /health` (Workers) — novo
+## `GET /health` (Workers) — new
 
-**Descrição**: Endpoint de recursos do Workers (RF03). Não existe hoje nenhum servidor no
-processo Workers; este é o primeiro.
+**Description**: Workers' resource endpoint (FR03). No server exists today in the
+Workers process; this is the first one.
 
-**Request:** sem autenticação (uso interno, consultado só pelo Monitor — mesmo padrão do
-`/health` do Gateway, que também é público/sem auth).
+**Request:** no authentication (internal use, queried only by the Monitor — the same
+pattern as the Gateway's `/health`, which is also public/no auth).
 
 **Response 200:**
 ```json
@@ -69,13 +69,14 @@ processo Workers; este é o primeiro.
 
 ---
 
-## `GET /healthz` (Collab) — estendido
+## `GET /healthz` (Collab) — extended
 
-**Descrição**: Já existe (`services/collab/lib/collab_web/endpoint.ex:48-52`), hoje
-responde só status HTTP sem corpo relevante. Passa a incluir corpo JSON (RF02), mantendo
-o status HTTP 200 atual (não quebra nenhum consumidor existente que só olhe o status code).
+**Description**: Already exists (`services/collab/lib/collab_web/endpoint.ex:48-52`),
+today it only answers with an HTTP status and no meaningful body. It now includes a JSON
+body (FR02), keeping the current HTTP 200 status (doesn't break any existing consumer
+that only looks at the status code).
 
-**Response 200 (novo corpo):**
+**Response 200 (new body):**
 ```json
 {
   "status": "servindo",
@@ -83,6 +84,6 @@ o status HTTP 200 atual (não quebra nenhum consumidor existente que só olhe o 
   "memoria_alocada_bytes": 52428800
 }
 ```
-Sem `memoria_sistema_bytes`/`goroutines` — a BEAM não expõe um equivalente direto (RN02,
-`plan.md` §4.3); o `ColetorHTTP` do Monitor trata esses dois campos como ausentes/0 para
-este serviço.
+No `memoria_sistema_bytes`/`goroutines` — the BEAM doesn't expose a direct equivalent
+(BR02, `plan.md` §4.3); the Monitor's `ColetorHTTP` treats these two fields as
+absent/0 for this service.

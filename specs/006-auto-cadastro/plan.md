@@ -1,14 +1,14 @@
-# Plano de Implementação: Auto Cadastro (Self Sign-up)
+# Implementation Plan: Self Sign-up
 
-Estratégia: aditiva em toda a pilha — nenhum contrato existente (proto, rotas,
-schema) é alterado, apenas estendido. O IAM ganha dois RPCs novos que convergem
-no mesmo `auth.Issuer` já usado pelo OAuth; o Gateway ganha um arquivo de rotas
-públicas que espelha o padrão REST→gRPC de `routes/tenants.go`; o Frontend ganha
-uma tela nova (`Register.tsx`) e dois ajustes pontuais (`Login.tsx`, `Home.tsx`).
+Strategy: additive across the whole stack — no existing contract (proto, routes,
+schema) is changed, only extended. The IAM gains two new RPCs that converge
+on the same `auth.Issuer` already used by OAuth; the Gateway gains a
+public-routes file that mirrors the REST→gRPC pattern of `routes/tenants.go`; the Frontend gains
+one new screen (`Register.tsx`) and two targeted tweaks (`Login.tsx`, `Home.tsx`).
 
 ---
 
-## 1. Arquitetura
+## 1. Architecture
 
 ```mermaid
 flowchart LR
@@ -21,7 +21,7 @@ flowchart LR
 
   subgraph GW["Gateway (services/gateway)"]
     OAuthRoutes["routes/oauth.go"]
-    AuthRoutes["routes/auth.go (novo)"]
+    AuthRoutes["routes/auth.go (new)"]
     Router["router.go"]
   end
 
@@ -33,77 +33,77 @@ flowchart LR
 
   DB[("Postgres: tenants, users")]
 
-  Home -->|"Testar grátis (RF07)"| Register
-  Login -->|"Cadastre-se (RF01)"| Register
+  Home -->|"Try for Free (FR07)"| Register
+  Login -->|"Sign up (FR01)"| Register
   Register -->|"POST /api/v1/auth/registro"| AuthRoutes
   Login -->|"POST /api/v1/auth/login"| AuthRoutes
-  Login -->|"GET /auth/{provedor} (inalterado)"| OAuthRoutes
+  Login -->|"GET /auth/{provedor} (unchanged)"| OAuthRoutes
 
   Router --> AuthRoutes
   Router --> OAuthRoutes
 
   AuthRoutes -->|"RegistrarUsuario / AutenticarSenha (gRPC)"| Grpc
-  OAuthRoutes -->|"AutenticarThirdParty (gRPC, inalterado)"| Grpc
+  OAuthRoutes -->|"AutenticarThirdParty (gRPC, unchanged)"| Grpc
 
   Grpc --> Store
   Grpc -->|"Issue(user_id, tenant_id, tipo)"| Auth
   Store --> DB
 
-  Register -->|"salva JWT"| Session
-  Login -->|"salva JWT"| Session
+  Register -->|"saves JWT"| Session
+  Login -->|"saves JWT"| Session
 ```
 
 ---
 
-## 2. Padrões de Design
+## 2. Design Patterns
 
-| Padrão | Onde se aplica | Justificativa | Alternativa descartada |
+| Pattern | Where it applies | Justification | Alternative discarded |
 |--------|-----------------|----------------|-------------------------|
-| **Strategy** (implícito, reforçado) | `IAMServer`: `AutenticarThirdParty` (existente) e `AutenticarSenha`/`RegistrarUsuario` (novos) são estratégias de autenticação intercambiáveis que convergem no mesmo passo final `auth.Issuer.Issue(userID, tenantID, tipo)`. | O contrato de saída (JWT MACH com os 3 claims) já é único hoje; adicionar uma segunda estratégia sem tocar no `Issuer` mantém essa garantia e permite uma terceira via (ex.: SSO corporativo) no futuro sem reabrir o emissor de token. | Unificar tudo em um único RPC `Autenticar` com `oneof { third_party, senha }` — descartado: misturaria semânticas de erro muito diferentes (409 e-mail duplicado no cadastro vs 401 credenciais inválidas no login) e quebraria o contrato já testado de `AutenticarThirdParty` (RNF04). |
-| **Facade** (reuso do padrão já estabelecido) | `services/gateway/internal/routes/auth.go` (novo) traduz REST↔gRPC exatamente como `routes/tenants.go` já faz para `IAMServiceClient`. | O Gateway já é a única camada que fala HTTP com o browser; replicar o mesmo formato de handler (`interface` estreita do client, `web.JSON`, mapeamento de erro gRPC→HTTP) mantém o Gateway previsível para quem já lê `tenants.go`. | Chamar o IAM via gRPC-Web diretamente do browser — descartado: exigiria proxy gRPC-Web novo na infra e quebraria o padrão 100% REST que o resto do Frontend usa (`ApiClient`). |
-| **Repository** (reuso, não escolha nova) | `store.Store` ganha `CriarTenantEUsuarioComSenha` e `ObterUsuarioPorEmailSenha`, seguindo a mesma forma dos métodos existentes (`CriarTenant`, `UpsertUsuarioThirdParty`). | Já é o único ponto de acesso a `tenants`/`users` no IAM; não há motivo para um segundo caminho de acesso a dados nesta demanda. | — (não há alternativa avaliada; é convenção já fixada no serviço). |
+| **Strategy** (implicit, reinforced) | `IAMServer`: `AutenticarThirdParty` (existing) and `AutenticarSenha`/`RegistrarUsuario` (new) are interchangeable authentication strategies that converge on the same final step, `auth.Issuer.Issue(userID, tenantID, tipo)`. | The output contract (a MACH JWT with the 3 claims) is already unique today; adding a second strategy without touching `Issuer` preserves that guarantee and allows for a third path (e.g., corporate SSO) in the future without reopening the token issuer. | Unifying everything into a single `Autenticar` RPC with `oneof { third_party, senha }` — discarded: it would mix very different error semantics (409 duplicate email at sign-up vs. 401 invalid credentials at login) and would break the already-tested `AutenticarThirdParty` contract (NFR04). |
+| **Facade** (reuse of the already-established pattern) | `services/gateway/internal/routes/auth.go` (new) translates REST↔gRPC exactly as `routes/tenants.go` already does for `IAMServiceClient`. | The Gateway is already the only layer that speaks HTTP with the browser; replicating the same handler shape (a narrow client `interface`, `web.JSON`, gRPC→HTTP error mapping) keeps the Gateway predictable for anyone who already reads `tenants.go`. | Calling the IAM directly via gRPC-Web from the browser — discarded: it would require a new gRPC-Web proxy in the infra and would break the 100% REST pattern the rest of the Frontend uses (`ApiClient`). |
+| **Repository** (reuse, not a new choice) | `store.Store` gains `CriarTenantEUsuarioComSenha` and `ObterUsuarioPorEmailSenha`, following the same shape as the existing methods (`CriarTenant`, `UpsertUsuarioThirdParty`). | It is already the sole data-access point for `tenants`/`users` in the IAM; there is no reason for a second data-access path in this initiative. | — (no alternative evaluated; it is a convention already fixed in the service). |
 
 ---
 
-## 3. Arquivos a Criar/Editar
+## 3. Files to Create/Edit
 
-### 3.1. Banco de Dados
-* **`infra/postgres/migrations/0014_add_senha_users.sql`** (novo): adiciona `senha_hash` nullable em `users` + índice único parcial em `email` para `provedor = 'senha'`.
+### 3.1. Database
+* **`infra/postgres/migrations/0014_add_senha_users.sql`** (new): adds a nullable `senha_hash` to `users` + a partial unique index on `email` for `provedor = 'senha'`.
 
-### 3.2. Contratos (proto)
-* **`proto/construtor/iam/v1/iam.proto`**: adiciona `RegistrarUsuarioRequest/Response`, `AutenticarSenhaRequest/Response` e os RPCs `RegistrarUsuario`/`AutenticarSenha` ao `IAMService`. Rodar `make proto` para regenerar `gen/go`, `gen/elixir`, `gen/ts`.
+### 3.2. Contracts (proto)
+* **`proto/construtor/iam/v1/iam.proto`**: adds `RegistrarUsuarioRequest/Response`, `AutenticarSenhaRequest/Response`, and the `RegistrarUsuario`/`AutenticarSenha` RPCs to `IAMService`. Run `make proto` to regenerate `gen/go`, `gen/elixir`, `gen/ts`.
 
 ### 3.3. IAM (`services/iam`)
-* **`internal/store/store.go`**: novo `ErrEmailJaCadastrado`; novos métodos `CriarTenantEUsuarioComSenha` (transação pgx: insere tenant tipo `dono` + usuário tipo `dono` com `senha_hash`, rollback em `unique_violation`) e `ObterUsuarioPorEmailSenha`.
-* **`internal/store/store_test.go`**: testes dos dois métodos novos (sucesso, e-mail duplicado com rollback do tenant).
-* **`internal/server/grpc.go`**: implementa `RegistrarUsuario` (valida campos, `bcrypt.GenerateFromPassword`, chama o store, emite JWT) e `AutenticarSenha` (`bcrypt.CompareHashAndPassword`, mesma mensagem de erro para e-mail inexistente/senha errada — RN04). Estende a interface `Store` do arquivo com os 2 métodos novos.
-* **`internal/server/grpc_test.go`**: testes dos dois handlers novos.
+* **`internal/store/store.go`**: new `ErrEmailJaCadastrado`; new methods `CriarTenantEUsuarioComSenha` (pgx transaction: inserts a `dono`-type tenant + a `dono`-type user with `senha_hash`, rolling back on `unique_violation`) and `ObterUsuarioPorEmailSenha`.
+* **`internal/store/store_test.go`**: tests for the two new methods (success, duplicate email with tenant rollback).
+* **`internal/server/grpc.go`**: implements `RegistrarUsuario` (validates fields, `bcrypt.GenerateFromPassword`, calls the store, issues the JWT) and `AutenticarSenha` (`bcrypt.CompareHashAndPassword`, same error message for nonexistent email/wrong password — BR04). Extends the file's `Store` interface with the 2 new methods.
+* **`internal/server/grpc_test.go`**: tests for the two new handlers.
 
 ### 3.4. Gateway (`services/gateway`)
-* **`internal/routes/auth.go`** (novo): `RegistrarUsuario` (`POST /api/v1/auth/registro`) e `Login` (`POST /api/v1/auth/login`), traduzindo REST→gRPC como `tenants.go`; mapeia `AlreadyExists`→409, `Unauthenticated`→401, `InvalidArgument`→422.
-* **`internal/routes/auth_test.go`** (novo): testes desses dois handlers.
-* **`internal/app/router.go`**: registra as duas rotas **fora** do `r.Group(Auth)` (públicas), ao lado de `oauth.Registrar(r)`.
+* **`internal/routes/auth.go`** (new): `RegistrarUsuario` (`POST /api/v1/auth/registro`) and `Login` (`POST /api/v1/auth/login`), translating REST→gRPC like `tenants.go`; maps `AlreadyExists`→409, `Unauthenticated`→401, `InvalidArgument`→422.
+* **`internal/routes/auth_test.go`** (new): tests for these two handlers.
+* **`internal/app/router.go`**: registers the two routes **outside** `r.Group(Auth)` (public), alongside `oauth.Registrar(r)`.
 
 ### 3.5. Frontend (`services/frontend`)
-* **`src/auth/Register.tsx`** (novo): formulário nome/e-mail/senha/nome_tenant; `fetch POST /api/v1/auth/registro`; em sucesso salva o token (reaproveita `session.ts`) e navega para `/dashboard`; em 409 exibe erro de e-mail duplicado mantendo os campos preenchidos.
-* **`src/auth/Register.test.tsx`** (novo).
-* **`src/auth/Login.tsx`**: adiciona formulário e-mail/senha (`fetch POST /api/v1/auth/login`) acima ou abaixo dos botões OAuth existentes, e um link "Cadastre-se" para `/register`.
-* **`src/auth/Login.test.tsx`**: cobre o novo formulário e o link.
-* **`src/main.tsx`**: registra `<Route path="/register" element={<Register />} />` no router público (ao lado de `/login`).
-* **`src/pages/Home/Home.tsx`**: os dois links "Testar grátis" passam de `to="/login"` para `to="/register"`.
-* **`src/pages/Home/Home.test.tsx`**: atualiza a asserção de `href`/rota do CTA.
+* **`src/auth/Register.tsx`** (new): name/email/password/nome_tenant form; `fetch POST /api/v1/auth/registro`; on success saves the token (reuses `session.ts`) and navigates to `/dashboard`; on 409 shows a duplicate-email error while keeping the filled-in fields.
+* **`src/auth/Register.test.tsx`** (new).
+* **`src/auth/Login.tsx`**: adds an email/password form (`fetch POST /api/v1/auth/login`) above or below the existing OAuth buttons, plus a "Sign up" link to `/register`.
+* **`src/auth/Login.test.tsx`**: covers the new form and the link.
+* **`src/main.tsx`**: registers `<Route path="/register" element={<Register />} />` on the public router (alongside `/login`).
+* **`src/pages/Home/Home.tsx`**: both "Try for Free" links move from `to="/login"` to `to="/register"`.
+* **`src/pages/Home/Home.test.tsx`**: updates the CTA `href`/route assertion.
 
 ---
 
-## 4. Decisões Técnicas
+## 4. Technical Decisions
 
-### 4.1. Reaproveitar a tabela `users` com `provedor = 'senha'` em vez de tabela nova
-A tabela já tem `provedor`/`external_id`/`email`/`nome`/`tenant_id`/`tipo` e o mesmo
-enum `tenant_tipo`. Uma conta de senha é só mais uma linha com `provedor = 'senha'`
-e `external_id = email` (satisfaz o `UNIQUE (provedor, external_id)` já existente
-sem migração adicional nesse índice). Só falta a senha em si — daí a coluna nova
-nullable (`NULL` para contas OAuth) e um índice único **parcial**, para não colidir
-com a unicidade por provedor que já existe:
+### 4.1. Reuse the `users` table with `provedor = 'senha'` instead of a new table
+The table already has `provedor`/`external_id`/`email`/`nome`/`tenant_id`/`tipo` and the same
+`tenant_tipo` enum. A password account is just one more row with `provedor = 'senha'`
+and `external_id = email` (satisfying the already-existing `UNIQUE (provedor, external_id)`
+with no additional migration on that index). All that's missing is the password itself — hence
+the new nullable column (`NULL` for OAuth accounts) and a **partial** unique index, so as
+not to collide with the existing per-provider uniqueness:
 
 ```sql
 ALTER TABLE users ADD COLUMN senha_hash varchar(255);
@@ -111,22 +111,22 @@ CREATE UNIQUE INDEX idx_users_email_senha_unico ON users (email)
   WHERE provedor = 'senha';
 ```
 
-### 4.2. Endpoints novos em `/api/v1/auth/*`, não em `/auth/*`
-`/auth/{provedor}` (OAuth) é navegação de browser (redirect), por isso não precisa
-de proxy no Vite dev server. Cadastro/login por senha são chamados via `fetch` de
-dentro do SPA — precisam do mesmo proxy que `/api/*` já tem em
-`services/frontend/vite.config.ts` (dev) e em `infra/nginx/*.conf` (produção, que
-aliás já proxya os dois prefixos). Colocar os novos endpoints sob `/api/v1/auth/*`
-evita CORS e configuração de proxy nova, mesmo eles ficando **fora** do
-`r.Group(Auth)` em `router.go` (são as duas únicas rotas públicas sob `/api`).
+### 4.2. New endpoints under `/api/v1/auth/*`, not `/auth/*`
+`/auth/{provedor}` (OAuth) is browser navigation (a redirect), so it doesn't need
+a proxy in the Vite dev server. Password sign-up/login are called via `fetch` from
+inside the SPA — they need the same proxy that `/api/*` already has in
+`services/frontend/vite.config.ts` (dev) and in `infra/nginx/*.conf` (production, which
+in fact already proxies both prefixes). Placing the new endpoints under `/api/v1/auth/*`
+avoids CORS issues and new proxy configuration, even though they sit **outside** the
+`r.Group(Auth)` in `router.go` (they are the only two public routes under `/api`).
 
-### 4.3. Atomicidade tenant + usuário via transação explícita
-`CriarTenant` e a inserção do usuário são hoje chamadas separadas no store. Para
-cumprir RNF03 (nenhum tenant órfão se o e-mail for duplicado), o novo método
-`CriarTenantEUsuarioComSenha` abre uma transação pgx (`BEGIN`), insere o tenant,
-tenta inserir o usuário e só dá `COMMIT` se as duas inserções tiverem sucesso; um
-`unique_violation` no `INSERT` de `users` provoca `ROLLBACK` (desfazendo o tenant
-também) antes de devolver `ErrEmailJaCadastrado`.
+### 4.3. Tenant + user atomicity via an explicit transaction
+`CriarTenant` and the user insert are currently separate calls in the store. To
+satisfy NFR03 (no orphaned tenant if the email is a duplicate), the new
+`CriarTenantEUsuarioComSenha` method opens a pgx transaction (`BEGIN`), inserts the tenant,
+tries to insert the user, and only `COMMIT`s if both inserts succeed; a
+`unique_violation` on the `users` `INSERT` triggers a `ROLLBACK` (undoing the tenant
+too) before returning `ErrEmailJaCadastrado`.
 
 ```go
 func (s *Store) CriarTenantEUsuarioComSenha(ctx context.Context, nomeUsuario, email, senhaHash, nomeTenant string) (userID, tenantID string, err error) {
@@ -167,25 +167,25 @@ func (s *Store) CriarTenantEUsuarioComSenha(ctx context.Context, nomeUsuario, em
 }
 ```
 
-`s.pool` exige trocar o campo `db DB` do `Store` por acesso a `*pgxpool.Pool`
-(ou adicionar um segundo campo só para transações) — ver Riscos, item de maior
-incerteza técnica desta demanda.
+`s.pool` requires swapping the `Store`'s `db DB` field for access to a `*pgxpool.Pool`
+(or adding a second field just for transactions) — see Risks, the item with the greatest
+technical uncertainty in this initiative.
 
 ---
 
-## 5. Dependências e Pré-requisitos
+## 5. Dependencies and Prerequisites
 
-- [x] `golang.org/x/crypto` já é dependência indireta do módulo (`go.mod` linha 47) — só precisa virar import direto de `golang.org/x/crypto/bcrypt`; nenhum pacote novo a instalar.
-- [x] Nenhuma migração pendente de specs anteriores bloqueia a `0014`.
-- [ ] Confirmar que `store.DB` (interface atual, só `Exec`/`Query`/`QueryRow`) precisa evoluir para expor `Begin` — decisão técnica 4.3.
+- [x] `golang.org/x/crypto` is already an indirect module dependency (`go.mod` line 47) — it just needs to become a direct import of `golang.org/x/crypto/bcrypt`; no new package to install.
+- [x] No pending migration from earlier specs blocks `0014`.
+- [ ] Confirm whether `store.DB` (current interface, just `Exec`/`Query`/`QueryRow`) needs to evolve to expose `Begin` — technical decision 4.3.
 
 ---
 
-## 6. Riscos e Pontos de Atenção
+## 6. Risks and Points of Attention
 
-| Risco | Impacto | Mitigação |
+| Risk | Impact | Mitigation |
 |-------|---------|-----------|
-| `store.DB` hoje é uma interface estreita (`Exec`/`Query`/`QueryRow`) sem `Begin` — pode exigir ajustar a assinatura ou adicionar um segundo tipo `TxDB` só para este método, tocando testes existentes que usam mocks de `DB`. | Alto | Tratar como a primeira task de implementação (4.3); se o ajuste for maior que o previsto, cair para uma versão sem transação real (criar usuário primeiro, tenant depois, com limpeza manual em caso de erro) documentando o débito. |
-| Ausência de rate limiting dedicado em `/api/v1/auth/login` permite força bruta de senha. | Médio | Fora de escopo (RNF02); o `middleware.RateLimiter` já existente no Gateway é por tenant autenticado — não se aplica a rotas públicas. Sinalizar como próxima demanda. |
-| Duas contas (OAuth e senha) com o mesmo e-mail geram identidades desconectadas, potencialmente confuso para o usuário. | Baixo | Aceito conscientemente (fora de escopo — unificação de identidade, spec.md §8). |
-| bcrypt com custo fixo pode ficar desatualizado com o tempo. | Baixo | Custo isolado em uma constante (`const bcryptCost = 12`) — fácil de subir depois sem migração de dados (bcrypt já embute o custo no próprio hash). |
+| `store.DB` is currently a narrow interface (`Exec`/`Query`/`QueryRow`) with no `Begin` — may require adjusting the signature or adding a second `TxDB` type just for this method, touching existing tests that use `DB` mocks. | High | Treat as the first implementation task (4.3); if the adjustment turns out larger than expected, fall back to a version without a real transaction (create the user first, then the tenant, with manual cleanup on error), documenting the debt. |
+| The lack of dedicated rate limiting on `/api/v1/auth/login` allows password brute-forcing. | Medium | Out of scope (NFR02); the Gateway's existing `middleware.RateLimiter` is per authenticated tenant — it does not apply to public routes. Flag as the next initiative. |
+| Two accounts (OAuth and password) with the same email produce disconnected identities, potentially confusing for the user. | Low | Consciously accepted (out of scope — identity unification, spec.md §8). |
+| Fixed-cost bcrypt may become outdated over time. | Low | The cost is isolated in a single constant (`const bcryptCost = 12`) — easy to raise later with no data migration (bcrypt already embeds the cost in the hash itself). |

@@ -1,29 +1,29 @@
-# Interfaces: Construtor de Sistemas MACH V4
+# Interfaces: MACH V4 System Builder
 
-Contratos gRPC (`.proto`) — a fonte única de verdade da comunicação interna (RNF01). Todos os serviços recebem `tenant_id` exclusivamente via gRPC Metadata (chave `x-tenant-context-bin`), nunca no corpo das mensagens (RNF02, RN01).
+gRPC contracts (`.proto`) — the single source of truth for internal communication (NFR01). All services receive `tenant_id` exclusively via gRPC Metadata (key `x-tenant-context-bin`), never in the message body (NFR02, BR01).
 
 ---
 
 ## `construtor.logic.v1.LogicEngineService`
 
-Contrato oficial transcrito de `doc/CONTRACTS_PERFORMANCE.md §5`, ampliado com o CRUD de regras (RF02, RF07).
+Official contract transcribed from `doc/CONTRACTS_PERFORMANCE.md §5`, extended with the rules CRUD (FR02, FR07).
 
 ```protobuf
 syntax = "proto3";
 
 package construtor.logic.v1;
 
-// Representa a submissão de dados operacionais dinâmicos
+// Represents the submission of dynamic operational data
 message SalvarFormularioRequest {
   string sistema_id = 1;
-  // Mapa dinâmico de chave-valor ligando o Blind Index do input ao valor preenchido
+  // Dynamic key-value map linking the input's Blind Index to the submitted value
   map<string, string> dados_formulario = 2;
 }
 
-// Resposta com o estado da validação e persistência
+// Response with the validation and persistence status
 message SalvarFormularioResponse {
   bool sucesso = 1;
-  // Mapa de erros indexado pelo Blind Index do componente falhado (RNF08)
+  // Error map indexed by the Blind Index of the failed component (NFR08)
   map<string, string> erros_validacao = 2;
   string mensagem_status = 3;
 }
@@ -31,12 +31,12 @@ message SalvarFormularioResponse {
 message Regra {
   string id = 1;
   string sistema_id = 2;
-  // Árvore de decisão serializada (nós lógicos)
+  // Serialized decision tree (logic nodes)
   bytes arvore_decisao = 3;
 }
 
 service LogicEngineService {
-  // Ação Unary para validar e gravar dados na base de dados partilhada (RF07, RN08)
+  // Unary action to validate and write data to the shared database (FR07, BR08)
   rpc SalvarFormulario (SalvarFormularioRequest) returns (SalvarFormularioResponse);
 
   rpc CriarRegra (Regra) returns (Regra);
@@ -49,13 +49,13 @@ message ObterRegraRequest { string id = 1; }
 message RemoverResponse { bool sucesso = 1; }
 ```
 
-**Implementações esperadas**: servidor em `services/logic/internal/server/grpc.go`; clientes no Gateway e no Export Engine.
+**Expected implementations**: server in `services/logic/internal/server/grpc.go`; clients in the Gateway and the Export Engine.
 
 ---
 
 ## `construtor.design.v1.DesignEngineService`
 
-CRUD da árvore recursiva e persistência em lote da colaboração (RF01, RN06).
+CRUD of the recursive tree and batched persistence of collaboration (FR01, BR06).
 
 ```protobuf
 syntax = "proto3";
@@ -65,8 +65,8 @@ package construtor.design.v1;
 message Componente {
   string blind_index = 1;
   string tipo = 2;
-  bytes propriedades = 3;              // JSON serializado
-  repeated Componente componente_filhos = 4;  // padrão Composite
+  bytes propriedades = 3;              // Serialized JSON
+  repeated Componente componente_filhos = 4;  // Composite pattern
 }
 
 message Design {
@@ -77,7 +77,7 @@ message Design {
 }
 
 message SalvarDesignRequest {
-  // Payload consolidado enviado pelo motor Elixir após o debounce de 5s (RN06)
+  // Consolidated payload sent by the Elixir engine after the 5s debounce (BR06)
   Design design = 1;
 }
 
@@ -86,7 +86,7 @@ service DesignEngineService {
   rpc ObterDesign (ObterDesignRequest) returns (Design);
   rpc AtualizarDesign (Design) returns (Design);
   rpc RemoverDesign (ObterDesignRequest) returns (RemoverResponse);
-  // Chamada única em lote da colaboração (write-behind)
+  // Single batched call from collaboration (write-behind)
   rpc SalvarDesign (SalvarDesignRequest) returns (SalvarDesignResponse);
 }
 
@@ -95,13 +95,13 @@ message SalvarDesignResponse { bool sucesso = 1; }
 message RemoverResponse { bool sucesso = 1; }
 ```
 
-**Implementações esperadas**: servidor em `services/design/internal/server/grpc.go`; clientes no Gateway, no motor Elixir (`collab/lib/collab/grpc/design_client.ex`) e no Export Engine.
+**Expected implementations**: server in `services/design/internal/server/grpc.go`; clients in the Gateway, the Elixir engine (`collab/lib/collab/grpc/design_client.ex`), and the Export Engine.
 
 ---
 
 ## `construtor.iam.v1.IAMService`
 
-Autenticação e permissões por componente (RF03, RN03).
+Authentication and per-component permissions (FR03, BR03).
 
 ```protobuf
 syntax = "proto3";
@@ -118,7 +118,7 @@ message ValidarTokenResponse {
 
 message AvaliarPermissoesRequest {
   string sistema_id = 1;
-  // Blind indexes dos componentes do ecrã em renderização
+  // Blind indexes of the components on the screen being rendered
   repeated string blind_indexes = 2;
 }
 
@@ -128,7 +128,7 @@ message PermissaoComponente {
 }
 
 message AvaliarPermissoesResponse {
-  // Mapa booleano final — a lógica das regras nunca sai do servidor (RN03)
+  // Final boolean map — rule logic never leaves the server (BR03)
   map<string, PermissaoComponente> permissions = 1;
 }
 
@@ -138,13 +138,13 @@ service IAMService {
 }
 ```
 
-**Implementações esperadas**: servidor em `services/iam/internal/server/grpc.go`; cliente no Gateway (middleware de auth e rota de permissões).
+**Expected implementations**: server in `services/iam/internal/server/grpc.go`; client in the Gateway (auth middleware and permissions route).
 
 ---
 
 ## `construtor.deploy.v1.DeployEngineService`
 
-Publicação por flag ativa e rollback instantâneo (RF04, RN04, RN05).
+Publishing via active flag and instant rollback (FR04, BR04, BR05).
 
 ```protobuf
 syntax = "proto3";
@@ -159,7 +159,7 @@ message PublicarResponse {
 
 message RollbackRequest {
   string sistema_id = 1;
-  // 0 = versão imediatamente anterior
+  // 0 = immediately previous version
   int32 versao_numero = 2;
 }
 message RollbackResponse { int32 versao_ativa = 1; }
@@ -168,7 +168,7 @@ message ObterVersaoAtivaRequest { string sistema_id = 1; }
 message VersaoAtiva {
   string versao_id = 1;
   int32 numero = 2;
-  bytes definicao_json = 3; // árvore + campos_definicao consolidados
+  bytes definicao_json = 3; // consolidated tree + campos_definicao
 }
 
 service DeployEngineService {
@@ -178,13 +178,13 @@ service DeployEngineService {
 }
 ```
 
-**Implementações esperadas**: servidor em `services/deploy/internal/server/grpc.go`; cliente no Gateway.
+**Expected implementations**: server in `services/deploy/internal/server/grpc.go`; client in the Gateway.
 
 ---
 
 ## `construtor.export.v1.ExportEngineService`
 
-Exportação assíncrona com coleta via Server Streaming (RF05, RNF01).
+Asynchronous export with collection via Server Streaming (FR05, NFR01).
 
 ```protobuf
 syntax = "proto3";
@@ -195,7 +195,7 @@ message CriarJobRequest { string sistema_id = 1; }
 message Job {
   string id = 1;
   string status = 2;       // criado | coletando | pronto | erro | expirado
-  string arquivo_url = 3;  // Presigned URL quando pronto
+  string arquivo_url = 3;  // Presigned URL when ready
   string expira_em = 4;    // RFC 3339
 }
 
@@ -208,26 +208,26 @@ message ChunkDados {
 service ExportEngineService {
   rpc CriarJob (CriarJobRequest) returns (Job);
   rpc ObterJob (ObterJobRequest) returns (Job);
-  // Server Streaming: consumo em chunks para não sobrecarregar a RAM (RNF01)
+  // Server Streaming: consumed in chunks to avoid overloading RAM (NFR01)
   rpc ColetarDados (ColetarDadosRequest) returns (stream ChunkDados);
 }
 
 message ObterJobRequest { string id = 1; }
 ```
 
-**Implementações esperadas**: servidor em `services/export/internal/{jobs,collector}`; cliente no Gateway. O streaming `ColetarDados` é servido também por Design/Logic Engines como fontes.
+**Expected implementations**: server in `services/export/internal/{jobs,collector}`; client in the Gateway. The `ColetarDados` stream is also served by the Design/Logic Engines as sources.
 
 ---
 
-## `construtor.common.v1` — Contexto de Tenant (Metadata)
+## `construtor.common.v1` — Tenant Context (Metadata)
 
 ```protobuf
 syntax = "proto3";
 
 package construtor.common.v1;
 
-// Serializado como Metadata binário gRPC (chave "x-tenant-context-bin") — RNF02.
-// NUNCA incluído no corpo de mensagens de negócio.
+// Serialized as binary gRPC Metadata (key "x-tenant-context-bin") — NFR02.
+// NEVER included in business message bodies.
 message TenantContext {
   string tenant_id = 1;
   string user_id = 2;
@@ -236,13 +236,13 @@ message TenantContext {
 }
 ```
 
-**Implementações esperadas**: `pkg/tenantctx` (Go — interceptores server/client) e plug equivalente no cliente gRPC Elixir.
+**Expected implementations**: `pkg/tenantctx` (Go — server/client interceptors) and an equivalent plug in the Elixir gRPC client.
 
 ---
 
-## Contrato de Mensagem AMQP (RabbitMQ)
+## AMQP Message Contract (RabbitMQ)
 
-Evento publicado pelo Logic Engine e consumido pelos workers (RF08, RN09, RNF04):
+Event published by the Logic Engine and consumed by the workers (FR08, BR09, NFR04):
 
 ```json
 {
@@ -258,8 +258,8 @@ Evento publicado pelo Logic Engine e consumido pelos workers (RF08, RN09, RNF04)
 }
 ```
 
-| Propriedade | Regra |
+| Property | Rule |
 |-------------|-------|
-| Routing key | `webhooks.disparo.<tenant_id>` / `notificacoes.envio.<tenant_id>` (fair queuing — RN09) |
-| DLQ | `<fila>.dlq` após N tentativas com backoff (RNF06) |
-| Trace | `traceparent` obrigatório nos headers (RNF04) |
+| Routing key | `webhooks.disparo.<tenant_id>` / `notificacoes.envio.<tenant_id>` (fair queuing — BR09) |
+| DLQ | `<fila>.dlq` after N attempts with backoff (NFR06) |
+| Trace | `traceparent` required in the headers (NFR04) |

@@ -1,101 +1,101 @@
-# Interfaces: Pipeline CI/CD por Entrega de Artefatos Compilados
+# Interfaces: CI/CD Pipeline for Compiled Artifact Delivery
 
-Esta demanda não expõe API HTTP própria; os contratos são o **formato dos artefatos**, o **layout do host**, a **interface dos scripts** e os **segredos** consumidos pelo pipeline.
+This effort does not expose its own HTTP API; the contracts are the **artifact format**, the **host layout**, the **script interface**, and the **secrets** consumed by the pipeline.
 
 ---
 
-## 1. Contrato do artefato (`dist/artifacts/<unidade>-<sha>.tar.gz`)
+## 1. Artifact contract (`dist/artifacts/<unit>-<sha>.tar.gz`)
 
-Cada tarball contém **apenas** conteúdo executável. É proibido incluir fonte, testes, `.git`, `node_modules`, `deps` ou stubs versionados (RN01, RN05).
+Each tarball contains **only** executable content. Including source, tests, `.git`, `node_modules`, `deps`, or versioned stubs is forbidden (BR01, BR05).
 
-| Unidade | Comando de build | Conteúdo do tarball |
+| Unit | Build command | Tarball contents |
 |---------|------------------|---------------------|
-| `gateway`, `iam`, `design`, `logic`, `deploy`, `export`, `workers` | `CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=<sha>" -o bin/<unidade> ./<caminho>/cmd` | `bin/<unidade>` (binário estático único) |
-| `collab` | `MIX_ENV=prod mix release collab` | Árvore do release OTP (`bin/`, `lib/`, `releases/`, ERTS) |
-| `player` | `npm ci && npm run build` | Conteúdo de `dist/` (HTML/JS/CSS minificados) |
+| `gateway`, `iam`, `design`, `logic`, `deploy`, `export`, `workers` | `CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=<sha>" -o bin/<unit> ./<path>/cmd` | `bin/<unit>` (single static binary) |
+| `collab` | `MIX_ENV=prod mix release collab` | OTP release tree (`bin/`, `lib/`, `releases/`, ERTS) |
+| `player` | `npm ci && npm run build` | Contents of `dist/` (minified HTML/JS/CSS) |
 
-**Nomenclatura**: `<unidade>-<sha>.tar.gz`, onde `<sha>` é o git sha curto (imutável, RN04).
+**Naming**: `<unit>-<sha>.tar.gz`, where `<sha>` is the short git sha (immutable, BR04).
 
 ---
 
-## 2. Contrato do layout do host
+## 2. Host layout contract
 
 ```
 /opt/machv4/
 ├── releases/
-│   ├── <sha-atual>/
+│   ├── <current-sha>/
 │   │   ├── bin/{gateway,iam,design,logic,deploy,export,workers}
-│   │   ├── collab/           # release OTP autocontido
-│   │   └── player/           # bundle estático (docroot do Nginx)
-│   └── <sha-anterior>/       # retido para rollback (RELEASES_KEEP)
-└── current -> releases/<sha-atual>   # symlink trocado atomicamente (RN04, RN07)
+│   │   ├── collab/           # self-contained OTP release
+│   │   └── player/           # static bundle (Nginx docroot)
+│   └── <previous-sha>/       # retained for rollback (RELEASES_KEEP)
+└── current -> releases/<current-sha>   # symlink swapped atomically (BR04, BR07)
 ```
 
-- A ativação é um `rename` atômico do symlink `current`; nunca aponta a um diretório parcialmente transferido (Critério 4).
-- `releases/` retém as `RELEASES_KEEP` versões mais recentes.
+- Activation is an atomic `rename` of the `current` symlink; it never points to a partially transferred directory (Criterion 4).
+- `releases/` retains the `RELEASES_KEEP` most recent versions.
 
 ---
 
-## 3. Contrato das unidades `systemd`
+## 3. `systemd` unit contract
 
-Nome: `machv4-<unidade>.service` para `gateway, iam, design, logic, deploy, export, workers, collab`.
+Name: `machv4-<unit>.service` for `gateway, iam, design, logic, deploy, export, workers, collab`.
 
-| Campo | Valor |
+| Field | Value |
 |-------|-------|
-| `ExecStart` | `/opt/machv4/current/bin/<unidade>` (ou `/opt/machv4/current/collab/bin/collab start`) |
-| `User` | usuário de serviço non-root (RNF01) |
-| `EnvironmentFile` | `/etc/machv4/<unidade>.env` (DSN, OTLP, portas — nunca no artefato) |
+| `ExecStart` | `/opt/machv4/current/bin/<unit>` (or `/opt/machv4/current/collab/bin/collab start`) |
+| `User` | non-root service user (NFR01) |
+| `EnvironmentFile` | `/etc/machv4/<unit>.env` (DSN, OTLP, ports — never in the artifact) |
 | `Restart` | `on-failure` |
 
 ---
 
-## 4. Interface dos scripts
+## 4. Script interface
 
 ```bash
-# Compila e empacota todos os artefatos a partir de dist/ (nunca da raiz do repo)
+# Compiles and packages all artifacts from dist/ (never from the repo root)
 build/build-artifacts.sh
-#   entrada:  SHA (env, default: git rev-parse --short HEAD)
-#   saída:    dist/artifacts/<unidade>-<SHA>.tar.gz ; exit 0 = sucesso
+#   input:  SHA (env, default: git rev-parse --short HEAD)
+#   output: dist/artifacts/<unit>-<SHA>.tar.gz ; exit 0 = success
 
-# Entrega os artefatos a um ambiente e ativa o release
+# Delivers the artifacts to an environment and activates the release
 build/deploy.sh --env <staging|production> --host <host> --user <user> --sha <sha>
-#   efeito:   rsync -> releases/<sha> ; ln -sfn atômico ; systemctl restart 'machv4-*'
+#   effect:   rsync -> releases/<sha> ; atomic ln -sfn ; systemctl restart 'machv4-*'
 
-# Verifica a saúde dos serviços após a ativação
+# Checks service health after activation
 build/smoke-test.sh --host <host>
-#   contrato: exit 0 = todos saudáveis ; exit ≠ 0 = falha (dispara rollback, RN08)
+#   contract: exit 0 = all healthy ; exit ≠ 0 = failure (triggers rollback, BR08)
 
-# Reverte para o release anterior (ou um sha informado), sem recompilar
+# Reverts to the previous release (or a given sha), without recompiling
 build/rollback.sh --env <staging|production> --host <host> [--sha <sha>]
 ```
 
 ---
 
-## 5. Contrato dos segredos e ambientes (GitHub)
+## 5. Secrets and environments contract (GitHub)
 
-| Environment | Secret | Uso |
+| Environment | Secret | Use |
 |-------------|--------|-----|
-| `staging`, `production` | `SSH_PRIVATE_KEY` | Chave dedicada por ambiente para o rsync/SSH (RNF01) |
-| `staging`, `production` | `SSH_HOST` | Host alvo do deploy |
-| `staging`, `production` | `SSH_USER` | Usuário de serviço non-root |
-| `staging`, `production` | `SSH_KNOWN_HOSTS` | Fingerprint do host (evita TOFU no runner) |
+| `staging`, `production` | `SSH_PRIVATE_KEY` | Dedicated per-environment key for rsync/SSH (NFR01) |
+| `staging`, `production` | `SSH_HOST` | Deploy target host |
+| `staging`, `production` | `SSH_USER` | Non-root service user |
+| `staging`, `production` | `SSH_KNOWN_HOSTS` | Host fingerprint (avoids TOFU on the runner) |
 
-- `staging`: acionado automaticamente por push em `main`.
-- `production`: acionado por **disparo manual** do `cd.yml` (`workflow_dispatch`,
-  normalmente com `--ref vX.Y.Z`) — o disparo é o gate humano (RN02, RN03).
-  *Required reviewers* de environment exigem plano pago/repo público; o disparo
-  manual cumpre o mesmo papel no plano free.
+- `staging`: triggered automatically on push to `main`.
+- `production`: triggered by a **manual trigger** of `cd.yml` (`workflow_dispatch`,
+  typically with `--ref vX.Y.Z`) — the trigger is the human gate (BR02, BR03).
+  Environment *required reviewers* require a paid plan/public repo; the manual
+  trigger fulfills the same role on the free plan.
 
 ---
 
-## 6. Contrato do smoke test (healthchecks)
+## 6. Smoke test contract (healthchecks)
 
-| Serviço | Verificação |
+| Service | Check |
 |---------|-------------|
 | `gateway` | `GET http://<host>:8080/healthz` → `200` |
-| `iam`, `design`, `logic`, `deploy`, `export` | *health check* gRPC na porta do serviço (`50051`–`50055`) |
+| `iam`, `design`, `logic`, `deploy`, `export` | gRPC *health check* on the service port (`50051`–`50055`) |
 | `collab` | `GET http://<host>:4000/healthz` (Phoenix) → `200` |
-| `player` | `GET http://<host>/` (Nginx serve `index.html`) → `200` |
-| `workers` | unidade `systemd` ativa (`systemctl is-active machv4-workers`) |
+| `player` | `GET http://<host>/` (Nginx serves `index.html`) → `200` |
+| `workers` | active `systemd` unit (`systemctl is-active machv4-workers`) |
 
-Qualquer verificação com falha ⇒ `smoke-test.sh` retorna ≠ 0 ⇒ rollback automático (RN08).
+Any failed check ⇒ `smoke-test.sh` returns ≠ 0 ⇒ automatic rollback (BR08).

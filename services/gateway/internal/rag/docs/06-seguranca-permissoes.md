@@ -1,18 +1,17 @@
-# Segurança e permissões em sistemas de cliente final
+# Security and permissions in end-customer systems
 
-Todo sistema montado no builder é operado por perfis diferentes (dono,
-parceiro, cliente final, atendente) — modele permissão desde o início:
+Every system assembled in the builder is operated by different profiles
+(owner, partner, end customer, staff) — design permissions from the start:
 
-- **Defina papéis pelo que a pessoa faz**, não por cargo formal — um
-  "atendente" e uma "recepcionista" podem ser o mesmo papel se fazem as
-  mesmas ações no sistema.
-- **Toda ação destrutiva (excluir, cancelar, estornar) precisa de
-  confirmação explícita e, idealmente, de um papel com permissão elevada** —
-  não deixe o papel padrão excluir dados de outros usuários sem barreira.
-- **Dados sensíveis (documentos pessoais, dados de saúde, dados
-  financeiros) precisam de campo marcado como sensível** — isso deve
-  refletir em mascaramento na listagem e em log de acesso, não só em
-  "não mostrar por padrão".
-- **Nunca exponha o identificador interno (ID sequencial) do banco em URLs
-  públicas** sem necessidade — prefira identificadores opacos para recursos
-  acessados por clientes finais fora do sistema autenticado.
+- **Define roles by what the person does**, not by formal job title — a
+  "staff member" and a "receptionist" can be the same role if they perform
+  the same actions in the system.
+- **Every destructive action (delete, cancel, reverse) needs explicit
+  confirmation and, ideally, a role with elevated permission** — don't let
+  the default role delete other users' data without a barrier.
+- **Sensitive data (personal documents, health data, financial data) needs
+  a field marked as sensitive** — this should be reflected in masking on
+  listings and in access logs, not just in "don't show by default".
+- **Never expose the database's internal identifier (sequential ID) in
+  public URLs** unless necessary — prefer opaque identifiers for resources
+  accessed by end customers outside the authenticated system.

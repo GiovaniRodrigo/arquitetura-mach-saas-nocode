@@ -1,26 +1,26 @@
-# MACH V4 System Builder — Plataforma Low-Code / No-Code
+# MACH V4 System Builder — Low-Code / No-Code Platform
 
-## 1. Visão Geral
+## 1. Overview
 
-Este repositório contém a especificação de arquitetura técnica unificada da plataforma **MACH V4**. O sistema foi desenhado sob princípios modernos de arquitetura distribuída para permitir que os utilizadores construam as suas próprias aplicações digitais através de uma interface totalmente visual.
+This repository contains the unified technical architecture specification for the **MACH V4** platform. The system was designed under modern distributed architecture principles to allow users to build their own digital applications through an entirely visual interface.
 
-A versão V4 consolida contratos gRPC via Protocol Buffers, mapeamento dinâmico de payloads usando mapas chave-valor, controlo de acesso granular ao nível de componente (IAM) e integra camadas de mensageria assíncrona escalável com sincronização em tempo real.
+Version V4 consolidates gRPC contracts via Protocol Buffers, dynamic payload mapping using key-value maps, fine-grained component-level access control (IAM), and integrates scalable asynchronous messaging layers with real-time synchronization.
 
-## 2. Requisitos Centrais da Plataforma
+## 2. Core Platform Requirements
 
-* **CRUD de UI:** Criação e gravação de metadados para a construção de interfaces visuais.
-* **CRUD de Regras de Negócio:** Registo de regras operacionais, controlo de acessos e requisitos funcionais.
-* **Publicação Instantânea:** Mecanismo de deploy imediato baseado numa abordagem interpretada.
-* **Multi-Tenancy Hierárquico:** Isolamento lógico estruturado para Owners, Partners e Clientes Finais.
-* **Exportação Assíncrona:** Extração completa em segundo plano de dados operacionais e metadados.
-* **Colaboração em Tempo Real:** Edição simultânea multi-utilizador dentro do canvas do builder.
+* **UI CRUD:** Creation and saving of metadata for building visual user interfaces.
+* **Business Rules CRUD:** Registration of operational rules, access control, and functional requirements.
+* **Instant Publishing:** Immediate deployment mechanism based on an interpreted approach.
+* **Hierarchical Multi-Tenancy:** Structured logical isolation for Owners, Partners, and End Customers.
+* **Asynchronous Export:** Complete background extraction of operational data and metadata.
+* **Real-Time Collaboration:** Simultaneous multi-user editing within the builder canvas.
 
-## 3. Guia de Leitura da Documentação
+## 3. Documentation Reading Guide
 
-Para obter uma compreensão detalhada de cada componente da infraestrutura, consulte os ficheiros especializados:
+To gain a detailed understanding of each infrastructure component, refer to the specialized files:
 
-* [`ARCHITECTURE_PILLARS.md`](doc/ARCHITECTURE_PILLARS.md): Mapeamento dos 4 pilares MACH e decomposição em microsserviços.
-* [`GATEWAY_COLLABORATION.md`](doc/GATEWAY_COLLABORATION.md): Detalhes do Gateway híbrido (Go & Elixir) e sincronização via WebSocket.
-* [`DATA_SECURITY.md`](doc/DATA_SECURITY.md): Gestão dinâmica de dados, Blind Index e políticas de IAM ao nível de componente.
-* [`ASYNC_OBSERVABILITY.md`](doc/ASYNC_OBSERVABILITY.md): Mensageria distribuída com KEDA e tracing via OpenTelemetry.
-* [`CONTRACTS_PERFORMANCE.md`](doc/CONTRACTS_PERFORMANCE.md): Contratos `.proto` oficiais, estratégias de renderização e roadmap de evolução técnica.
+* [`ARCHITECTURE_PILLARS.md`](doc/ARCHITECTURE_PILLARS.md): Mapping of the 4 MACH pillars and microservice breakdown.
+* [`GATEWAY_COLLABORATION.md`](doc/GATEWAY_COLLABORATION.md): Details on the hybrid Gateway (Go & Elixir) and WebSocket synchronization.
+* [`DATA_SECURITY.md`](doc/DATA_SECURITY.md): Dynamic data management, Blind Index, and component-level IAM policies.
+* [`ASYNC_OBSERVABILITY.md`](doc/ASYNC_OBSERVABILITY.md): Distributed messaging with KEDA and OpenTelemetry tracing.
+* [`CONTRACTS_PERFORMANCE.md`](doc/CONTRACTS_PERFORMANCE.md): Official `.proto` contracts, rendering strategies, and technical evolution roadmap.

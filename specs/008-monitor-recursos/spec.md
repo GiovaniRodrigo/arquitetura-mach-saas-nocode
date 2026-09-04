@@ -1,139 +1,139 @@
-# Especificação: Monitor de Recursos
+# Specification: Resource Monitor
 
-> **Nota de arquitetura (pós-implementação, mesma sessão)**: durante a
-> implementação, a decisão de transporte mudou — em vez do serviço
-> `services/monitor` + `pkg/health` (RecursosService por gRPC/HTTP, polling
-> customizado) descritos abaixo, a plataforma foi migrada para Kubernetes com
-> service mesh Linkerd (`infra/k8s/`). CPU/memória vêm do metrics-server
-> (`metrics.k8s.io`) e RPS/taxa de sucesso/latência vêm do Prometheus do
-> `linkerd-viz` — o sidecar instrumenta os 8 serviços automaticamente, sem
-> RecursosService próprio. O Gateway consulta essas duas fontes diretamente
-> via `services/gateway/internal/meshmetrics`. RN01-RN05/RNF01-RNF05 e os
-> critérios de aceitação abaixo continuam valendo em espírito (um serviço
-> sem pod vira "indisponivel", nunca derruba a tela); RF01-RF04 (como os
-> dados são obtidos) estão desatualizados — a fonte real está em
-> `meshmetrics/k8s.go` e `meshmetrics/prometheus.go`. `pkg/health` e a
-> instrumentação `health.Registrar` em IAM/Design/Logic/Deploy/Export, o
-> `/health` do Workers e o `/healthz` estendido do Collab continuam no
-> repositório (funcionam, têm teste) mas não são mais consumidos pelo
-> Monitor — ficaram como sinais de liveness independentes, não removidos por
-> não atrapalharem. `contracts/api.md` também está desatualizado quanto ao
-> corpo de `GET /api/v1/monitor/recursos` — o formato real está no handler
+> **Architecture note (post-implementation, same session)**: during
+> implementation, the transport decision changed — instead of the
+> `services/monitor` service + `pkg/health` (RecursosService over gRPC/HTTP,
+> custom polling) described below, the platform was migrated to Kubernetes with
+> a Linkerd service mesh (`infra/k8s/`). CPU/memory come from the metrics-server
+> (`metrics.k8s.io`) and RPS/success rate/latency come from `linkerd-viz`'s
+> Prometheus — the sidecar instruments the 8 services automatically, with no
+> dedicated RecursosService. The Gateway queries these two sources directly
+> via `services/gateway/internal/meshmetrics`. BR01-BR05/NFR01-NFR05 and the
+> acceptance criteria below still hold in spirit (a service with no pod becomes
+> "unavailable," never brings down the screen); FR01-FR04 (how the data is
+> obtained) are outdated — the real source is in
+> `meshmetrics/k8s.go` and `meshmetrics/prometheus.go`. `pkg/health` and the
+> `health.Registrar` instrumentation in IAM/Design/Logic/Deploy/Export, the
+> Workers' `/health`, and Collab's extended `/healthz` remain in the
+> repository (they work, they have tests) but are no longer consumed by
+> Monitor — they were kept as independent liveness signals, not removed since
+> they're not in the way. `contracts/api.md` is also outdated regarding the
+> body of `GET /api/v1/monitor/recursos` — the real format is in the handler
 > `services/gateway/internal/routes/monitor.go`.
 
-Hoje a plataforma MACH V4 tem tracing distribuído (OTel → Jaeger) mas nenhuma visão
-consolidada de **saúde/infraestrutura** dos próprios serviços: não existe um lugar único
-onde a equipe operando a plataforma veja se IAM, Design, Logic, Deploy, Export, Workers,
-Collab e Gateway estão de pé, há quanto tempo, e quanto de memória/processos estão
-consumindo. Hoje, `GET /health` do Gateway só responde por ele mesmo (liveness binário,
-sem dados), e nenhum outro serviço expõe qualquer sinal de saúde além do `/healthz` do
-Collab.
+Today the MACH V4 platform has distributed tracing (OTel → Jaeger) but no consolidated
+view of the **health/infrastructure** of the services themselves: there's no single place
+where the team operating the platform can see whether IAM, Design, Logic, Deploy, Export,
+Workers, Collab, and Gateway are up, for how long, and how much memory/processes they're
+consuming. Today, the Gateway's `GET /health` only answers for itself (binary liveness,
+no data), and no other service exposes any health signal besides Collab's `/healthz`.
 
-Esta demanda adiciona uma tela **Monitor de Recursos** no dashboard do Player, alimentada
-por um novo microsserviço `services/monitor/` que faz polling periódico de todos os
-serviços já existentes e agrega o resultado. Não inclui consumo/quota por tenant (fica
-para uma demanda futura) nem integração com Prometheus (decisão explícita desta entrega:
-o Monitor lê os próprios serviços diretamente, sem um back-end de métricas intermediário).
-
----
-
-## 1. Objetivo
-
-Ao final desta implementação, qualquer usuário autenticado do dashboard consegue abrir a
-tela "Monitor" e ver, para cada um dos 8 serviços da plataforma (IAM, Design, Logic,
-Deploy, Export, Workers, Collab, Gateway), seu status (ativo/indisponível), uptime e uso
-de memória — atualizados sob demanda ou automaticamente a cada poucos segundos — sem que
-a falha de um serviço monitorado derrube a tela ou os dados dos demais.
+This request adds a **Resource Monitor** screen to the Player's dashboard, powered
+by a new `services/monitor/` microservice that periodically polls all the already
+existing services and aggregates the result. It does not include per-tenant
+consumption/quota (left for a future request) nor Prometheus integration (an
+explicit decision for this delivery: the Monitor reads the services directly,
+with no intermediate metrics backend).
 
 ---
 
-## 2. Regras de Negócio
+## 1. Goal
 
-| ID | Regra |
+By the end of this implementation, any authenticated dashboard user can open the
+"Monitor" screen and see, for each of the platform's 8 services (IAM, Design, Logic,
+Deploy, Export, Workers, Collab, Gateway), its status (active/unavailable), uptime, and
+memory usage — updated on demand or automatically every few seconds — without a failure
+in one monitored service bringing down the screen or the other services' data.
+
+---
+
+## 2. Business Rules
+
+| ID | Rule |
 |----|-------|
-| RN01 | Um serviço monitorado é considerado **indisponível** quando o Monitor não recebe resposta dentro do timeout configurado (RNF01) ou a chamada retorna erro — nesse caso o serviço aparece com status "indisponível" e uma mensagem curta de causa, nunca derrubando a resposta agregada. |
-| RN02 | O Monitor reporta apenas o que cada serviço consegue informar sobre si mesmo (uptime e memória do próprio processo); não infere ou estima recursos de um serviço que não expõe essa informação. |
-| RN03 | A tela é acessível a qualquer usuário autenticado do dashboard — não há hoje um papel "administrador de plataforma" distinto de "usuário de tenant" no sistema de permissões (`permissionMap.ts`), então esta tela segue o mesmo modelo de acesso das demais telas do dashboard (Configuração, Clientes, etc.), sem introduzir RBAC novo. |
-| RN04 | O polling do Monitor aos serviços monitorados é paralelo — a indisponibilidade ou lentidão de um serviço não atrasa a coleta dos demais (RNF01). |
-| RN05 | A lista de serviços monitorados é fixa no código do Monitor (os 8 serviços da plataforma) — não é configurável pelo usuário final nesta entrega. |
+| BR01 | A monitored service is considered **unavailable** when the Monitor gets no response within the configured timeout (NFR01) or the call returns an error — in that case the service shows up with an "unavailable" status and a short cause message, never bringing down the aggregated response. |
+| BR02 | The Monitor only reports what each service can tell about itself (its own process's uptime and memory); it does not infer or estimate resources for a service that doesn't expose that information. |
+| BR03 | The screen is accessible to any authenticated dashboard user — there is currently no "platform administrator" role distinct from "tenant user" in the permission system (`permissionMap.ts`), so this screen follows the same access model as the other dashboard screens (Settings, Customers, etc.), without introducing new RBAC. |
+| BR04 | The Monitor's polling of the monitored services is parallel — the unavailability or slowness of one service does not delay the collection for the others (NFR01). |
+| BR05 | The list of monitored services is fixed in the Monitor's code (the platform's 8 services) — it is not configurable by the end user in this delivery. |
 
 ---
 
-## 3. Requisitos Funcionais
+## 3. Functional Requirements
 
-| ID | Descrição | Ator | Prioridade |
+| ID | Description | Actor | Priority |
 |----|-----------|------|------------|
-| RF01 | IAM, Design, Logic, Deploy e Export passam a expor uma RPC gRPC de recursos (status "servindo", uptime, memória alocada, memória de sistema, goroutines) via um serviço `RecursosService` compartilhado, registrado no `grpc.Server` de cada um. | Sistema | Alta |
-| RF02 | Collab (Elixir) passa a incluir dados de recursos (uptime, memória da VM) no corpo do `/healthz` já existente, sem alterar seu contrato de status HTTP atual. | Sistema | Alta |
-| RF03 | Workers passa a expor um endpoint HTTP mínimo `/health` (não existe hoje nenhum servidor no processo) retornando status, uptime e memória do processo Go, seguindo a mesma forma de configuração por variável de ambiente (`WORKERS_HTTP_ADDR`) dos demais serviços. | Sistema | Alta |
-| RF04 | O novo serviço `services/monitor/` faz polling paralelo dos 8 serviços (IAM, Design, Logic, Deploy, Export, Gateway, Workers via HTTP/gRPC conforme RF01-RF03; Collab via seu `/healthz`; Gateway via seu `/health` já existente) e expõe o resultado agregado via uma RPC gRPC própria. | Sistema | Alta |
-| RF05 | O Gateway expõe `GET /api/v1/monitor/recursos` como fachada REST autenticada sobre a RPC do Monitor, seguindo o mesmo padrão de `routes.*` dos demais recursos. | Usuário autenticado | Alta |
-| RF06 | O Frontend consome `GET /api/v1/monitor/recursos` e renderiza um card por serviço, mostrando nome, status (visual verde/vermelho), uptime formatado e memória usada; um serviço indisponível mostra a mensagem de erro em vez das métricas. | Usuário autenticado | Alta |
-| RF07 | A tela permite atualização manual (botão "Atualizar") e também atualiza automaticamente em intervalo fixo enquanto estiver aberta, sem exigir reload da página. | Usuário autenticado | Média |
-| RF08 | A sidebar do dashboard ganha um item de navegação "Monitor" (rota `/dashboard/monitor`), no mesmo padrão visual e de roteamento dos itens existentes (Dashboard, Clientes, Configuração). | Usuário autenticado | Alta |
+| FR01 | IAM, Design, Logic, Deploy, and Export now expose a resource gRPC RPC (status "serving", uptime, allocated memory, system memory, goroutines) via a shared `RecursosService`, registered on each one's `grpc.Server`. | System | High |
+| FR02 | Collab (Elixir) now includes resource data (uptime, VM memory) in the body of its already existing `/healthz`, without changing its current HTTP status contract. | System | High |
+| FR03 | Workers now exposes a minimal HTTP endpoint `/health` (no server exists in the process today) returning the status, uptime, and memory of the Go process, following the same environment-variable configuration approach (`WORKERS_HTTP_ADDR`) as the other services. | System | High |
+| FR04 | The new `services/monitor/` service does parallel polling of the 8 services (IAM, Design, Logic, Deploy, Export, Gateway, Workers via HTTP/gRPC per FR01-FR03; Collab via its `/healthz`; Gateway via its already existing `/health`) and exposes the aggregated result via its own gRPC RPC. | System | High |
+| FR05 | The Gateway exposes `GET /api/v1/monitor/recursos` as an authenticated REST facade over the Monitor's RPC, following the same `routes.*` pattern as the other resources. | Authenticated user | High |
+| FR06 | The Frontend consumes `GET /api/v1/monitor/recursos` and renders one card per service, showing name, status (green/red visual), formatted uptime, and memory used; an unavailable service shows the error message instead of the metrics. | Authenticated user | High |
+| FR07 | The screen supports manual refresh (an "Update" button) and also refreshes automatically at a fixed interval while it's open, without requiring a page reload. | Authenticated user | Medium |
+| FR08 | The dashboard sidebar gains a "Monitor" navigation item (route `/dashboard/monitor`), following the same visual and routing pattern as the existing items (Dashboard, Customers, Settings). | Authenticated user | High |
 
 ---
 
-## 4. Requisitos Não Funcionais
+## 4. Non-Functional Requirements
 
-| ID | Categoria | Descrição |
+| ID | Category | Description |
 |----|-----------|-----------|
-| RNF01 | Desempenho | O Monitor consulta os 8 serviços em paralelo com timeout curto por serviço (2s); a resposta agregada não deve levar mais que ~2-3s mesmo com um ou mais serviços fora do ar. |
-| RNF02 | Resiliência | A indisponibilidade de qualquer serviço monitorado (incluindo o próprio Monitor, do ponto de vista do Gateway) não gera erro 5xx bloqueante na tela — o Frontend distingue "não consegui falar com o Monitor" (estado de erro da tela toda) de "um serviço individual está indisponível" (estado por card, RN01). |
-| RNF03 | Observabilidade | O serviço Monitor participa do tracing distribuído já existente (OTel), como os demais serviços Go (`pkg/telemetry.Init`). |
-| RNF04 | Portabilidade | Endereços dos serviços monitorados são configuráveis por variável de ambiente, seguindo a convenção já usada no Gateway (`<SERVICO>_GRPC_ADDR` / `<SERVICO>_HTTP_ADDR`), com os mesmos defaults de porta usados em `build/dev-up.sh`. |
-| RNF05 | Segurança | `GET /api/v1/monitor/recursos` exige autenticação (mesmo grupo de middlewares `Auth` + `RateLimiter` das demais rotas autenticadas do Gateway) — não expõe topologia interna a requisições anônimas. |
+| NFR01 | Performance | The Monitor queries the 8 services in parallel with a short per-service timeout (2s); the aggregated response should not take more than ~2-3s even with one or more services down. |
+| NFR02 | Resilience | The unavailability of any monitored service (including the Monitor itself, from the Gateway's point of view) does not produce a blocking 5xx error on the screen — the Frontend distinguishes "couldn't reach the Monitor" (whole-screen error state) from "an individual service is unavailable" (per-card state, BR01). |
+| NFR03 | Observability | The Monitor service participates in the already existing distributed tracing (OTel), like the other Go services (`pkg/telemetry.Init`). |
+| NFR04 | Portability | Addresses of the monitored services are configurable via environment variable, following the convention already used in the Gateway (`<SERVICE>_GRPC_ADDR` / `<SERVICE>_HTTP_ADDR`), with the same default ports used in `build/dev-up.sh`. |
+| NFR05 | Security | `GET /api/v1/monitor/recursos` requires authentication (the same `Auth` + `RateLimiter` middleware group as the Gateway's other authenticated routes) — it does not expose internal topology to anonymous requests. |
 
 ---
 
-## 5. Cenários de Uso
+## 5. Usage Scenarios
 
-### Cenário 1: Todos os serviços saudáveis
-* **Dado que** todos os 8 serviços da plataforma estão no ar
-* **Quando** o usuário abre `/dashboard/monitor`
-* **Então** a tela mostra 8 cards, todos com indicador verde, uptime e memória preenchidos
+### Scenario 1: All services healthy
+* **Given** all 8 platform services are up
+* **When** the user opens `/dashboard/monitor`
+* **Then** the screen shows 8 cards, all with a green indicator, uptime, and memory filled in
 
-### Cenário 2: Um serviço fora do ar
-* **Dado que** o serviço Logic está parado
-* **Quando** o usuário abre ou atualiza a tela Monitor
-* **Então** os outros 7 cards mostram dados normalmente e o card do Logic mostra status "indisponível" com uma mensagem curta, sem erro na tela inteira
+### Scenario 2: One service down
+* **Given** the Logic service is stopped
+* **When** the user opens or refreshes the Monitor screen
+* **Then** the other 7 cards show data normally and the Logic card shows an "unavailable" status with a short message, with no error on the whole screen
 
-### Cenário 3: O próprio Monitor está fora do ar
-* **Dado que** o serviço Monitor não está rodando
-* **Quando** o usuário abre a tela Monitor
-* **Então** o Gateway retorna erro ao chamar o Monitor e a tela mostra um estado de erro único (não 8 cards de erro), com opção de tentar novamente
+### Scenario 3: The Monitor itself is down
+* **Given** the Monitor service is not running
+* **When** the user opens the Monitor screen
+* **Then** the Gateway returns an error when calling the Monitor and the screen shows a single error state (not 8 error cards), with a retry option
 
-### Cenário 4: Atualização automática
-* **Dado que** a tela Monitor está aberta e um serviço estava indisponível
-* **Quando** o intervalo de auto-atualização decorre e o serviço volta ao ar
-* **Então** o card correspondente passa de "indisponível" para "ativo" sem ação do usuário
-
----
-
-## 6. Critérios de Aceitação
-
-1. `GET /api/v1/monitor/recursos` autenticado retorna 200 com um array de 8 entradas (uma por serviço), cada uma com `nome`, `status`, e (quando disponível) `uptime_segundos`, `memoria_alocada_bytes`, `memoria_sistema_bytes`.
-2. Parar um dos serviços monitorados (ex.: `logic`) e chamar o endpoint continua retornando 200 com as demais 7 entradas normais e a entrada do serviço parado com `status = "indisponivel"` — nunca 5xx por causa de um único serviço fora do ar.
-3. Parar o serviço `monitor` e chamar o endpoint do Gateway retorna erro (5xx/erro conhecido) tratado como estado único de erro pelo Frontend — não como 8 cards de erro.
-4. A tela `/dashboard/monitor` é acessível pela sidebar e reflete os dados do endpoint acima; um botão "Atualizar" refaz a chamada; a tela também atualiza sozinha em um intervalo fixo (documentado em `plan.md`).
-5. Todos os testes novos (Go: pacote `pkg/health` e `services/monitor`; Elixir: `/healthz` estendido; TS: hook + página) passam, junto com a suíte completa existente (`go build ./... && go vet ./... && go test ./...`, `mix test` em `services/collab`, `npm test` em `services/frontend`).
+### Scenario 4: Automatic refresh
+* **Given** the Monitor screen is open and a service was unavailable
+* **When** the auto-refresh interval elapses and the service comes back up
+* **Then** the corresponding card switches from "unavailable" to "active" with no action from the user
 
 ---
 
-## 7. Diagramas UML
+## 6. Acceptance Criteria
 
-### 7.1. Diagrama de Casos de Uso
+1. An authenticated `GET /api/v1/monitor/recursos` returns 200 with an array of 8 entries (one per service), each with `nome`, `status`, and (when available) `uptime_segundos`, `memoria_alocada_bytes`, `memoria_sistema_bytes`.
+2. Stopping one of the monitored services (e.g., `logic`) and calling the endpoint still returns 200 with the other 7 entries normal and the stopped service's entry with `status = "indisponivel"` — never 5xx because of a single service being down.
+3. Stopping the `monitor` service and calling the Gateway's endpoint returns an error (5xx/known error) handled as a single error state by the Frontend — not as 8 error cards.
+4. The `/dashboard/monitor` screen is accessible from the sidebar and reflects the data from the endpoint above; an "Update" button redoes the call; the screen also refreshes itself at a fixed interval (documented in `plan.md`).
+5. All new tests (Go: the `pkg/health` and `services/monitor` packages; Elixir: the extended `/healthz`; TS: hook + page) pass, together with the existing full suite (`go build ./... && go vet ./... && go test ./...`, `mix test` in `services/collab`, `npm test` in `services/frontend`).
+
+---
+
+## 7. UML Diagrams
+
+### 7.1. Use Case Diagram
 
 ```plantuml
 @startuml
 left to right direction
-actor "Usuário autenticado\ndo dashboard" as usuario
-rectangle "Plataforma MACH V4" {
-  usecase "RF06/RF07 - Ver status\ndos serviços" as UC1
-  usecase "RF07 - Atualizar\nmanualmente" as UC2
-  usecase "RF08 - Navegar para\ntela Monitor" as UC3
-  usecase "RF04 - Agregar recursos\ndos serviços (Monitor)" as UC4
-  usecase "RF01-RF03 - Expor\nrecursos (cada serviço)" as UC5
+actor "Authenticated\ndashboard user" as usuario
+rectangle "MACH V4 Platform" {
+  usecase "FR06/FR07 - View service\nstatus" as UC1
+  usecase "FR07 - Refresh\nmanually" as UC2
+  usecase "FR08 - Navigate to\nMonitor screen" as UC3
+  usecase "FR04 - Aggregate service\nresources (Monitor)" as UC4
+  usecase "FR01-FR03 - Expose\nresources (each service)" as UC5
 }
 usuario --> UC3
 usuario --> UC1
@@ -144,42 +144,42 @@ UC4 ..> UC5 : <<include>>
 @enduml
 ```
 
-### 7.2. Diagrama de Atividade
+### 7.2. Activity Diagram
 
 ```plantuml
 @startuml
 start
-:Usuário abre /dashboard/monitor;
-:Frontend chama GET /api/v1/monitor/recursos;
-:Gateway autentica e chama Monitor (gRPC);
-if (Monitor respondeu?) then (sim)
-  :Monitor dispara polling paralelo\ndos 8 serviços (timeout 2s cada);
+:User opens /dashboard/monitor;
+:Frontend calls GET /api/v1/monitor/recursos;
+:Gateway authenticates and calls Monitor (gRPC);
+if (Monitor responded?) then (yes)
+  :Monitor triggers parallel polling\nof the 8 services (2s timeout each);
   fork
-    :Consulta IAM/Design/Logic/Deploy/Export\n(gRPC RecursosService)/RF01;
+    :Query IAM/Design/Logic/Deploy/Export\n(gRPC RecursosService)/FR01;
   fork again
-    :Consulta Gateway (/health)\ne Collab (/healthz)/RF02;
+    :Query Gateway (/health)\nand Collab (/healthz)/FR02;
   fork again
-    :Consulta Workers (/health)/RF03;
+    :Query Workers (/health)/FR03;
   end fork
-  :Agrega respostas — cada serviço\nque falhou vira status "indisponível" (RN01);
-  :Monitor retorna lista agregada;
-  :Gateway repassa 200 com o array;
-  :Frontend renderiza 1 card por serviço;
-else (não / timeout / erro)
-  :Gateway retorna erro;
-  :Frontend mostra estado de erro único\ncom opção "Tentar novamente";
+  :Aggregate responses — each service\nthat failed becomes "unavailable" status (BR01);
+  :Monitor returns the aggregated list;
+  :Gateway passes through 200 with the array;
+  :Frontend renders 1 card per service;
+else (no / timeout / error)
+  :Gateway returns an error;
+  :Frontend shows a single error state\nwith a "Retry" option;
 endif
-:Timer de auto-atualização dispara\napós intervalo fixo;
-:Repete o fluxo (RF07);
+:Auto-refresh timer fires\nafter a fixed interval;
+:Repeats the flow (FR07);
 stop
 @enduml
 ```
 
-### 7.3. Diagrama de Sequência
+### 7.3. Sequence Diagram
 
 ```plantuml
 @startuml
-actor "Usuário" as usuario
+actor "User" as usuario
 participant "Monitor.tsx\n(Frontend)" as ui
 participant "ApiClient" as client
 participant "Gateway\n(routes.ObterRecursos)" as gw
@@ -188,33 +188,33 @@ participant "IAM/Design/Logic/\nDeploy/Export" as go_svcs
 participant "Collab\n(/healthz)" as collab
 participant "Workers\n(/health)" as workers
 
-usuario -> ui : abre tela / clica "Atualizar"
+usuario -> ui : opens screen / clicks "Update"
 ui -> client : obterRecursos()
 client -> gw : GET /api/v1/monitor/recursos\n(Authorization: Bearer JWT)
 gw -> mon : ObterRecursos(ObterRecursosRequest)
-par polling paralelo (RN04)
+par parallel polling (BR04)
   mon -> go_svcs : RecursosService.ObterStatus() [x5]
-  go_svcs --> mon : status, uptime, memória (ou timeout)
+  go_svcs --> mon : status, uptime, memory (or timeout)
   mon -> collab : GET /healthz
-  collab --> mon : status, uptime, memória VM (ou timeout)
+  collab --> mon : status, uptime, VM memory (or timeout)
   mon -> workers : GET /health
-  workers --> mon : status, uptime, memória (ou timeout)
+  workers --> mon : status, uptime, memory (or timeout)
 end
-mon -> mon : agrega — falha vira\nServicoStatus{status: "indisponivel"} (RN01)
+mon -> mon : aggregate — a failure becomes\nServicoStatus{status: "indisponivel"} (BR01)
 mon --> gw : ObterRecursosResponse{servicos: [...]}
 gw --> client : 200 { servicos: [...] }
 client --> ui : ServicoStatus[]
-ui --> usuario : 8 cards (status/uptime/memória)
+ui --> usuario : 8 cards (status/uptime/memory)
 @enduml
 ```
 
 ---
 
-## 8. Fora de Escopo
+## 8. Out of Scope
 
-- Consumo/quota por tenant (armazenamento, chamadas de API, nº de sistemas) — decisão explícita: esta entrega cobre apenas saúde/infra da plataforma.
-- Integração com Prometheus ou qualquer back-end de métricas intermediário — o Monitor lê os serviços diretamente.
-- Histórico/série temporal de métricas (a tela mostra o estado atual a cada poll, sem persistir amostras).
-- Alertas automáticos (e-mail/Slack) quando um serviço cai — fica para uma demanda futura de observabilidade.
-- CPU real do processo (percentual de uso) — Go e a BEAM não expõem isso de forma trivial e portável sem bibliotecas extras; esta entrega cobre memória e uptime. Ver `research.md` §3.
-- Papel/RBAC de "administrador de plataforma" distinto de usuário de tenant (RN03) — reaproveita o modelo de acesso atual.
+- Per-tenant consumption/quota (storage, API calls, number of systems) — explicit decision: this delivery covers only platform health/infrastructure.
+- Integration with Prometheus or any intermediate metrics backend — the Monitor reads the services directly.
+- Metrics history/time series (the screen shows the current state on each poll, without persisting samples).
+- Automatic alerts (email/Slack) when a service goes down — left for a future observability request.
+- Real process CPU (usage percentage) — Go and the BEAM don't expose this trivially and portably without extra libraries; this delivery covers memory and uptime. See `research.md` §3.
+- A "platform administrator" role/RBAC distinct from a tenant user (BR03) — reuses the current access model.

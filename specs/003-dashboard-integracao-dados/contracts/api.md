@@ -1,20 +1,20 @@
-# Contratos de API: Dashboard — Integração de Dados e Funcionalidade
+# API Contracts: Dashboard — Data Integration and Functionality
 
-A Fase 1 **não cria endpoints novos** — consome os já existentes (definidos em
-`specs/001-construtor-sistemas-mach-v4/contracts/api.md`). A identidade viaja sempre em
-`Authorization: Bearer <JWT>`; o tenant é derivado do token pelo Gateway (RN01). Este
-documento registra o consumo atual e as **extensões propostas para a Fase 2**.
+Phase 1 **does not create new endpoints** — it consumes the ones that already exist
+(defined in `specs/001-construtor-sistemas-mach-v4/contracts/api.md`). Identity always travels in
+`Authorization: Bearer <JWT>`; the tenant is derived from the token by the Gateway (BR01). This
+document records the current consumption and the **proposed extensions for Phase 2**.
 
 ---
 
-## Endpoints consumidos (existentes — Fase 1)
+## Endpoints consumed (existing — Phase 1)
 
 ### `GET /api/v1/sistemas`
 
-**Descrição**: Lista os sistemas do tenant. Base de `Projects` (RF02) e das métricas do
-`Overview` (RF01).
+**Description**: Lists the tenant's systems. Basis for `Projects` (FR02) and the `Overview`
+metrics (FR01).
 
-**Request:** headers `Authorization: Bearer <JWT>`; sem corpo.
+**Request:** headers `Authorization: Bearer <JWT>`; no body.
 
 **Response 200:**
 ```json
@@ -25,20 +25,20 @@ documento registra o consumo atual e as **extensões propostas para a Fase 2**.
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 401    | `UNAUTHORIZED` | Token ausente/inválido |
-| 5xx    | `UNKNOWN` | Falha do Gateway → estado de erro na UI (repetir) |
+| 401    | `UNAUTHORIZED` | Missing/invalid token |
+| 5xx    | `UNKNOWN` | Gateway failure → error state in the UI (retry) |
 
 ### `POST /api/v1/sistemas`
 
-**Descrição**: Cria um sistema. Acionado por "Get Started"/FAB/card "Criar novo projeto"
-(RF04). Restrito a dono/parceiro.
+**Description**: Creates a system. Triggered by "Get Started"/FAB/"Create new project" card
+(FR04). Restricted to owner/partner.
 
 **Request:**
 ```json
-{ "nome": "string — nome do novo sistema" }
+{ "nome": "string — name of the new system" }
 ```
 
 **Response 200/201:**
@@ -46,27 +46,27 @@ documento registra o consumo atual e as **extensões propostas para a Fase 2**.
 { "id": "uuid", "nome": "string" }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 403    | `FORBIDDEN` | Cliente-final sem permissão → CTA oculto/desabilitado (RN10) |
-| 422    | `VALIDATION_ERROR` | Nome inválido |
+| 403    | `FORBIDDEN` | End-customer without permission → CTA hidden/disabled (BR10) |
+| 422    | `VALIDATION_ERROR` | Invalid name |
 
 ### `GET /api/v1/sistemas/{sistema_id}/versao-ativa`
 
-**Descrição**: Versão ativa consolidada; base do status/versão por card (RF07, RN04).
-Consumo opcional na Fase 2 (por card) ou substituído pelo payload enriquecido de `Sistema`.
+**Description**: Consolidated active version; basis for the per-card status/version (FR07, BR04).
+Optional consumption in Phase 2 (per card) or replaced by the enriched `Sistema` payload.
 
 ---
 
-## Extensões propostas (Fase 2 — a implementar no Gateway)
+## Proposed extensions (Phase 2 — to be implemented on the Gateway)
 
-### `GET /api/v1/sistemas` — payload enriquecido
+### `GET /api/v1/sistemas` — enriched payload
 
-**Descrição**: Estender cada item com status, versão ativa, timestamp e DLQ para os cards
-ricos (RF07, RF09). Retrocompatível: campos novos são opcionais.
+**Description**: Extend each item with status, active version, timestamp, and DLQ for the
+rich cards (FR07, FR09). Backward-compatible: the new fields are optional.
 
-**Response 200 (proposta):**
+**Response 200 (proposal):**
 ```json
 {
   "sistemas": [
@@ -82,11 +82,11 @@ ricos (RF07, RF09). Retrocompatível: campos novos são opcionais.
 }
 ```
 
-### `GET /api/v1/metricas` — métricas agregadas do tenant (proposta)
+### `GET /api/v1/metricas` — aggregated tenant metrics (proposal)
 
-**Descrição**: Contadores para o `Overview` (RF01) sem o cliente precisar derivá-los.
+**Description**: Counters for the `Overview` (FR01) without the client having to derive them.
 
-**Response 200 (proposta):**
+**Response 200 (proposal):**
 ```json
 {
   "sistemas_total": 12,
@@ -95,20 +95,20 @@ ricos (RF07, RF09). Retrocompatível: campos novos são opcionais.
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 401    | `UNAUTHORIZED` | Token ausente/inválido |
+| 401    | `UNAUTHORIZED` | Missing/invalid token |
 
-> Enquanto `GET /api/v1/metricas` não existir, `useMetricas` deriva os contadores de
-> `GET /api/v1/sistemas` (total garantido; ativos/rascunho dependem do payload enriquecido).
+> Until `GET /api/v1/metricas` exists, `useMetricas` derives the counters from
+> `GET /api/v1/sistemas` (total guaranteed; active/draft depend on the enriched payload).
 
 ---
 
-## Presença em tempo real (Fase 2 — WebSocket)
+## Real-time presence (Phase 2 — WebSocket)
 
-Canal Phoenix já disponível em `player/src/collab/phoenixSocket.ts`. Para RF08, o
-dashboard assinaria um tópico por sistema (ex.: `sistema:{id}`) e escutaria eventos de
-presença (`presence_state`/`presence_diff`) para renderizar os avatares empilhados. O
-provisionamento server-side dos tópicos é pré-requisito e está fora do escopo de
-front-end desta demanda.
+The Phoenix channel is already available at `player/src/collab/phoenixSocket.ts`. For FR08, the
+dashboard would subscribe to a per-system topic (e.g., `sistema:{id}`) and listen for presence
+events (`presence_state`/`presence_diff`) to render the stacked avatars. Server-side
+provisioning of the topics is a prerequisite and is outside this effort's front-end
+scope.

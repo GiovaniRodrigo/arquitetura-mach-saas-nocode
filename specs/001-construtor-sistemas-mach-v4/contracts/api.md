@@ -1,15 +1,15 @@
-# Contratos de API: Construtor de Sistemas MACH V4
+# API Contracts: MACH V4 System Builder
 
-API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (exceto login e health) exigem `Authorization: Bearer <JWT>`; o Gateway traduz cada chamada para gRPC interno injetando `tenant_id` como Metadata (RNF02). Erros de validação nunca expõem nomes reais de campos — apenas `blind_index` (RNF08).
+Public REST API exposed by the **API Gateway in Go** (`:8080`). All routes (except login and health) require `Authorization: Bearer <JWT>`; the Gateway translates each call to internal gRPC, injecting `tenant_id` as Metadata (NFR02). Validation errors never expose real field names — only `blind_index` (NFR08).
 
-**Erros comuns a todos os endpoints:**
+**Common errors across all endpoints:**
 
-| Status | Código | Quando |
-|--------|--------|--------|
-| 401 | `UNAUTHORIZED` | JWT ausente, inválido ou expirado |
-| 403 | `FORBIDDEN` | Tenant/papel sem permissão para o recurso |
-| 404 | `NOT_FOUND` | Recurso inexistente **no tenant do token** (RN01) |
-| 429 | `RATE_LIMITED` | Limite de requisições do tenant excedido |
+| Status | Code | When |
+|--------|--------|------|
+| 401 | `UNAUTHORIZED` | JWT missing, invalid, or expired |
+| 403 | `FORBIDDEN` | Tenant/role without permission for the resource |
+| 404 | `NOT_FOUND` | Resource does not exist **within the token's tenant** (BR01) |
+| 429 | `RATE_LIMITED` | Tenant request limit exceeded |
 
 ---
 
@@ -17,13 +17,13 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 
 ### `POST /api/v1/auth/login`
 
-**Descrição**: Autentica o utilizador e emite JWT com claims `tenant_id`, `sub`, `tipo` (RF03).
+**Description**: Authenticates the user and issues a JWT with `tenant_id`, `sub`, `tipo` claims (FR03).
 
 **Request:**
 ```json
 {
-  "email": "string — e-mail do utilizador",
-  "password": "string — senha"
+  "email": "string — user email",
+  "password": "string — password"
 }
 ```
 
@@ -35,24 +35,24 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 401 | `INVALID_CREDENTIALS` | Credenciais inválidas |
+| 401 | `INVALID_CREDENTIALS` | Invalid credentials |
 
 ---
 
 ### `POST /api/v1/designs`
 
-**Descrição**: Cria a definição de UI de um ecrã (árvore recursiva Composite) via Design Engine (RF01).
+**Description**: Creates the UI definition for a screen (recursive Composite tree) via the Design Engine (FR01).
 
 **Request:**
 ```json
 {
   "sistema_id": "uuid",
-  "nome": "string — nome do ecrã",
+  "nome": "string — screen name",
   "arvore": {
-    "blind_index": "string — hash do componente raiz",
+    "blind_index": "string — root component hash",
     "tipo": "container",
     "propriedades": {},
     "componente_filhos": [
@@ -70,18 +70,18 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 422 | `INVALID_TREE` | Árvore recursiva estruturalmente inválida |
+| 422 | `INVALID_TREE` | Structurally invalid recursive tree |
 
-*Também disponíveis: `GET /api/v1/designs/{id}`, `PUT /api/v1/designs/{id}`, `DELETE /api/v1/designs/{id}` (RF01).*
+*Also available: `GET /api/v1/designs/{id}`, `PUT /api/v1/designs/{id}`, `DELETE /api/v1/designs/{id}` (FR01).*
 
 ---
 
 ### `POST /api/v1/regras`
 
-**Descrição**: Cria uma regra de negócio (árvore de decisão) via Logic Engine (RF02).
+**Description**: Creates a business rule (decision tree) via the Logic Engine (FR02).
 
 **Request:**
 ```json
@@ -90,7 +90,7 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
   "arvore_decisao": {
     "no": "condicao",
     "operador": "igual",
-    "blind_index": "string — componente avaliado",
+    "blind_index": "string — evaluated component",
     "valor": "string",
     "entao": { "no": "acao", "tipo": "webhook.disparo", "config": {} },
     "senao": null
@@ -105,18 +105,18 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 422 | `INVALID_DECISION_TREE` | Nó lógico desconhecido ou ciclo detectado |
+| 422 | `INVALID_DECISION_TREE` | Unknown logic node or cycle detected |
 
-*Também disponíveis: `GET /api/v1/regras/{id}`, `PUT /api/v1/regras/{id}`, `DELETE /api/v1/regras/{id}` (RF02).*
+*Also available: `GET /api/v1/regras/{id}`, `PUT /api/v1/regras/{id}`, `DELETE /api/v1/regras/{id}` (FR02).*
 
 ---
 
 ### `GET /api/v1/permissoes?sistema_id={uuid}`
 
-**Descrição**: Retorna o mapa booleano de permissões calculado pelo IAM Service para o utilizador do token (RF03, RN03). Formato oficial de `doc/DATA_SECURITY.md`.
+**Description**: Returns the boolean permission map computed by the IAM Service for the token's user (FR03, BR03). Official format defined in `doc/DATA_SECURITY.md`.
 
 **Response 200:**
 ```json
@@ -132,9 +132,9 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 
 ### `POST /api/v1/sistemas/{sistema_id}/publicar`
 
-**Descrição**: Publica nova versão — insere linha em `versoes_sistema` e alterna a flag ativa atomicamente (RF04, RN04).
+**Description**: Publishes a new version — inserts a row into `versoes_sistema` and atomically toggles the active flag (FR04, BR04).
 
-**Request:** *(corpo vazio — a versão é montada a partir do estado atual dos designs/regras)*
+**Request:** *(empty body — the version is assembled from the current state of the designs/rules)*
 
 **Response 201:**
 ```json
@@ -145,16 +145,16 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 409 | `PUBLISH_IN_PROGRESS` | Outra publicação em andamento para o sistema |
+| 409 | `PUBLISH_IN_PROGRESS` | Another publish already in progress for the system |
 
 ---
 
 ### `POST /api/v1/sistemas/{sistema_id}/rollback`
 
-**Descrição**: Reativa a versão estável anterior (ou a indicada) alternando a flag — sem downtime (RF04, RN05, RNF05).
+**Description**: Reactivates the previous stable version (or the one specified) by toggling the flag — with no downtime (FR04, BR05, NFR05).
 
 **Request:**
 ```json
@@ -162,7 +162,7 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
   "versao_numero": 6
 }
 ```
-*`versao_numero` opcional; omitido = versão imediatamente anterior.*
+*`versao_numero` is optional; if omitted, defaults to the immediately previous version.*
 
 **Response 200:**
 ```json
@@ -171,16 +171,16 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 422 | `NO_PREVIOUS_VERSION` | Não há versão anterior para reverter |
+| 422 | `NO_PREVIOUS_VERSION` | No previous version to roll back to |
 
 ---
 
 ### `GET /api/v1/sistemas/{sistema_id}/versao-ativa`
 
-**Descrição**: Retorna a definição completa da versão ativa — consumida pelo Headless Player (RN04).
+**Description**: Returns the full definition of the active version — consumed by the Headless Player (BR04).
 
 **Response 200:**
 ```json
@@ -195,7 +195,7 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 
 ### `POST /api/v1/formularios`
 
-**Descrição**: Submete dados operacionais dinâmicos. Traduzido para `LogicEngineService.SalvarFormulario` (Unary RPC) — RF07, RN08. Mapa `blind_index → valor` conforme contrato `.proto` oficial.
+**Description**: Submits dynamic operational data. Translated to `LogicEngineService.SalvarFormulario` (Unary RPC) — FR07, BR08. `blind_index → value` map per the official `.proto` contract.
 
 **Request:**
 ```json
@@ -212,31 +212,31 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 ```json
 {
   "sucesso": true,
-  "mensagem_status": "Registo gravado"
+  "mensagem_status": "Record saved"
 }
 ```
 
-**Response 422 (validação — RNF08):**
+**Response 422 (validation — NFR08):**
 ```json
 {
   "sucesso": false,
   "erros_validacao": {
-    "4a9e2d3...": "valor acima do máximo permitido"
+    "4a9e2d3...": "value exceeds the maximum allowed"
   },
-  "mensagem_status": "Falha de validação"
+  "mensagem_status": "Validation failed"
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 422 | `VALIDATION_ERROR` | Mapa `erros_validacao` indexado por blind_index |
+| 422 | `VALIDATION_ERROR` | `erros_validacao` map indexed by blind_index |
 
 ---
 
 ### `POST /api/v1/exportacoes`
 
-**Descrição**: Cria Job de exportação assíncrona e responde imediatamente (RF05).
+**Description**: Creates an asynchronous export Job and responds immediately (FR05).
 
 **Request:**
 ```json
@@ -257,42 +257,42 @@ API REST pública exposta pelo **API Gateway em Go** (`:8080`). Todas as rotas (
 
 ### `GET /api/v1/exportacoes/{job_id}`
 
-**Descrição**: Consulta o estado do Job; quando `pronto`, inclui Presigned URL de expiração curta (RF05).
+**Description**: Queries the Job status; when `pronto`, includes a short-lived Presigned URL (FR05).
 
 **Response 200:**
 ```json
 {
   "job_id": "uuid",
   "status": "pronto",
-  "arquivo_url": "https://storage.exemplo.com/exports/...?X-Amz-Expires=600",
+  "arquivo_url": "https://storage.example.com/exports/...?X-Amz-Expires=600",
   "expira_em": "2026-07-13T23:59:00Z"
 }
 ```
 
-**Erros:**
-| Status | Código | Mensagem |
+**Errors:**
+| Status | Code | Message |
 |--------|--------|----------|
-| 410 | `EXPORT_EXPIRED` | Link de download expirado — solicite nova exportação |
+| 410 | `EXPORT_EXPIRED` | Download link expired — request a new export |
 
 ---
 
-## WebSocket (Motor de Colaboração — Elixir, `:4000`)
+## WebSocket (Collaboration Engine — Elixir, `:4000`)
 
-### `ws://host:4000/socket` → canal `screen:{sistema_id}:{screen_id}`
+### `ws://host:4000/socket` → channel `screen:{sistema_id}:{screen_id}`
 
-**Descrição**: Conexão persistente para edição colaborativa (RF06). `join` exige o mesmo JWT; o canal rejeita tenants sem acesso ao sistema (RN01).
+**Description**: Persistent connection for collaborative editing (FR06). `join` requires the same JWT; the channel rejects tenants without access to the system (BR01).
 
-**Eventos cliente → servidor:**
-| Evento | Payload | Descrição |
+**Client → server events:**
+| Event | Payload | Description |
 |--------|---------|-----------|
-| `mutation` | `{ "blind_index": "...", "op": "move\|update\|insert\|delete", "dados": {} }` | Mutação de componente; reinicia o debounce de 5s (RN06) |
-| `lock` | `{ "blind_index": "..." }` | Solicita bloqueio otimista do componente (RN07) |
-| `unlock` | `{ "blind_index": "..." }` | Libera bloqueio |
+| `mutation` | `{ "blind_index": "...", "op": "move\|update\|insert\|delete", "dados": {} }` | Component mutation; resets the 5s debounce (BR06) |
+| `lock` | `{ "blind_index": "..." }` | Requests optimistic lock on the component (BR07) |
+| `unlock` | `{ "blind_index": "..." }` | Releases the lock |
 
-**Eventos servidor → cliente:**
-| Evento | Payload | Descrição |
+**Server → client events:**
+| Event | Payload | Description |
 |--------|---------|-----------|
-| `mutation` | broadcast da mutação aplicada | Sincronização em tempo real |
-| `presence_state` / `presence_diff` | estado Phoenix Presence | Utilizadores online e cursores |
-| `locked` | `{ "blind_index": "...", "por": "user_id" }` | Componente bloqueado — desativar input (RN07) |
-| `flush_ok` | `{ "versao_rascunho": n }` | Confirmação da persistência em lote via gRPC (RN06) |
+| `mutation` | broadcast of the applied mutation | Real-time synchronization |
+| `presence_state` / `presence_diff` | Phoenix Presence state | Online users and cursors |
+| `locked` | `{ "blind_index": "...", "por": "user_id" }` | Component locked — disable input (BR07) |
+| `flush_ok` | `{ "versao_rascunho": n }` | Confirmation of batched persistence via gRPC (BR06) |

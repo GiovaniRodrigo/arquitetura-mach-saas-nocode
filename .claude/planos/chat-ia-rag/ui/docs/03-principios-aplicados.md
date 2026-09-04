@@ -1,66 +1,67 @@
-# Princípios Aplicados — Assistente de IA (Chat RAG)
+# Applied Principles — AI Assistant (RAG Chat)
 
-## 1. Início Óbvio
-Um único botão flutuante (FAB) circular, ícone de "sparkles", fixo no canto
-inferior direito, em `z-50`, visível em **todas** as páginas do Dashboard
-(incluído o editor Canvas de viewport fixo). É o único ponto de entrada — sem
-ambiguidade sobre onde "falar com a IA".
+## 1. Obvious Start
+A single circular floating button (FAB), "sparkles" icon, fixed in the
+bottom-right corner, at `z-50`, visible on **every** Dashboard page
+(including the fixed-viewport Canvas editor). It's the only entry point — no
+ambiguity about where to "talk to the AI".
 
-## 2. Reversão Clara
-O painel é um `Sheet` (drawer) não-modal-bloqueante: `Esc`, clique fora ou o
-próprio FAB (agora em estado "fechar") o fecham a qualquer momento sem
-descartar o histórico da conversa (mantido em memória/sessionStorage). Nenhuma
-ação da IA aplica algo automaticamente no Canvas — é só recomendação em texto.
+## 2. Clear Reversal
+The panel is a non-modal, non-blocking `Sheet` (drawer): `Esc`, a click
+outside, or the FAB itself (now in a "close" state) close it at any time
+without discarding the conversation history (kept in memory/sessionStorage).
+No AI action applies anything automatically to the Canvas — it's only a text
+recommendation.
 
-## 3. Lógica Consistente
-O `Sheet` reaproveita o componente `components/ui/sheet.tsx` já usado no
-projeto — mesmo comportamento de overlay/animação de qualquer outro drawer do
-sistema. O FAB usa o mesmo `Button` (`components/ui/button.tsx`) e paleta
-`primary` do restante da UI.
+## 3. Consistent Logic
+The `Sheet` reuses the `components/ui/sheet.tsx` component already used in
+the project — same overlay/animation behavior as any other drawer in the
+system. The FAB uses the same `Button` (`components/ui/button.tsx`) and
+`primary` palette as the rest of the UI.
 
-## 4. Observar Convenções
-Ícone de "sparkles" (lucide-react, já é a lib de ícones do projeto) — semântica
-universal para "IA/assistente" (Copilot, Notion AI, Gemini usam o mesmo
-glifo). Painel à direita, como Copilot Chat e a maioria dos assistentes
-docked.
+## 4. Follow Conventions
+The "sparkles" icon (lucide-react, already the project's icon library) —
+universal semantics for "AI/assistant" (Copilot, Notion AI, Gemini use the
+same glyph). Panel on the right, like Copilot Chat and most docked
+assistants.
 
-## 5. Feedback e Marcos
-- Estado de "digitando"/streaming da resposta (skeleton de linhas, não spinner
-  genérico).
-- Erro de rede vira mensagem inline no chat ("Não consegui responder agora,
-  tente de novo"), nunca um alert bloqueante.
-- Mensagem vazia inicial mostra 3 chips de sugestão (ex.: "Modelar
-  multi-tenancy", "Revisar regras de negócio do sistema atual", "Sugerir
-  estrutura de telas").
+## 5. Feedback and Milestones
+- "Typing"/streaming response state (line skeleton, not a generic spinner).
+- Network errors become an inline chat message ("Couldn't respond right now,
+  try again"), never a blocking alert.
+- The initial empty message shows 3 suggestion chips (e.g., "Model
+  multi-tenancy", "Review the current system's business rules", "Suggest
+  a screen structure").
 
-## 6. Proximidade e Adaptação
-O painel herda automaticamente o **sistema atualmente selecionado** (nome) via
-`AppContext`, exibido como uma "pill" de contexto no topo do chat — o usuário
-não precisa redigitar em qual sistema está trabalhando. Em telas sem sistema
-selecionado, a pill não aparece e o assistente responde em modo genérico.
-Responsivo: em telas estreitas o `Sheet` ocupa a largura total.
+## 6. Proximity and Adaptation
+The panel automatically inherits the **currently selected system** (name)
+via `AppContext`, shown as a context "pill" at the top of the chat — the user
+doesn't need to retype which system they're working on. On screens with no
+selected system, the pill doesn't appear and the assistant responds in
+generic mode. Responsive: on narrow screens the `Sheet` takes up the full
+width.
 
-## 7. Interface é Conteúdo
-Sem decoração supérflua: cabeçalho do painel só com título "Assistente de
-Design" + pill de contexto + botão fechar. Mensagens em bolhas simples
-(usuário à direita, assistente à esquerda), sem avatares desnecessários.
+## 7. Interface Is Content
+No superfluous decoration: the panel header only has the title "Design
+Assistant" + context pill + close button. Messages in simple bubbles
+(user on the right, assistant on the left), with no unnecessary avatars.
 
-## 8. Princípios Gerais de Design Visual
-- **Assunto óbvio**: título "Assistente de Design" + ícone sparkles no topo do
-  painel.
-- **Forma reforça significado**: bolhas do assistente usam `bg-secondary`
-  (neutra), bolhas do usuário usam `bg-primary/10` — sem cores de alerta, já
-  que não há estado de erro/sucesso no conteúdo em si.
-- **Metáfora familiar**: layout de chat 1:1 (mensagens empilhadas + composer
-  fixo na base) — nenhum usuário precisa aprender um padrão novo.
+## 8. General Visual Design Principles
+- **Obvious subject**: "Design Assistant" title + sparkles icon at the top of
+  the panel.
+- **Form reinforces meaning**: assistant bubbles use `bg-secondary`
+  (neutral), user bubbles use `bg-primary/10` — no alert colors, since
+  there's no error/success state in the content itself.
+- **Familiar metaphor**: 1:1 chat layout (stacked messages + composer
+  fixed at the bottom) — no user needs to learn a new pattern.
 
-## 9. Matriz de Decisão de Design
+## 9. Design Decision Matrix
 
-| Decisão | Início Óbvio | Reversão Clara | Consistência | Convenção | Feedback | Proximidade | Conteúdo > Deco. |
+| Decision | Obvious Start | Clear Reversal | Consistency | Convention | Feedback | Proximity | Content > Deco. |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| FAB global fixo (canto inferior direito) | ✓ | ✓ | ✓ | ✓ | — | — | ✓ |
-| Sheet docked à direita (não modal) | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ |
-| Composer fixo na base do painel | ✓ | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Pill de contexto (sistema atual) | — | — | ✓ | — | ✓ | ✓ | ✓ |
-| Chips de sugestão em estado vazio | ✓ | — | — | ✓ | ✓ | — | ✓ |
-| Skeleton de streaming em vez de spinner | — | — | ✓ | ✓ | ✓ | — | ✓ |
+| Fixed global FAB (bottom-right corner) | ✓ | ✓ | ✓ | ✓ | — | — | ✓ |
+| Sheet docked to the right (not modal) | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ |
+| Composer fixed at the bottom of the panel | ✓ | — | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Context pill (current system) | — | — | ✓ | — | ✓ | ✓ | ✓ |
+| Suggestion chips in empty state | ✓ | — | — | ✓ | ✓ | — | ✓ |
+| Streaming skeleton instead of spinner | — | — | ✓ | ✓ | ✓ | — | ✓ |

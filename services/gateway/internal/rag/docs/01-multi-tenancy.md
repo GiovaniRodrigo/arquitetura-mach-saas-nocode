@@ -1,21 +1,22 @@
-# Multi-tenancy e isolamento de dados
+# Multi-tenancy and data isolation
 
-Ao modelar um sistema que atende vários clientes (tenants) — clínicas, lojas,
-escolas, franquias — a primeira decisão de arquitetura é qual entidade
-representa o "dono do dado" isolado. Recomendações:
+When modeling a system that serves multiple customers (tenants) — clinics,
+stores, schools, franchises — the first architectural decision is which
+entity represents the isolated "data owner". Recommendations:
 
-- Escolha uma entidade raiz de tenant (ex.: "Clínica", "Loja", "Unidade") e
-  faça toda entidade sensível referenciá-la direta ou indiretamente. Nunca
-  compartilhe uma tabela entre tenants sem uma coluna de tenant_id
-  obrigatória e indexada.
-- Prefira isolamento lógico (linha por tenant + Row-Level Security) a bancos
-  físicos separados por tenant, a menos que haja exigência regulatória de
-  isolamento físico — RLS escala melhor operacionalmente para dezenas/centenas
-  de tenants.
-- Nunca confie em filtro aplicado só na aplicação (WHERE tenant_id = ?)
-  como única defesa: um endpoint esquecido do filtro vaza dados entre
-  tenants. RLS no banco é a rede de segurança.
-- Hierarquias de tenant (matriz/filial, dono/parceiro) precisam de uma regra
-  explícita de "quem pode ver o quê" — normalmente resolvida checando se o
-  tenant alvo é filho direto do tenant do usuário autenticado, nunca
-  recursivamente sem necessidade.
+- Choose a root tenant entity (e.g., "Clinic", "Store", "Unit") and make
+  every sensitive entity reference it directly or indirectly. Never
+  share a table between tenants without a mandatory, indexed tenant_id
+  column.
+- Prefer logical isolation (row per tenant + Row-Level Security) over
+  separate physical databases per tenant, unless there is a regulatory
+  requirement for physical isolation — RLS scales better operationally
+  for dozens/hundreds of tenants.
+- Never rely on a filter applied only at the application layer
+  (WHERE tenant_id = ?) as the sole defense: one endpoint that forgets
+  the filter leaks data across tenants. RLS at the database is the
+  safety net.
+- Tenant hierarchies (headquarters/branch, owner/partner) need an
+  explicit rule for "who can see what" — usually resolved by checking
+  whether the target tenant is a direct child of the authenticated
+  user's tenant, never recursively unless necessary.

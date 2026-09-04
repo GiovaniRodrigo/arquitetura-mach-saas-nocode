@@ -1,41 +1,41 @@
-# Sistema de Cores e Tipografia — reaproveitado do projeto
+# Color and Typography System — reused from the project
 
-O projeto já tem um design system Tailwind + tokens HSL (`src/index.css`,
-`tailwind.config.js`) usado por Copilot Chat/Notion-AI-like panels do mercado
-(painel neutro, acento de marca só no elemento de destaque). O chat de IA
-**não introduz nova paleta** — reaproveita 1:1 os tokens existentes.
+The project already has a Tailwind design system + HSL tokens (`src/index.css`,
+`tailwind.config.js`) used by market Copilot-Chat/Notion-AI-like panels
+(neutral panel, brand accent only on the highlighted element). The AI chat
+**does not introduce a new palette** — it reuses the existing tokens 1:1.
 
-## Paleta de Cores (tokens já existentes)
+## Color Palette (already-existing tokens)
 
-### Primária
-- `--primary`: `239 84% 67%` (indigo `#6366f1`) — usado no FAB e na bolha do
-  usuário (`bg-primary/10`), mesma cor de destaque do resto do produto
-  (botões, sidebar ativa).
+### Primary
+- `--primary`: `239 84% 67%` (indigo `#6366f1`) — used on the FAB and the
+  user bubble (`bg-primary/10`), the same accent color as the rest of the
+  product (buttons, active sidebar).
 
-### Semântica (reaproveitada, sem criar novas)
-- Erro de resposta da IA → `--destructive`
-- Streaming/carregando → `--muted` (skeleton)
-- Pill de contexto do sistema → `--accent` (teal `173 80% 40%`), mesma cor já
-  usada para destaque secundário no projeto.
+### Semantic (reused, none created)
+- AI response error → `--destructive`
+- Streaming/loading → `--muted` (skeleton)
+- System context pill → `--accent` (teal `173 80% 40%`), the same color
+  already used for secondary emphasis in the project.
 
-### Superfícies
-- Painel (`Sheet`): `--popover` / `--popover-foreground` (mesmo token do menu
-  de usuário no header).
-- Bolha do assistente: `--secondary`.
-- Bolha do usuário: `--primary` em 10% de opacidade.
+### Surfaces
+- Panel (`Sheet`): `--popover` / `--popover-foreground` (same token as the
+  user menu in the header).
+- Assistant bubble: `--secondary`.
+- User bubble: `--primary` at 10% opacity.
 
-## Tipografia (famílias já configuradas em `tailwind.config.js`)
+## Typography (families already configured in `tailwind.config.js`)
 
-- Título do painel ("Assistente de Design"): `font-heading` (Outfit) — mesma
-  fonte de todos os títulos de seção do Dashboard.
-- Corpo das mensagens: `font-sans` (Inter).
-- Nenhuma fonte nova é adicionada — mantém o download/CDN atual do projeto.
+- Panel title ("Design Assistant"): `font-heading` (Outfit) — the same
+  font as every Dashboard section title.
+- Message body: `font-sans` (Inter).
+- No new font is added — keeps the project's current download/CDN as is.
 
-## Espaçamento
+## Spacing
 
-- Base unit: `4px`/`8px` (grid já usado no Tailwind do projeto).
-- Painel: largura `24rem`–`28rem` em desktop (breakpoint padrão do
-  `components/ui/sheet.tsx`), full-width em mobile.
-- Raio: `var(--radius)` (0.75rem) em bolhas e no botão FAB, consistente com o
-  resto dos componentes (`rounded-2xl` no menu de usuário, `rounded-full` em
-  botões de ação do header).
+- Base unit: `4px`/`8px` (grid already used in the project's Tailwind).
+- Panel: `24rem`–`28rem` width on desktop (default breakpoint from
+  `components/ui/sheet.tsx`), full-width on mobile.
+- Radius: `var(--radius)` (0.75rem) on bubbles and the FAB button, consistent
+  with the rest of the components (`rounded-2xl` on the user menu,
+  `rounded-full` on header action buttons).

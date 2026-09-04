@@ -1,65 +1,65 @@
-# Quickstart: Pipeline CI/CD por Entrega de Artefatos Compilados
+# Quickstart: CI/CD Pipeline for Compiled Artifact Delivery
 
-Guia para compilar os artefatos localmente, simular a entrega e verificar o resultado.
-
----
-
-## Pré-requisitos
-
-- Go 1.26 (`$HOME/.local/go/bin` no PATH), OTP 26.2 + Elixir 1.17.3, Node 20, `buf` 1.42.0 e `protoc-gen-elixir` (escript) — mesmos toolchains da Fase 11.
-- `rsync` e um cliente SSH.
-- Para o ensaio de deploy: um host alvo com `systemd`, Nginx, usuário de serviço non-root e o diretório `/opt/machv4` gravável; ou um container/VM local equivalente.
+Guide to compile the artifacts locally, simulate the delivery, and verify the result.
 
 ---
 
-## Passos
+## Prerequisites
+
+- Go 1.26 (`$HOME/.local/go/bin` on PATH), OTP 26.2 + Elixir 1.17.3, Node 20, `buf` 1.42.0, and `protoc-gen-elixir` (escript) — the same toolchains as Phase 11.
+- `rsync` and an SSH client.
+- For the deploy rehearsal: a target host with `systemd`, Nginx, a non-root service user, and a writable `/opt/machv4` directory; or an equivalent local container/VM.
+
+---
+
+## Steps
 
 ```bash
-# 1. Compilar todos os artefatos (gera gen/, binários Go, release OTP, dist do player)
-#    Saída: dist/artifacts/<unidade>-<sha>.tar.gz (somente executáveis)
+# 1. Compile all artifacts (generates gen/, Go binaries, OTP release, player dist)
+#    Output: dist/artifacts/<unit>-<sha>.tar.gz (executables only)
 SHA=$(git rev-parse --short HEAD) build/build-artifacts.sh
 
-# 2. Inspecionar um artefato — não deve conter fonte, .git, node_modules nem deps
+# 2. Inspect an artifact — it must not contain source, .git, node_modules, or deps
 tar -tzf dist/artifacts/gateway-"$SHA".tar.gz | head
 
-# 3. (Ensaio) Entregar ao host de staging: rsync -> releases/<sha> + symlink + restart
+# 3. (Rehearsal) Deliver to the staging host: rsync -> releases/<sha> + symlink + restart
 build/deploy.sh --env staging --host "$STAGING_HOST" --user deploy --sha "$SHA"
 
-# 4. Smoke test pós-deploy (healthchecks dos serviços)
+# 4. Post-deploy smoke test (service healthchecks)
 build/smoke-test.sh --host "$STAGING_HOST"
 
-# 5. (Se necessário) Rollback para o release anterior, sem recompilar
+# 5. (If needed) Rollback to the previous release, without recompiling
 build/rollback.sh --env staging --host "$STAGING_HOST"
 ```
 
-No CI, o mesmo caminho é executado por `.github/workflows/cd.yml`: push em `main` entrega a staging automaticamente; uma tag `vX.Y.Z` compila/publica os artefatos, e a produção é promovida por disparo manual (`gh workflow run cd.yml --ref vX.Y.Z`).
+In CI, the same path is executed by `.github/workflows/cd.yml`: a push to `main` delivers to staging automatically; a `vX.Y.Z` tag compiles/publishes the artifacts, and production is promoted via a manual trigger (`gh workflow run cd.yml --ref vX.Y.Z`).
 
 ---
 
-## Verificação
+## Verification
 
-- **Só artefatos em produção**: no host, `ls -la /opt/machv4/current/` mostra apenas binários/`release`/`player`; `find /opt/machv4/current -name '*.go' -o -name '.git'` retorna vazio (Critério 1).
-- **Ativação atômica**: `readlink /opt/machv4/current` aponta ao `releases/<sha>` recém-entregue.
-- **Serviços saudáveis**: `systemctl is-active 'machv4-*'` e os healthchecks do smoke test retornam OK.
-- **Rollback**: após `rollback.sh`, `readlink /opt/machv4/current` aponta ao sha anterior e os serviços reiniciam sem novo build.
+- **Only artifacts in production**: on the host, `ls -la /opt/machv4/current/` shows only binaries/`release`/`player`; `find /opt/machv4/current -name '*.go' -o -name '.git'` returns empty (Criterion 1).
+- **Atomic activation**: `readlink /opt/machv4/current` points to the just-delivered `releases/<sha>`.
+- **Healthy services**: `systemctl is-active 'machv4-*'` and the smoke test's healthchecks return OK.
+- **Rollback**: after `rollback.sh`, `readlink /opt/machv4/current` points to the previous sha and the services restart without a new build.
 
 ```bash
-# Suíte completa do repositório (garante que o gate de CI segue verde)
+# Full repository suite (ensures the CI gate stays green)
 make test                                   # Go
 cd collab && mix test                       # Elixir
 cd player && npm test                       # Player
-# Integração/E2E: ver specs/001-.../quickstart.md (Compose up + tags integration/e2e)
+# Integration/E2E: see specs/001-.../quickstart.md (Compose up + integration/e2e tags)
 ```
 
 ---
 
-## Variáveis de Ambiente
+## Environment Variables
 
-| Variável | Valor de Exemplo | Descrição |
+| Variable | Example Value | Description |
 |----------|-----------------|-----------|
-| `SHA` | `24a4fce` | Git sha curto que nomeia o release (RN04) |
-| `STAGING_HOST` / `PROD_HOST` | `10.0.1.20` | Host alvo do deploy (via secret no CI) |
-| `SSH_USER` | `deploy` | Usuário SSH non-root no host (RNF01) |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `otel-collector.internal:4317` | Collector do ambiente para os binários (RNF06) |
-| `DATABASE_URL` | `postgres://mach:***@db.internal:5432/machv4` | DSN aplicado via `EnvironmentFile` no host |
-| `RELEASES_KEEP` | `5` | Nº de releases retidos para rollback |
+| `SHA` | `24a4fce` | Short git sha that names the release (BR04) |
+| `STAGING_HOST` / `PROD_HOST` | `10.0.1.20` | Deploy target host (via secret in CI) |
+| `SSH_USER` | `deploy` | Non-root SSH user on the host (NFR01) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `otel-collector.internal:4317` | Environment's Collector for the binaries (NFR06) |
+| `DATABASE_URL` | `postgres://mach:***@db.internal:5432/machv4` | DSN applied via `EnvironmentFile` on the host |
+| `RELEASES_KEEP` | `5` | Number of releases retained for rollback |

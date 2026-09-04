@@ -1,76 +1,76 @@
-# Quickstart: Dashboard — Integração de Dados e Funcionalidade
+# Quickstart: Dashboard — Data Integration and Functionality
 
-Guia para rodar e testar esta implementação localmente, dentro do pacote `player/`.
-
----
-
-## Pré-requisitos
-
-- Node.js + npm instalados
-- Dependências do Player instaladas (`npm install` em `player/`)
-- Uma das opções de sessão:
-  - Um Gateway acessível e um JWT válido (fluxo OAuth de `auth/session.ts`), **ou**
-  - `VITE_BYPASS_AUTH=true` para desenvolvimento sem login
+Guide to run and test this implementation locally, inside the `player/` package.
 
 ---
 
-## Passos
+## Prerequisites
+
+- Node.js + npm installed
+- Player dependencies installed (`npm install` in `player/`)
+- One of these session options:
+  - A reachable Gateway and a valid JWT (OAuth flow from `auth/session.ts`), **or**
+  - `VITE_BYPASS_AUTH=true` for development without login
+
+---
+
+## Steps
 
 ```bash
-# 1. Entrar no pacote do front-end
+# 1. Enter the front-end package
 cd player
 
-# 2. Instalar dependências (se ainda não instaladas)
+# 2. Install dependencies (if not already installed)
 npm install
 
-# 3. (Opcional) Apontar o Gateway e/ou ignorar auth em desenvolvimento
-#    Crie player/.env.local com:
+# 3. (Optional) Point at the Gateway and/or skip auth in development
+#    Create player/.env.local with:
 #    VITE_GATEWAY_URL=http://localhost:8080
 #    VITE_BYPASS_AUTH=true
 
-# 4. Subir o ambiente de desenvolvimento
+# 4. Start the development environment
 npm run dev
 ```
 
-Abra o navegador em `/dashboard` (a rota-raiz redireciona para lá quando não há
-sistema ativo). Verifique:
+Open the browser at `/dashboard` (the root route redirects there when there is no
+active system). Check:
 
-- **Overview**: métricas refletem a quantidade real de sistemas; "Get Started"/FAB
-  iniciam a criação de sistema (sem `alert()`).
-- **Projects**: grade de sistemas reais com skeleton → dados/empty/erro; "Abrir projeto"
-  navega para o sistema.
-- **Settings**: "Alternar Tema" troca claro/escuro e persiste após recarregar.
-- **Header**: mostra nome/iniciais reais do usuário.
+- **Overview**: metrics reflect the real number of systems; "Get Started"/FAB
+  start system creation (no `alert()`).
+- **Projects**: grid of real systems with skeleton → data/empty/error; "Open project"
+  navigates to the system.
+- **Settings**: "Toggle Theme" switches light/dark and persists after reloading.
+- **Header**: shows the user's real name/initials.
 
 ---
 
-## Verificação
+## Verification
 
 ```bash
-# Testes desta demanda (dentro de player/)
+# This effort's tests (inside player/)
 npm run test -- src/systems/useSistemas.test.ts
 npm run test -- src/theme/ThemeProvider.test.tsx
 npm run test -- src/auth/jwt.test.ts
 npm run test -- src/pages/Dashboard
 
-# Suíte completa + type-check + build
+# Full suite + type-check + build
 npm run test
 npm run build   # tsc --noEmit && vite build
 ```
 
-Critérios rápidos de "pronto":
-- Nenhum dado do dashboard é hardcoded (métricas, cards, nome/avatar).
-- Todo botão executa ação real; sem `alert()` remanescente.
-- Tema persiste sem flash ao recarregar.
-- Estados carregando/vazio/erro presentes nas telas com dados.
+Quick "done" criteria:
+- No dashboard data is hardcoded (metrics, cards, name/avatar).
+- Every button performs a real action; no remaining `alert()`.
+- Theme persists with no flash on reload.
+- Loading/empty/error states are present on screens with data.
 
 ---
 
-## Variáveis de Ambiente
+## Environment Variables
 
-| Variável | Valor de Exemplo | Descrição |
+| Variable | Example Value | Description |
 |----------|-----------------|-----------|
-| `VITE_GATEWAY_URL` | `http://localhost:8080` | Base URL do Gateway (vazio = chamadas relativas via proxy Nginx) |
-| `VITE_BYPASS_AUTH` | `true` | Ignora o gate de login em desenvolvimento |
-| `mach_token` (localStorage) | — | JWT persistido pela sessão; fonte dos claims de identidade (RF03) |
-| `mach_theme` (localStorage) | `escuro` | Preferência de tema persistida (RF05) |
+| `VITE_GATEWAY_URL` | `http://localhost:8080` | Gateway base URL (empty = relative calls via the Nginx proxy) |
+| `VITE_BYPASS_AUTH` | `true` | Skips the login gate in development |
+| `mach_token` (localStorage) | — | JWT persisted by the session; source of the identity claims (FR03) |
+| `mach_theme` (localStorage) | `escuro` | Persisted theme preference (FR05) |

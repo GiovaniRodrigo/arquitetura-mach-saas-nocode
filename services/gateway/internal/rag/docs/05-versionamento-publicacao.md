@@ -1,19 +1,19 @@
-# Versionamento e publicação de sistemas no-code
+# Versioning and publishing no-code systems
 
-Ao construir um sistema que será publicado para o cliente final, trate cada
-alteração relevante (novo campo, nova regra, novo layout) como parte de uma
-versão explícita, não como edição direta do ambiente em produção:
+When building a system that will be published to the end customer, treat
+every relevant change (new field, new rule, new layout) as part of an
+explicit version, not as a direct edit of the production environment:
 
-- **Rascunho vs. versão publicada**: edite livremente em rascunho; só publique
-  quando o fluxo tiver sido testado de ponta a ponta (criar, listar, editar,
-  excluir o registro principal).
-- **Rollback precisa ser trivial**: se uma versão publicada quebra um fluxo
-  do cliente, o caminho de volta para a versão anterior deve ser uma ação de
-  um clique, não uma reconstrução manual.
-- **Mudanças estruturais (remover campo, renomear entidade) são arriscadas**
-  em sistemas já publicados com dados reais — prefira depreciar um campo
-  (esconder da tela, manter no banco) a excluir, até confirmar que nenhum
-  dado histórico depende dele.
-- **Comunique o que mudou** em termos que o dono do sistema entende
-  ("agora dá para agendar retorno automático") e não em termos técnicos
-  ("adicionado campo tipo_consulta").
+- **Draft vs. published version**: edit freely in draft; only publish
+  once the flow has been tested end to end (create, list, edit, delete
+  the main record).
+- **Rollback must be trivial**: if a published version breaks a customer's
+  flow, the path back to the previous version must be a one-click action,
+  not a manual rebuild.
+- **Structural changes (removing a field, renaming an entity) are risky**
+  in systems already published with real data — prefer deprecating a field
+  (hide it from the screen, keep it in the database) over deleting it,
+  until you confirm no historical data depends on it.
+- **Communicate what changed** in terms the system owner understands
+  ("you can now schedule automatic follow-ups") rather than in technical
+  terms ("added field appointment_type").

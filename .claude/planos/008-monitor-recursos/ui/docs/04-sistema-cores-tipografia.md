@@ -1,59 +1,59 @@
-# Sistema de Cores e Tipografia
+# Color and Typography System
 
-> Esta tela **não introduz** paleta ou tipografia nova — reaproveita os tokens já definidos em
-> `services/frontend/src/index.css` (Lógica Consistente/Observar Convenções). Documentado aqui
-> para referência da demanda, com a adição pontual de cores semânticas de status que a tela
-> precisa e que ainda não têm token dedicado.
+> This screen **does not introduce** a new palette or typography — it reuses the tokens already defined in
+> `services/frontend/src/index.css` (Consistent Logic/Follow Conventions). Documented here
+> for reference on this demand, with the specific addition of semantic status colors the screen
+> needs and that don't yet have a dedicated token.
 
-## Paleta de Cores (tokens existentes, HSL via CSS custom properties)
+## Color Palette (existing tokens, HSL via CSS custom properties)
 
-### Primária
-- `--primary`: `hsl(239 84% 67%)` — indigo (referência de mercado: mesma família de azul-violeta
-  usada por dashboards SaaS técnicos como Linear/Railway)
+### Primary
+- `--primary`: `hsl(239 84% 67%)` — indigo (market reference: the same blue-violet family
+  used by technical SaaS dashboards like Linear/Railway)
 - `--primary-foreground`: `hsl(0 0% 100%)`
 
-### Neutras (base do dashboard)
-- `--background`: `hsl(210 40% 98%)` (claro) / `hsl(240 10% 4%)` (escuro)
-- `--card`: `hsl(0 0% 100%)` (claro) / `hsl(240 7% 8%)` (escuro)
-- `--secondary` / `--muted`: `hsl(210 40% 96%)` (claro) / `hsl(240 5% 26%)` (escuro)
-- `--border`: `hsl(214 32% 91%)` (claro) / `hsl(240 5% 26%)` (escuro)
-- `--muted-foreground`: `hsl(215 16% 47%)` (claro) / `hsl(240 5% 65%)` (escuro)
+### Neutrals (dashboard base)
+- `--background`: `hsl(210 40% 98%)` (light) / `hsl(240 10% 4%)` (dark)
+- `--card`: `hsl(0 0% 100%)` (light) / `hsl(240 7% 8%)` (dark)
+- `--secondary` / `--muted`: `hsl(210 40% 96%)` (light) / `hsl(240 5% 26%)` (dark)
+- `--border`: `hsl(214 32% 91%)` (light) / `hsl(240 5% 26%)` (dark)
+- `--muted-foreground`: `hsl(215 16% 47%)` (light) / `hsl(240 5% 65%)` (dark)
 
-### Semântica (uso nesta tela)
-- **Sucesso / operacional**: `--accent` (`hsl(173 80% 40%)`, teal) já existe no design system
-  mas hoje a tela usa `bg-green-500` (Tailwind cru, fora do token system) — **recomendação**:
-  usar `--accent` para o indicador "servindo", alinhando ao token existente em vez de uma cor
-  Tailwind solta que não responde ao tema.
-- **Erro / indisponível**: `--destructive` (`hsl(0 84.2% 60.2%)` claro / `hsl(0 62.8% 30.6%)`
-  escuro) — já é o token correto, mas a tela usa `bg-red-500` cru no dot; trocar por
-  `bg-destructive` para consistência com `ErrorState`/`StateViews.tsx`.
-- **Atenção (uso alto de recurso, ex. barra de CPU > 80%)**: não existe token `--warning` no
-  design system atual. Recomendação: usar `amber-500`/`amber-600` do Tailwind (mesma convenção
-  de mercado — Grafana, Datadog e Vercel usam âmbar para "warning" entre verde e vermelho) até
-  que um token `--warning` seja formalizado no `index.css`; escopo desta demanda não inclui
-  alterar o design system global.
-- **Info**: `--primary` (indigo) já cobre estados informativos (ex. badge "atualizando").
+### Semantic (usage on this screen)
+- **Success / operational**: `--accent` (`hsl(173 80% 40%)`, teal) already exists in the design system,
+  but the screen currently uses `bg-green-500` (raw Tailwind, outside the token system) — **recommendation**:
+  use `--accent` for the "serving" indicator, aligning with the existing token instead of a loose
+  Tailwind color that doesn't respond to the theme.
+- **Error / unavailable**: `--destructive` (`hsl(0 84.2% 60.2%)` light / `hsl(0 62.8% 30.6%)`
+  dark) — already the correct token, but the screen uses raw `bg-red-500` on the dot; swap for
+  `bg-destructive` for consistency with `ErrorState`/`StateViews.tsx`.
+- **Warning (high resource usage, e.g. CPU bar > 80%)**: there is no `--warning` token in the
+  current design system. Recommendation: use Tailwind's `amber-500`/`amber-600` (the same market
+  convention — Grafana, Datadog, and Vercel use amber for "warning" between green and red) until
+  a `--warning` token is formalized in `index.css`; changing the global design system is out of
+  this demand's scope.
+- **Info**: `--primary` (indigo) already covers informational states (e.g., the "refreshing" badge).
 
-## Tipografia (famílias existentes, `index.css` linha 1)
+## Typography (existing families, `index.css` line 1)
 
-- **Títulos** (`font-heading`): Outfit — carregada via Google Fonts no projeto todo, pesos
-  400–800. Usada em `<h2>`/`<h3>` dos cards, mantida sem alteração.
-- **Corpo**: Inter — pesos 400–700, usada em métricas e texto corrido.
-- **Código/Mono**: JetBrains Mono — reservada a trechos monoespaçados (ex. `Ctrl K` no header);
-  nesta tela, aplicável opcionalmente aos valores numéricos de métrica (ex. "0.25 núcleos",
-  "12.4 ms") para alinhamento tabular mais legível em grid denso — convenção comum em
-  dashboards técnicos (Grafana, Datadog usam mono para valores numéricos).
+- **Titles** (`font-heading`): Outfit — loaded via Google Fonts across the whole project, weights
+  400–800. Used in the cards' `<h2>`/`<h3>`, kept unchanged.
+- **Body**: Inter — weights 400–700, used in metrics and running text.
+- **Code/Mono**: JetBrains Mono — reserved for monospaced snippets (e.g., `Ctrl K` in the header);
+  on this screen, optionally applicable to numeric metric values (e.g., "0.25 cores",
+  "12.4 ms") for more legible tabular alignment in a dense grid — a common convention in
+  technical dashboards (Grafana, Datadog use mono for numeric values).
 
-### Escala (já em uso no projeto, mantida)
-- Título de card-resumo: `text-2xl font-heading font-bold`
-- Título de card de serviço: `text-md font-heading font-bold`
-- Métrica (label): `text-sm text-muted-foreground`
-- Métrica (valor): `text-sm font-medium` (ou `font-mono` se adotada a recomendação acima)
-- Timestamp/legenda: `text-xs text-muted-foreground`
+### Scale (already in use in the project, kept)
+- Summary-card title: `text-2xl font-heading font-bold`
+- Service-card title: `text-md font-heading font-bold`
+- Metric (label): `text-sm text-muted-foreground`
+- Metric (value): `text-sm font-medium` (or `font-mono` if the above recommendation is adopted)
+- Timestamp/caption: `text-xs text-muted-foreground`
 
-## Espaçamento (Grid)
+## Spacing (Grid)
 
-- Base unit: `4px` (padrão Tailwind, já em uso em todo o projeto — `gap-4`, `p-6`, etc.)
-- Raio de borda: `--radius: 0.75rem` como base, mas os cards do design system usam
-  `rounded-3xl` (24px) — convenção visual já estabelecida para cards de conteúdo, mantida.
-- Grid de cards: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4` (já implementado, mantido).
+- Base unit: `4px` (Tailwind default, already in use across the whole project — `gap-4`, `p-6`, etc.)
+- Border radius: `--radius: 0.75rem` as the base, but the design system's cards use
+  `rounded-3xl` (24px) — visual convention already established for content cards, kept as is.
+- Card grid: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4` (already implemented, kept).

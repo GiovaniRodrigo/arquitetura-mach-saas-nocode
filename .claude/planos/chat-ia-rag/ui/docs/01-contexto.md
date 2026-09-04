@@ -1,59 +1,62 @@
-# Contexto do Projeto
+# Project Context
 
-## Domínio
+## Domain
 
-MAYS (Make Your SaaS) é um construtor no-code de sistemas SaaS multi-tenant: o
-usuário monta telas por composição visual (Canvas tipo Figma/Webflow em
-`pages/Dashboard/editor`), define regras de negócio, versiona e publica o
-sistema resultante. É uma ferramenta de **arquitetura/design de sistemas**
-operada por não-programadores ou programadores low-code.
+MAYS (Make Your SaaS) is a no-code builder for multi-tenant SaaS systems: the
+user assembles screens via visual composition (a Figma/Webflow-style Canvas in
+`pages/Dashboard/editor`), defines business rules, and versions and publishes
+the resulting system. It's a **system architecture/design** tool operated by
+non-programmers or low-code programmers.
 
-Demanda desta análise: adicionar um **assistente de IA especialista em
-design/arquitetura de sistemas**, usando RAG (Retrieval-Augmented Generation),
-que conversa com o usuário sobre o foco/descrição do que ele está construindo e
-devolve recomendações de modelagem, estrutura e boas práticas.
+This analysis's ask: add an **AI assistant specialized in system
+design/architecture**, using RAG (Retrieval-Augmented Generation),
+that talks with the user about the focus/description of what they're building
+and returns recommendations on modeling, structure, and best practices.
 
-## Público-Alvo
+## Target Audience
 
-Donos de conta (donos/parceiros) construindo o sistema de um cliente, dentro do
-Dashboard autenticado. Nível técnico variável — de leigo a desenvolvedor — mas
-todos já operam conceitos de "sistema", "tela", "regra de negócio", "versão".
-O assistente precisa ser útil tanto para quem não sabe nomear o problema
-("quero um sistema para agendar consultas") quanto para quem já pensa em termos
-técnicos ("como estruturo multi-tenancy aqui?").
+Account owners (owners/partners) building a client's system, inside the
+authenticated Dashboard. Technical level varies — from layperson to developer —
+but everyone already works with concepts like "system", "screen", "business
+rule", "version". The assistant needs to be useful both for someone who
+doesn't know how to name the problem ("I want a system to schedule
+appointments") and for someone who already thinks in technical terms ("how do
+I structure multi-tenancy here?").
 
-## Referências Visuais Encontradas
+## Visual References Found
 
-Ver `02-referencias.md` para tabela completa com URLs e popularidade.
+See `02-referencias.md` for the full table with URLs and popularity.
 
-- **GitHub Copilot Chat** — painel lateral (sidebar) docked, não flutuante
-  sobre o conteúdo; composer fixo na base do painel.
-- **Notion AI** — painel de IA com entrada centralizada e chips de sugestão;
-  histórico só aparece após a primeira mensagem (assistente escopado à tarefa).
-- **Intercom Messenger** — padrão de widget flutuante ancorado a um canto,
-  otimizado para primeira resposta rápida (suporte ao cliente, não é o
-  padrão certo para um assistente de trabalho contínuo).
-- **Attio / Hex** (dashboards líderes 2026) — tratam a saída de IA como
-  superfície de primeira classe (resumos, ações sugeridas) em vez de widget
-  flutuante por cima da UI antiga.
+- **GitHub Copilot Chat** — docked side panel, not floating over the
+  content; composer fixed at the bottom of the panel.
+- **Notion AI** — AI panel with a centered input and suggestion chips;
+  history only appears after the first message (task-scoped assistant).
+- **Intercom Messenger** — floating widget pattern anchored to a corner,
+  optimized for a fast first response (customer support, not the
+  right pattern for a continuous work assistant).
+- **Attio / Hex** (leading 2026 dashboards) — treat AI output as a
+  first-class surface (summaries, suggested actions) instead of a
+  floating widget on top of the old UI.
 
-## Tendências Identificadas
+## Trends Identified
 
-1. **Painel docked, não pop-up flutuante sobre o conteúdo** — o padrão
-   vencedor em produtos de produtividade (Copilot Chat, Notion AI, Linear AI)
-   é abrir/fechar um painel lateral que empurra ou sobrepõe parcialmente o
-   layout, mantendo o composer sempre ancorado na base (evita o bug de UX mais
-   comum em chat de IA: composer flutuante sobrepondo a última mensagem).
-2. **Gatilho persistente e global**, não escondido dentro de uma única aba —
-   já que o "foco do sistema" atravessa várias telas do builder (Sistemas,
-   Regras de Negócio, Telas), o ponto de entrada do assistente deve existir em
-   todo o Dashboard, não só dentro do editor Canvas.
-3. **Contexto automático da tela atual** — assistentes de IA em produtos 2026
-   (Notion AI, Linear AI) herdam o contexto do que o usuário está vendo (aqui:
-   sistema selecionado) em vez de exigir que o usuário reexplique tudo.
-4. **Estado escopado por tarefa, com sugestões de entrada** — evita tela de
-   chat vazia; mostra chips/sugestões iniciais ("Modelar multi-tenancy",
-   "Revisar regras de negócio") alinhadas ao domínio do produto.
-5. **IA como camada complementar, nunca bloqueante** — o painel pode ser
-   fechado a qualquer momento sem perder o trabalho no Canvas por trás; nunca
-   é modal.
+1. **Docked panel, not a floating pop-up over the content** — the
+   winning pattern in productivity products (Copilot Chat, Notion AI, Linear
+   AI) is to open/close a side panel that pushes or partially overlaps the
+   layout, always keeping the composer anchored at the bottom (avoids the
+   most common UX bug in AI chat: a floating composer overlapping the last
+   message).
+2. **Persistent, global trigger**, not hidden inside a single tab — since
+   the "system focus" spans several builder screens (Systems, Business
+   Rules, Screens), the assistant's entry point should exist across the
+   entire Dashboard, not just inside the Canvas editor.
+3. **Automatic context from the current screen** — AI assistants in 2026
+   products (Notion AI, Linear AI) inherit the context of what the user is
+   viewing (here: the selected system) instead of requiring the user to
+   re-explain everything.
+4. **Task-scoped state, with entry suggestions** — avoids an empty chat
+   screen; shows initial chips/suggestions ("Model multi-tenancy",
+   "Review business rules") aligned with the product's domain.
+5. **AI as a complementary layer, never blocking** — the panel can be
+   closed at any time without losing the work on the Canvas behind it; it's
+   never a modal.

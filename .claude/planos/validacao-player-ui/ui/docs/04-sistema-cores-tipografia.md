@@ -1,65 +1,65 @@
-# Sistema de Cores e Tipografia (recomendado)
+# Color and Typography System (recommended)
 
-Ancorado nas referências populares (Material Design 3; padrões de builders no-code como
-Appsmith/Retool; guidelines dos IDPs Google/GitHub). Um único sistema para **todas** as telas
-do player, eliminando a inconsistência atual (só o Login tem estilo).
+Anchored in popular references (Material Design 3; no-code builder patterns like
+Appsmith/Retool; Google/GitHub IDP guidelines). A single system for **every** screen of the
+player, eliminating the current inconsistency (only Login has styling).
 
-## Paleta de Cores
+## Color Palette
 
-### Primária (índigo — comum em ferramentas de produtividade/builders)
+### Primary (indigo — common in productivity tools/builders)
 - 50  `#EEF2FF`
 - 100 `#E0E7FF`
 - 200 `#C7D2FE`
 - 300 `#A5B4FC`
 - 400 `#818CF8`
-- **500 `#6366F1`** ← principal (CTA)
-- 600 `#4F46E5` ← hover do CTA
+- **500 `#6366F1`** ← main (CTA)
+- 600 `#4F46E5` ← CTA hover
 - 700 `#4338CA`
 - 800 `#3730A3`
 - 900 `#312E81`
 
-> Referência: tom índigo/violeta é recorrente em internal-tools builders (Retool/Appsmith) e
-> no Material 3 (esquema "Indigo"). Alta legibilidade em botão branco-sobre-cor.
+> Reference: an indigo/violet tone is recurrent in internal-tools builders (Retool/Appsmith) and
+> in Material 3 (the "Indigo" scheme). High legibility for white-on-color buttons.
 
-### Neutros (superfícies e texto)
-- Fundo app `#F8FAFC` · Superfície/card `#FFFFFF` · Borda `#E2E8F0`
-- Texto forte `#0F172A` · Texto secundário `#475569` · Texto sutil `#94A3B8`
+### Neutrals (surfaces and text)
+- App background `#F8FAFC` · Surface/card `#FFFFFF` · Border `#E2E8F0`
+- Strong text `#0F172A` · Secondary text `#475569` · Subtle text `#94A3B8`
 
-### Semântica (Material 3 / convenção universal)
-- Sucesso `#16A34A` (fundo `#DCFCE7`)
-- Alerta  `#D97706` (fundo `#FEF3C7`)
-- Erro    `#DC2626` (fundo `#FEE2E2`)
-- Info    `#2563EB` (fundo `#DBEAFE`)
+### Semantic (Material 3 / universal convention)
+- Success `#16A34A` (background `#DCFCE7`)
+- Warning `#D97706` (background `#FEF3C7`)
+- Error   `#DC2626` (background `#FEE2E2`)
+- Info    `#2563EB` (background `#DBEAFE`)
 
-### Marcas dos IDPs (obrigatório seguir guideline)
-- Google: botão **branco** com borda `#DADCE0`, logo "G" 4 cores, texto `#3C4043`.
-- GitHub: botão **preto** `#24292F` (ou branco com borda), texto branco, logo GitHub oficial.
+### IDP branding (guideline must be followed)
+- Google: **white** button with `#DADCE0` border, 4-color "G" logo, `#3C4043` text.
+- GitHub: **black** button `#24292F` (or white with a border), white text, official GitHub logo.
 
-## Tipografia
+## Typography
 
-### Famílias (tendência popular, gratuitas no Google Fonts)
-- **Títulos**: `Inter` — uma das fontes UI mais adotadas em SaaS/dashboards
-  (dezenas de milhões de downloads/mês no Google Fonts).
-- **Corpo**: `Inter` (mesma família, pesos 400/500/600) — consistência e ótima leitura em UI.
-- **Código/Mono**: `JetBrains Mono` (para exibir ids/tokens técnicos, ex.: `sistemaId`).
+### Families (popular trend, free on Google Fonts)
+- **Headings**: `Inter` — one of the most widely adopted UI fonts in SaaS/dashboards
+  (tens of millions of downloads/month on Google Fonts).
+- **Body**: `Inter` (same family, weights 400/500/600) — consistency and great UI readability.
+- **Code/Mono**: `JetBrains Mono` (to display technical ids/tokens, e.g. `sistemaId`).
 
-> Fallback sem CDN: `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` (o player hoje
-> já usa `system-ui`; manter como fallback e opcionalmente carregar Inter).
+> No-CDN fallback: `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` (the player
+> already uses `system-ui` today; keep it as a fallback and optionally load Inter).
 
-### Escala (base 16px, ratio ~1.25)
+### Scale (16px base, ~1.25 ratio)
 - Display / h1: `2rem` / 32px — 700
 - h2: `1.5rem` / 24px — 600
 - h3: `1.25rem` / 20px — 600
 - Body: `1rem` / 16px — 400
 - Body-sm: `0.875rem` / 14px — 400
-- Caption: `0.75rem` / 12px — 500 (labels, ajuda)
+- Caption: `0.75rem` / 12px — 500 (labels, help text)
 
-## Espaçamento (Grid)
-- **Base unit: 8px** (escala 4/8/12/16/24/32/48/64).
-- Colunas: 12 (desktop) · 4 (mobile). Container de conteúdo `max-width: 1120px`.
-- Card de login: `max-width: 400px`, padding 32px, `radius: 12px`.
+## Spacing (Grid)
+- **Base unit: 8px** (scale 4/8/12/16/24/32/48/64).
+- Columns: 12 (desktop) · 4 (mobile). Content container `max-width: 1120px`.
+- Login card: `max-width: 400px`, padding 32px, `radius: 12px`.
 
-## Tokens (para reuso — CSS custom properties)
+## Tokens (for reuse — CSS custom properties)
 ```css
 :root{
   --color-primary:#6366F1; --color-primary-600:#4F46E5;
@@ -72,7 +72,7 @@ do player, eliminando a inconsistência atual (só o Login tem estilo).
 }
 ```
 
-## Fontes
+## Sources
 - Material Design 3 — https://m3.material.io/
 - Sign in with Google best practices — https://developers.google.com/identity/siwg/best-practices
 - SaaS login page design 2025 — https://lollypop.design/blog/2025/october/saas-login-page-design/

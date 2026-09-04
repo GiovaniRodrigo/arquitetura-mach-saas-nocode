@@ -1,97 +1,99 @@
-# Princípios Aplicados — Tela Monitor de Recursos
+# Applied Principles — Resource Monitor Screen
 
-## 1. Início Óbvio
+## 1. Obvious Starting Point
 
-O ponto de partida visual é o **card-resumo** no topo (`data-principle="inicio-obvio"` no
-wireframe): "7 de 8 serviços operacionais" com uma badge grande de status geral, antes de
-qualquer card individual. O olho do usuário deve responder "está tudo bem?" em menos de 1
-segundo, sem escanear os 8 cards. O botão "Atualizar" continua no mesmo card, à direita —
-ação secundária, não compete com o resumo.
+The visual starting point is the **summary card** at the top (`data-principle="inicio-obvio"` in
+the wireframe): "7 of 8 services operational" with a large overall-status badge, before any
+individual card. The user's eye should answer "is everything OK?" in under 1
+second, without scanning all 8 cards. The "Refresh" button stays in the same card, on the right —
+a secondary action, not competing with the summary.
 
-## 2. Reversão Clara
+## 2. Clear Reversal
 
-Não há ação destrutiva nesta tela (é só leitura). O que existe é o estado de erro (RNF02): o
-botão "Tentar novamente" do estado de erro global é sempre visível e não exige navegação —
-mantém o usuário no mesmo lugar. O auto-refresh (RF07) nunca substitui dados válidos por um
-estado de erro paralisante: se uma atualização falha, os últimos dados válidos continuam
-visíveis com um aviso discreto, em vez de a tela "sumir" e forçar o usuário a recomeçar.
+There is no destructive action on this screen (it's read-only). What exists is the error state (NFR02): the
+global error state's "Try again" button is always visible and requires no navigation —
+it keeps the user in the same place. Auto-refresh (FR07) never replaces valid data with a
+paralyzing error state: if an update fails, the last valid data remains
+visible with a discreet warning, instead of the screen "disappearing" and forcing the user to
+start over.
 
-## 3. Lógica Consistente
+## 3. Consistent Logic
 
-- Reusa `ElevatedCard`/`TonalCard` já usados em `Dashboard` e `CardServicoStatus` atual — nenhum
-  componente visual novo é inventado.
-- Reusa o `Skeleton` de `StateViews.tsx` (já usado em outras telas do dashboard) em vez do texto
-  "Carregando…" que a tela atual usa isoladamente — mesmo padrão de loading em toda a aplicação.
-- O indicador de status (dot colorido) mantém a mesma semântica de cor (`--destructive` = fora
-  do ar) usada em outros pontos do app (ex.: badge do menu do usuário, `ErrorState`).
-- Hover/foco dos cards seguem o mesmo `transition-all duration-200` já usado em `ElevatedCard`.
+- Reuses `ElevatedCard`/`TonalCard` already used in `Dashboard` and the current `CardServicoStatus` — no
+  new visual component is invented.
+- Reuses the `Skeleton` from `StateViews.tsx` (already used on other dashboard screens) instead of the
+  "Loading…" text the current screen uses in isolation — the same loading pattern across the
+  whole application.
+- The status indicator (colored dot) keeps the same color semantics (`--destructive` = down)
+  used elsewhere in the app (e.g., the user menu badge, `ErrorState`).
+- Card hover/focus follow the same `transition-all duration-200` already used in `ElevatedCard`.
 
-## 4. Observar Convenções
+## 4. Follow Conventions
 
-- Verde = operacional, vermelho = indisponível: convenção universal de status pages (Uptime
-  Kuma, GitHub Status, todos os *status.io*-likes) — não inventar semântica de cor nova.
-- Ícones com significado universal do próprio `lucide-react` já em uso: `RefreshCw` (atualizar),
-  `Cpu`, `MemoryStick`/`HardDrive`, `Activity` (RPS/latência) — mesma biblioteca de ícones já
-  usada em toda a sidebar, sem introduzir um segundo pacote de ícones.
-- Terminologia do domínio que a equipe técnica já conhece: "CPU", "Memória", "Requisições/s",
-  "Taxa de sucesso", "Latência p99" — termos já usados em `CardServicoStatus.tsx` atual, mantidos.
+- Green = operational, red = unavailable: universal status-page convention (Uptime
+  Kuma, GitHub Status, every *status.io*-like) — no new color semantics invented.
+- Icons with universal meaning from the `lucide-react` package already in use: `RefreshCw` (refresh),
+  `Cpu`, `MemoryStick`/`HardDrive`, `Activity` (RPS/latency) — the same icon library already
+  used throughout the sidebar, without introducing a second icon package.
+- Domain terminology the technical team already knows: "CPU", "Memory", "Requests/s",
+  "Success rate", "p99 latency" — terms already used in the current `CardServicoStatus.tsx`, kept as is.
 
-## 5. Feedback e Marcos
+## 5. Feedback and Milestones
 
-- **Loading**: skeleton de 8 retângulos animados (reuso de `Skeleton`), não spinner genérico.
-- **Última atualização**: texto "Atualizado há Xs" ao lado do botão "Atualizar", atualizado a
-  cada tick — confirma visualmente que o auto-refresh (RF07) está ativo sem exigir F5.
-- **Indicador de "atualizando agora"**: o ícone `RefreshCw` gira (`animate-spin`) durante o
-  fetch, inclusive nos refreshes automáticos — hoje a tela não distingue "carregando pela
-  primeira vez" de "atualizando em background", o que pode fazer o usuário achar que travou.
-- **Erro por card vs erro de tela** (RN01 vs RNF02): já implementado corretamente na base atual
-  — mantido e reforçado visualmente com borda vermelha sutil no card individual indisponível
-  (hoje só o texto interno muda), para ficar escaneável mesmo em grid grande.
+- **Loading**: an 8-rectangle animated skeleton (reusing `Skeleton`), not a generic spinner.
+- **Last updated**: "Updated Xs ago" text next to the "Refresh" button, updated on
+  every tick — visually confirms auto-refresh (FR07) is active without requiring F5.
+- **"Refreshing now" indicator**: the `RefreshCw` icon spins (`animate-spin`) during the
+  fetch, including on automatic refreshes — today the screen doesn't distinguish "loading for the
+  first time" from "refreshing in the background", which can make the user think it's frozen.
+- **Per-card error vs. screen error** (BR01 vs. NFR02): already correctly implemented in the current
+  base — kept and visually reinforced with a subtle red border on the individual unavailable card
+  (today only the internal text changes), to stay scannable even in a large grid.
 
-## 6. Proximidade e Adaptação
+## 6. Proximity and Adaptation
 
-- As 5 métricas de cada card ficam agrupadas em duas linhas visuais: CPU+Memória (recursos do
-  processo) e RPS+Taxa de sucesso+Latência (tráfego/mesh) — hoje aparecem como uma lista única
-  sem agrupamento, dificultando escanear "isso é sobre o processo ou sobre a rede?".
-  Ver `docs/01-contexto.md`.
-- Grid responsivo mantido (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`, já implementado) — 1
-  coluna no mobile, 3 no desktop.
-- Botão "Atualizar" e timestamp ficam colados ao card-resumo (mesma região de controle),
-  fisicamente distantes dos cards de dado (regra de proximidade: controle ≠ dado).
+- The 5 metrics on each card are grouped into two visual rows: CPU+Memory (process
+  resources) and RPS+Success rate+Latency (traffic/mesh) — today they appear as a single list
+  with no grouping, making it hard to scan "is this about the process or about the network?".
+  See `docs/01-contexto.md`.
+- Responsive grid kept (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`, already implemented) — 1
+  column on mobile, 3 on desktop.
+- "Refresh" button and timestamp stay attached to the summary card (same control region),
+  physically distant from the data cards (proximity rule: control ≠ data).
 
-## 7. Interface é Conteúdo
+## 7. Interface Is Content
 
-- Nenhum elemento puramente decorativo é adicionado — toda cor, ícone ou barra carrega
-  informação (status, tendência de uso).
-- Header (já existente) e sidebar (já existente) permanecem com a altura mínima atual — não
-  alterados por esta demanda.
-- Barra de progresso de CPU/memória substitui parte do texto solto sem aumentar a altura do
-  card — informação por área ocupada aumenta.
+- No purely decorative element is added — every color, icon, or bar carries
+  information (status, usage trend).
+- The (existing) header and sidebar keep their current minimum height — not
+  altered by this demand.
+- The CPU/memory progress bar replaces part of the loose text without increasing the card's
+  height — information per occupied area increases.
 
-## 8. Princípios Gerais de Design Visual
+## 8. General Visual Design Principles
 
-- **Torne o assunto óbvio**: cada card tem o nome do serviço (`font-heading font-bold`) e um
-  ícone de categoria (ex. `Server`) no topo — já existe o nome, adiciona-se o ícone para reforço
-  visual rápido em grid denso.
-- **Visualização de dados adequada**: CPU e memória usam **barra de progresso** (proporção de um
-  total, mesmo que o "total" seja um limite de referência, não uma quota rígida) — não um
-  gráfico de linha, porque não há série temporal (fora de escopo, spec §8). RPS/latência
-  continuam como número (são taxas instantâneas, não proporções — pizza/barra não se aplica).
-- **Forma e conteúdo integrados**: vermelho = alerta/indisponível, verde = saudável — já é a
-  convenção adotada; estendida para a borda esquerda do card (4px) em vez de só o dot, reforço
-  visual sem exigir olhar para o canto do card.
-- **Metáforas para conceitos novos**: não há conceito novo nesta tela — os termos já são
-  familiares ao público técnico-alvo (RN03), não é necessário nenhum recurso de analogia.
+- **Make the subject obvious**: each card has the service name (`font-heading font-bold`) and a
+  category icon (e.g., `Server`) at the top — the name already exists; the icon is added for quick
+  visual reinforcement in a dense grid.
+- **Appropriate data visualization**: CPU and memory use a **progress bar** (proportion of a
+  total, even if the "total" is a reference limit rather than a hard quota) — not a
+  line chart, because there is no time series (out of scope, spec §8). RPS/latency
+  remain as numbers (they're instantaneous rates, not proportions — a pie/bar doesn't apply).
+- **Integrated form and content**: red = alert/unavailable, green = healthy — already the
+  adopted convention; extended to the card's left border (4px) instead of just the dot, a
+  visual reinforcement that doesn't require looking at the card's corner.
+- **Metaphors for new concepts**: there is no new concept on this screen — the terms are
+  already familiar to the target technical audience (BR03), so no analogy device is needed.
 
-## 9. Matriz de Decisão de Design
+## 9. Design Decision Matrix
 
-| Decisão | Início Óbvio | Reversão Clara | Consistência | Convenção | Feedback | Proximidade | Conteúdo > Deco. |
+| Decision | Obvious Start | Clear Reversal | Consistency | Convention | Feedback | Proximity | Content > Deco. |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Card-resumo "X de Y operacionais" no topo | ✓ | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Skeleton (reuso `StateViews.tsx`) no loading | — | — | ✓ | ✓ | ✓ | — | ✓ |
-| Timestamp "Atualizado há Xs" | — | — | ✗ (novo) | ✓ | ✓ | ✓ | ✓ |
-| Ícone girando (`animate-spin`) durante refresh | — | — | ✓ | ✓ | ✓ | — | ✓ |
-| Borda esquerda colorida por status no card | — | — | ✓ | ✓ | ✓ | — | ✓ |
-| Barra de progresso para CPU/memória | — | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Agrupamento processo vs tráfego dentro do card | — | — | ✓ | — | — | ✓ | ✓ |
-| Estado de erro global com "Tentar novamente" (já existente) | — | ✓ | ✓ | ✓ | ✓ | — | — |
+| "X of Y operational" summary card at the top | ✓ | — | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Skeleton (reusing `StateViews.tsx`) on loading | — | — | ✓ | ✓ | ✓ | — | ✓ |
+| "Updated Xs ago" timestamp | — | — | ✗ (new) | ✓ | ✓ | ✓ | ✓ |
+| Spinning icon (`animate-spin`) during refresh | — | — | ✓ | ✓ | ✓ | — | ✓ |
+| Status-colored left border on the card | — | — | ✓ | ✓ | ✓ | — | ✓ |
+| Progress bar for CPU/memory | — | — | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Process vs. traffic grouping within the card | — | — | ✓ | — | — | ✓ | ✓ |
+| Global error state with "Try again" (already existing) | — | ✓ | ✓ | ✓ | ✓ | — | — |

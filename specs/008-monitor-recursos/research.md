@@ -1,76 +1,75 @@
-# Pesquisa: Monitor de Recursos
+# Research: Resource Monitor
 
 ---
 
-## 1. Padrões Existentes no Projeto
+## 1. Existing Patterns in the Project
 
-| Arquivo/Padrão | Localização | Relevância |
+| File/Pattern | Location | Relevance |
 |----------------|-------------|-----------|
-| `NewServer(pool)` + `app.go` público | `services/design/app/app.go`, `services/deploy/app/app.go` | Modelo direto para `services/monitor/app/app.go` (sem pool — monitor não usa Postgres). |
-| `main.go` com `env()` helper + `telemetry.Init` + `grpc.NewServer(grpc.StatsHandler(otelgrpc...), grpc.ChainUnaryInterceptor(tenantctx...))` | `services/design/cmd/main.go`, `services/iam/cmd/main.go` | Modelo para `services/monitor/cmd/main.go`. Nota: Monitor não lida com `TenantContext` (não é multi-tenant) — reavaliar se `tenantctx` interceptors fazem sentido aqui (provavelmente não, ver §3). |
-| `GET /health` simples (200 sem corpo) | `services/gateway/internal/app/router.go:28` | Padrão mínimo de liveness já existente; o novo `/health` do Workers segue a mesma simplicidade, só que com corpo JSON. |
-| `plug :healthz` com resposta antes do router | `services/collab/lib/collab_web/endpoint.ex:48-52` | Ponto exato de extensão para incluir uptime/memória no Collab (RF02). |
-| `routes.ResumoFinanceiro(iam)` → `http.HandlerFunc` | `services/gateway/internal/routes/*.go` | Modelo para `routes.ObterRecursos(monitor)`. |
-| `NewRouter(iam, design, logic, deploy, export, rl, oauth)` recebendo um client gRPC por serviço | `services/gateway/internal/app/router.go` | Modelo para adicionar o 6º client (`monitor`). |
-| `useResumoFinanceiro.ts` (estados `carregando`/`pronto`/`erro` + `recarregar`) | `services/frontend/src/dashboard/useResumoFinanceiro.ts` | Modelo para `useRecursos.ts`, acrescido de `setInterval` para auto-refresh (RF07). |
-| `CardResumoFinanceiro.tsx` | `services/frontend/src/dashboard/CardResumoFinanceiro.tsx` | Modelo visual/estrutural para `CardServicoStatus.tsx`. |
-| Rotas aninhadas em `App.tsx` dentro de `/dashboard` + item de sidebar em `DashboardLayout.tsx` | `services/frontend/src/App.tsx:103-114`, `.../DashboardLayout.tsx:76-95` | Onde plugar a rota/nav de Monitor (RF08). |
-| `run_bg <nome> go run ./services/<nome>/cmd` | `build/dev-up.sh:230-259` | Onde adicionar o boot do Monitor no fluxo de dev local. |
-| `pkg/telemetry`, `pkg/tenantctx`, `pkg/database`, `pkg/eventbus`, `pkg/blindindex` | `pkg/` | Precedente direto para criar `pkg/health` como novo pacote compartilhado. |
-| Portas gRPC dos serviços (memória do projeto, confirmado em código) | IAM `:50051`, Design `:50052`, Logic `:50053`, Deploy `:50054`, Export `:50055`, Gateway HTTP `:8080`, Collab HTTP `:4000` | Base para decidir as portas novas (§2). |
+| `NewServer(pool)` + a public `app.go` | `services/design/app/app.go`, `services/deploy/app/app.go` | Direct model for `services/monitor/app/app.go` (no pool — the monitor doesn't use Postgres). |
+| `main.go` with an `env()` helper + `telemetry.Init` + `grpc.NewServer(grpc.StatsHandler(otelgrpc...), grpc.ChainUnaryInterceptor(tenantctx...))` | `services/design/cmd/main.go`, `services/iam/cmd/main.go` | Model for `services/monitor/cmd/main.go`. Note: the Monitor doesn't deal with `TenantContext` (it isn't multi-tenant) — re-evaluate whether the `tenantctx` interceptors make sense here (probably not, see §3). |
+| Simple `GET /health` (200 with no body) | `services/gateway/internal/app/router.go:28` | The already existing minimal liveness pattern; the Workers' new `/health` follows the same simplicity, just with a JSON body. |
+| `plug :healthz` responding before the router | `services/collab/lib/collab_web/endpoint.ex:48-52` | The exact extension point to include uptime/memory in Collab (FR02). |
+| `routes.ResumoFinanceiro(iam)` → `http.HandlerFunc` | `services/gateway/internal/routes/*.go` | Model for `routes.ObterRecursos(monitor)`. |
+| `NewRouter(iam, design, logic, deploy, export, rl, oauth)` taking one gRPC client per service | `services/gateway/internal/app/router.go` | Model for adding the 6th client (`monitor`). |
+| `useResumoFinanceiro.ts` (`carregando`/`pronto`/`erro` states + `recarregar`) | `services/frontend/src/dashboard/useResumoFinanceiro.ts` | Model for `useRecursos.ts`, plus `setInterval` for auto-refresh (FR07). |
+| `CardResumoFinanceiro.tsx` | `services/frontend/src/dashboard/CardResumoFinanceiro.tsx` | Visual/structural model for `CardServicoStatus.tsx`. |
+| Nested routes in `App.tsx` inside `/dashboard` + a sidebar item in `DashboardLayout.tsx` | `services/frontend/src/App.tsx:103-114`, `.../DashboardLayout.tsx:76-95` | Where to plug in the Monitor route/nav (FR08). |
+| `run_bg <name> go run ./services/<name>/cmd` | `build/dev-up.sh:230-259` | Where to add the Monitor's boot in the local dev flow. |
+| `pkg/telemetry`, `pkg/tenantctx`, `pkg/database`, `pkg/eventbus`, `pkg/blindindex` | `pkg/` | Direct precedent for creating `pkg/health` as a new shared package. |
+| Services' gRPC ports (project memory, confirmed in code) | IAM `:50051`, Design `:50052`, Logic `:50053`, Deploy `:50054`, Export `:50055`, Gateway HTTP `:8080`, Collab HTTP `:4000` | Baseline for deciding the new ports (§2). |
 
 ---
 
-## 2. Portas e Endereços — decisão final
+## 2. Ports and Addresses — final decision
 
-| Serviço | Endereço/porta | Observação |
+| Service | Address/port | Note |
 |---------|-----------------|------------|
-| Monitor (gRPC, novo) | `:50056` (`MONITOR_GRPC_ADDR`) | Próxima porta livre na faixa gRPC 50051-50055 já em uso. |
-| Workers (HTTP, novo) | `:8081` (`WORKERS_HTTP_ADDR`) | Fica na faixa HTTP junto do Gateway (`:8080`), não na faixa gRPC — evita a colisão com `:50056` do Monitor identificada em `plan.md` §6, e deixa claro que é um endpoint HTTP, não gRPC. |
-| Collab `/healthz` | `:4000` (já existente, `PHX_PORT`/hardcoded em `dev.exs`) | Sem porta nova — só o corpo da resposta muda (RF02). |
-| Gateway `/health` | `:8080` (já existente) | Sem mudança — o Monitor só faz `GET http://localhost:8080/health` e converte "200 OK" em `ServicoStatus{status: "servindo"}` (sem uptime/memória do Gateway nesta entrega, já que `/health` não retorna corpo — ver §3, aceito como limitação documentada). |
+| Monitor (gRPC, new) | `:50056` (`MONITOR_GRPC_ADDR`) | Next free port in the already-used 50051-50055 gRPC range. |
+| Workers (HTTP, new) | `:8081` (`WORKERS_HTTP_ADDR`) | Sits in the HTTP range alongside the Gateway (`:8080`), not the gRPC range — avoids the collision with the Monitor's `:50056` identified in `plan.md` §6, and makes it clear it's an HTTP endpoint, not gRPC. |
+| Collab `/healthz` | `:4000` (already existing, `PHX_PORT`/hardcoded in `dev.exs`) | No new port — only the response body changes (FR02). |
+| Gateway `/health` | `:8080` (already existing) | No change — the Monitor only does `GET http://localhost:8080/health` and converts "200 OK" into `ServicoStatus{status: "servindo"}` (no uptime/memory for the Gateway in this delivery, since `/health` doesn't return a body — see §3, accepted as a documented limitation). |
 
-Todos os 8 endereços (5 gRPC + Gateway HTTP + Collab HTTP + Workers HTTP) são
-configuráveis via env var no `main.go` do Monitor, seguindo exatamente o padrão já usado
-em `services/gateway/cmd/main.go:37-41`.
+All 8 addresses (5 gRPC + Gateway HTTP + Collab HTTP + Workers HTTP) are
+configurable via env var in the Monitor's `main.go`, following exactly the same
+pattern already used in `services/gateway/cmd/main.go:37-41`.
 
 ---
 
-## 3. Alternativas de Arquitetura/Design Consideradas
+## 3. Architecture/Design Alternatives Considered
 
-### Opção A: Padronizar tudo em HTTP (todos os serviços ganham um `net/http` com `/health`)
-- **Prós**: um único tipo de coletor no Monitor, sem precisar de dois protos.
-- **Contras**: obriga IAM/Design/Logic/Deploy/Export — hoje gRPC puro — a subir um segundo
-  listener cada, só para isso; mais superfície nova por serviço do que estender o
-  `grpc.Server` que cada um já tem.
-- **Decisão**: Descartada. Ver justificativa completa em `plan.md` §1.
+### Option A: Standardize everything on HTTP (every service gains a `net/http` with `/health`)
+- **Pros**: a single collector type in the Monitor, no need for two protos.
+- **Cons**: forces IAM/Design/Logic/Deploy/Export — pure gRPC today — to each stand up a
+  second listener just for this; more new surface per service than extending the
+  `grpc.Server` each of them already has.
+- **Decision**: Discarded. See the full rationale in `plan.md` §1.
 
-### Opção B: Prometheus + exporters, Monitor só lê o Prometheus
-- **Prós**: infraestrutura de métricas "de verdade", série temporal, alertas prontos no
-  futuro.
-- **Contras**: decisão explícita do usuário nesta entrega foi não usar Prometheus (custo
-  de infra + aprendizado adicional não justificado para uma primeira tela de status); o
-  OTel Collector já existente é para traces, não métricas, e adaptá-lo teria custo
-  similar a montar o Prometheus do zero.
-- **Decisão**: Descartada nesta entrega — documentado como possível evolução futura,
-  não como "fora de escopo esquecido".
+### Option B: Prometheus + exporters, Monitor just reads Prometheus
+- **Pros**: "real" metrics infrastructure, time series, alerts ready for the future.
+- **Cons**: the user's explicit decision for this delivery was not to use Prometheus
+  (infra cost + additional learning curve not justified for a first status screen); the
+  already existing OTel Collector is for traces, not metrics, and adapting it would cost
+  about as much as standing up Prometheus from scratch.
+- **Decision**: Discarded for this delivery — documented as a possible future evolution,
+  not as "forgotten out of scope."
 
-### Opção C: `GET /health` do Gateway devolver corpo JSON com uptime/memória do próprio Gateway
-- **Prós**: o Monitor teria dado completo do Gateway, não só "up/down".
-- **Contras**: mudaria o contrato de um endpoint público já em uso (usado por
-  liveness/orquestração externa, se houver); ampliar essa entrega para editar
-  `router.go:28` sai do escopo mínimo definido com o usuário.
-- **Decisão**: Descartada nesta rodada — aceito como limitação documentada
-  (`spec.md` RN02: "cada serviço reporta o que consegue"); o Gateway aparece na tela como
-  up/down sem métricas de memória. Pode virar uma extensão de uma linha numa demanda
-  futura (`GET /health` passar a aceitar `Accept: application/json` sem quebrar o
-  consumidor atual que só olha o status code).
+### Option C: The Gateway's `GET /health` returns a JSON body with the Gateway's own uptime/memory
+- **Pros**: the Monitor would have complete data for the Gateway, not just "up/down."
+- **Cons**: would change the contract of an already-in-use public endpoint (used by
+  liveness/external orchestration, if any); expanding this delivery to edit
+  `router.go:28` goes beyond the minimal scope agreed with the user.
+- **Decision**: Discarded for this round — accepted as a documented limitation
+  (`spec.md` BR02: "each service reports what it can"); the Gateway shows up on the
+  screen as up/down with no memory metrics. Could become a one-line extension in a
+  future request (`GET /health` starts accepting `Accept: application/json` without
+  breaking the current consumer that only looks at the status code).
 
-### Opção D: Monitor usar `tenantctx` interceptors como os demais serviços gRPC
-- **Prós**: consistência total com o padrão dos outros `main.go`.
-- **Contras**: `tenantctx` existe para propagar/validar o tenant de uma requisição de
-  negócio multi-tenant; a RPC do Monitor (`ObterRecursos`) não tem tenant — é uma consulta
-  operacional da plataforma inteira, chamada pelo Gateway sem `TenantContext`.
-- **Decisão**: Descartada — `services/monitor` registra `otelgrpc` (tracing, RNF03) mas
-  **não** encadeia `tenantctx.UnaryServerInterceptor()`. Documentar essa exceção no
-  comentário do `main.go` para não parecer omissão acidental na próxima revisão.
+### Option D: The Monitor uses `tenantctx` interceptors like the other gRPC services
+- **Pros**: full consistency with the other `main.go` files' pattern.
+- **Cons**: `tenantctx` exists to propagate/validate the tenant of a multi-tenant
+  business request; the Monitor's RPC (`ObterRecursos`) has no tenant — it's a
+  platform-wide operational query, called by the Gateway with no `TenantContext`.
+- **Decision**: Discarded — `services/monitor` registers `otelgrpc` (tracing, NFR03) but
+  **does not** chain `tenantctx.UnaryServerInterceptor()`. Document this exception in a
+  `main.go` comment so it doesn't look like an accidental omission on the next review.

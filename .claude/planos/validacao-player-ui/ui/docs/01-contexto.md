@@ -1,61 +1,61 @@
-# Contexto do Projeto
+# Project Context
 
-## Domínio
-**MACH V4 — Plataforma Low-Code / No-Code.** O software permite que utilizadores construam as
-suas próprias aplicações digitais por uma interface visual (CRUD de UI, regras de negócio,
-publicação instantânea, multi-tenancy hierárquico, colaboração em tempo real). A parte
-auditada aqui é o **Headless Player** — a SPA que renderiza a versão *ativa* de um sistema
-construído na plataforma, servida em `https://gfcode.com.br/ui/`.
+## Domain
+**MACH V4 — Low-Code / No-Code Platform.** The software lets users build their own digital
+applications through a visual interface (UI CRUD, business rules, instant publishing,
+hierarchical multi-tenancy, real-time collaboration). The part audited here is the **Headless
+Player** — the SPA that renders the *active* version of a system built on the platform, served at
+`https://gfcode.com.br/ui/`.
 
-## Público-Alvo
-Dois perfis, ambos atendidos pela mesma casca:
-- **Builders / operadores** (semi-técnicos): donos e parceiros que criam e publicam sistemas.
-- **Clientes finais** (leigos): usuários dos sistemas gerados, que apenas consomem as telas
-  (nav + formulários + submissão).
+## Target Audience
+Two profiles, both served by the same shell:
+- **Builders / operators** (semi-technical): owners and partners who create and publish systems.
+- **End customers** (laypeople): users of the generated systems, who only consume the screens
+  (nav + forms + submission).
 
-Contexto de uso: navegador desktop e mobile; sessão iniciada por **login social** (Google/GitHub).
-Como a tela renderizada é a "cara" do produto que o cliente do builder entrega ao *seu* cliente,
-a percepção de qualidade visual da casca (login, estados, chrome) impacta diretamente a
-confiança no produto.
+Usage context: desktop and mobile browsers; session started via **social login** (Google/GitHub).
+Since the rendered screen is the "face" of the product the builder's client delivers to *their*
+customer, the perceived visual quality of the shell (login, states, chrome) directly impacts
+trust in the product.
 
-## Stack Frontend (observada no código)
-- **Vite + React 18 + TypeScript**, `react-router-dom`. Base servida sob `/ui/`
+## Frontend Stack (observed in the code)
+- **Vite + React 18 + TypeScript**, `react-router-dom`. Served under base `/ui/`
   (`player/vite.config.ts` → `base: "/ui/"`).
-- **Sem framework de CSS** (não há Tailwind, MUI, etc.). Todo estilo é *inline* em `Login.tsx`;
-  as demais telas (loading/empty/erro e `CompositeRenderer`) **não têm estilo próprio** — saem
-  com aparência default do navegador.
-- Entrada: `player/src/main.tsx` (decide Login vs App conforme token), `App.tsx` (rotas
-  dinâmicas + render de ecrãs), `CompositeRenderer.tsx` (árvore Composite → DOM).
+- **No CSS framework** (no Tailwind, MUI, etc.). All styling is *inline* in `Login.tsx`;
+  the other screens (loading/empty/error and `CompositeRenderer`) **have no styling of their
+  own** — they render with the browser's default appearance.
+- Entry point: `player/src/main.tsx` (decides Login vs App based on the token), `App.tsx`
+  (dynamic routes + screen rendering), `CompositeRenderer.tsx` (Composite tree → DOM).
 
-## Validação técnica (feita no navegador — resumo)
-`https://gfcode.com.br/ui/`: `/ui/` 200, `/ui/assets/index-*.js` 200 (base path correto), SPA
-monta, **sem erros de console**, tela de Login renderiza, botões apontam para
-`/auth/{google,github}` (proxy Nginx ok). **Funcionalmente correto** — esta auditoria trata da
-qualidade de *design*.
+## Technical Validation (done in the browser — summary)
+`https://gfcode.com.br/ui/`: `/ui/` 200, `/ui/assets/index-*.js` 200 (correct base path), the SPA
+mounts, **no console errors**, the Login screen renders, buttons point to
+`/auth/{google,github}` (Nginx proxy ok). **Functionally correct** — this audit is about *design*
+quality.
 
-## Referências Visuais Encontradas (web)
-| Referência | Por que é relevante | Popularidade |
+## Visual References Found (web)
+| Reference | Why it's relevant | Popularity |
 |---|---|---|
-| **Appsmith** (builder no-code, tela de login/app) | Mesmo domínio (builder low-code); templates de login | ~30.000+ stars no GitHub; Discord 5.000+ membros |
-| **Budibase** | Builder no-code com auto-CRUD e telas de auth | ~300.000 times/equipes usando a plataforma |
-| **ToolJet** | Builder low-code AI-native, ecossistema de UI | 500+ contribuidores no GitHub |
-| **Bubble** | Builder no-code customer-facing de referência | Milhões de apps criados; líder de mercado no-code |
-| **Retool** | Biblioteca de 100+ componentes configuráveis | Usado por milhares de empresas (padrão de internal tools) |
-| **Material Design 3** (Google) | Guideline oficial de botões/estados/cores | Design system oficial do Android/Google |
-| **Sign in with Google — Best Practices** | Guideline oficial do botão social | Documentação oficial Google Identity |
+| **Appsmith** (no-code builder, login/app screen) | Same domain (low-code builder); login templates | ~30,000+ GitHub stars; 5,000+ Discord members |
+| **Budibase** | No-code builder with auto-CRUD and auth screens | ~300,000 teams using the platform |
+| **ToolJet** | AI-native low-code builder, UI ecosystem | 500+ GitHub contributors |
+| **Bubble** | Reference customer-facing no-code builder | Millions of apps built; no-code market leader |
+| **Retool** | Library of 100+ configurable components | Used by thousands of companies (internal-tools standard) |
+| **Material Design 3** (Google) | Official guideline for buttons/states/colors | Android/Google's official design system |
+| **Sign in with Google — Best Practices** | Official guideline for the social button | Official Google Identity documentation |
 
-## Tendências Identificadas (aplicáveis ao Login/casca)
-1. **Login social minimalista com hierarquia clara**: 2–3 métodos no máximo, destacando o
-   provedor primário ("Continue com…") — evita sobrecarga cognitiva (Authgear/Lollypop 2025).
-2. **Botões sociais seguindo guideline de cada IDP**: logo colorido do Google (G de 4 cores),
-   marca do GitHub; quando o IDP não publica spec de botão, aplicar o logo + padrão de botão
-   do próprio produto para consistência.
-3. **Mobile-first com alvos de toque grandes** e layout responsivo — assumir login no celular.
-4. **Card centrado com identidade de marca** (logo + nome + microcopy) em vez de texto solto.
-5. **Estados visíveis e não-genéricos**: skeleton em vez de spinner, empty state com ação,
-   erro com retry — em linha com Material 3 e NN/g.
+## Trends Identified (applicable to Login/shell)
+1. **Minimalist social login with clear hierarchy**: 2–3 methods at most, highlighting the
+   primary provider ("Continue with…") — avoids cognitive overload (Authgear/Lollypop 2025).
+2. **Social buttons following each IDP's guideline**: Google's colored logo (4-color G),
+   GitHub's mark; when the IDP doesn't publish a button spec, apply the logo + the product's own
+   button pattern for consistency.
+3. **Mobile-first with large touch targets** and a responsive layout — assume login on mobile.
+4. **Centered card with brand identity** (logo + name + microcopy) instead of loose text.
+5. **Visible, non-generic states**: skeleton instead of spinner, empty state with an action,
+   error with retry — in line with Material 3 and NN/g.
 
-## Fontes
+## Sources
 - Login/Signup UX 2025 — https://www.authgear.com/post/login-signup-ux-guide/
 - SaaS login page design — https://lollypop.design/blog/2025/october/saas-login-page-design/
 - Sign in with Google best practices — https://developers.google.com/identity/siwg/best-practices

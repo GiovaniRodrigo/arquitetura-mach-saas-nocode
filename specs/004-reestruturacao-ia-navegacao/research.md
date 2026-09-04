@@ -1,53 +1,53 @@
-# Pesquisa: Reestruturação de IA e Regras de Negócio
+# Research: AI and Business Rules Restructuring
 
 ---
 
-## 1. Padrões Existentes no Projeto (reutilizar, não duplicar)
+## 1. Existing Patterns in the Project (reuse, don't duplicate)
 
-| Padrão | Localização | Relevância |
+| Pattern | Location | Relevance |
 |--------|-------------|-----------|
-| Hook de dados com estados `carregando/pronto/vazio/erro` + `recarregar()` | `player/src/systems/useSistemas.ts`, `player/src/dashboard/useMetricas.ts` | Modelo direto para `useUltimosAcessos`, `useFeedback`, `useResumoFinanceiro`, `useTenants` (§2.2 do `plan.md`) |
-| Componentes de estado de UI (`Skeleton`/`EmptyState`/`ErrorState`, `aria-busy`/`role="alert"`) | `player/src/components/ui/StateViews.tsx` | Reusar em todos os cards novos do Dashboard e nas listas de Clientes/Ajuda (RNF05) |
-| Contexto de identidade + client injetados | `player/src/app/AppContext.tsx` | Já expõe `usuario`/`client` para qualquer tela sob `DashboardLayout`; as novas telas (Clientes, Configuração, Perfil, Ajuda) consomem o mesmo contexto sem criar um novo |
-| Leitura de claims do JWT só para exibição | `player/src/auth/jwt.ts` (`usuarioDe`, `podeCriarSistema`) | RN10 de 003 (ocultar CTA de criação sem permissão) é o mesmo racional a aplicar em Clientes/White Label — nunca decidir autorização no front |
-| Tema persistente sem flash (FOUC) | `player/src/theme/ThemeProvider.tsx`, `theme/initTheme.ts` | Preservar tal como está; Configuração mantém a seção "Aparência" sem alterações |
-| `ApiClient` tolerante a resposta não-JSON (`ApiError`, `parseJsonSeguro`) | `player/src/api/client.ts` | Todo novo método do client (§1 do `plan.md`) herda esse tratamento — nenhum novo `try/catch` de `JSON.parse` deve ser escrito à mão |
-| Ação simples de navegação/mutação (abrir sistema) | `player/src/systems/abrirSistema.ts` | Modelo para `publicarVersao`/`reverterVersao` (RF12) |
-| Menu do avatar com fechamento ao clicar fora | `player/src/layout/DashboardLayout.tsx` (linhas 34–42) | Reaproveitar o mesmo padrão de `useRef`/`mousedown` se Configuração ou Perfil precisarem de menus similares (ex.: seletor de status em Feedback) |
-| Teste de comportamento com `fetch` mockado | `player/src/pages/Dashboard/Projects.test.tsx`, `Overview.test.tsx` (citados em `specs/003/tasks.md`) | Modelo para os testes de `Dashboard.test.tsx`, `Clientes.test.tsx` novos |
-| Isolamento multi-tenant no backend (Go) | `pkg/database.ScopedDB.WithTenant`, `pkg/tenantctx` ([[machv4-verified-workflow]]) | Qualquer endpoint novo de `contracts/api.md` implementado no Gateway/serviços deve passar por este mesmo mecanismo — RN01 desta spec é a mesma RN01 de 001 |
+| Data hook with `carregando/pronto/vazio/erro` states + `recarregar()` | `player/src/systems/useSistemas.ts`, `player/src/dashboard/useMetricas.ts` | Direct model for `useUltimosAcessos`, `useFeedback`, `useResumoFinanceiro`, `useTenants` (§2.2 of `plan.md`) |
+| UI state components (`Skeleton`/`EmptyState`/`ErrorState`, `aria-busy`/`role="alert"`) | `player/src/components/ui/StateViews.tsx` | Reuse across all new Dashboard cards and the Clients/Help lists (NFR05) |
+| Injected identity context + client | `player/src/app/AppContext.tsx` | Already exposes `usuario`/`client` to any screen under `DashboardLayout`; the new screens (Clients, Settings, Profile, Help) consume the same context without creating a new one |
+| Reading JWT claims for display only | `player/src/auth/jwt.ts` (`usuarioDe`, `podeCriarSistema`) | BR10 from 003 (hide the creation CTA without permission) is the same rationale to apply to Clients/White Label — authorization is never decided on the frontend |
+| Persistent theme without a flash (FOUC) | `player/src/theme/ThemeProvider.tsx`, `theme/initTheme.ts` | Preserve as-is; Settings keeps the "Appearance" section unchanged |
+| `ApiClient` tolerant of non-JSON responses (`ApiError`, `parseJsonSeguro`) | `player/src/api/client.ts` | Every new client method (§1 of `plan.md`) inherits this handling — no new `try/catch` around `JSON.parse` should be hand-written |
+| Simple navigation/mutation action (open system) | `player/src/systems/abrirSistema.ts` | Model for `publicarVersao`/`reverterVersao` (FR12) |
+| Avatar menu with click-outside close | `player/src/layout/DashboardLayout.tsx` (lines 34–42) | Reuse the same `useRef`/`mousedown` pattern if Settings or Profile need similar menus (e.g., status selector in Feedback) |
+| Behavior test with mocked `fetch` | `player/src/pages/Dashboard/Projects.test.tsx`, `Overview.test.tsx` (cited in `specs/003/tasks.md`) | Model for the new `Dashboard.test.tsx`, `Clientes.test.tsx` tests |
+| Multi-tenant isolation in the backend (Go) | `pkg/database.ScopedDB.WithTenant`, `pkg/tenantctx` ([[machv4-verified-workflow]]) | Any new `contracts/api.md` endpoint implemented in the Gateway/services must go through this same mechanism — BR01 in this spec is the same BR01 from 001 |
 
 ---
 
-## 2. Tecnologias e Bibliotecas
+## 2. Technologies and Libraries
 
-| Tecnologia | Versão | Uso | Já instalada? |
+| Technology | Version | Use | Already installed? |
 |------------|--------|-----|---------------|
-| React Router | (já em uso, `react-router-dom`) | Rotas aninhadas `clientes/:tenantId/sistemas/:sistemaId/{telas,regras,versao}` | Sim |
-| vitest + jsdom | (já em uso) | Testes de comportamento das novas telas | Sim |
-| lucide-react | (já em uso) | Ícones dos novos itens de sidebar (Ajuda, Cadastro/Perfil) | Sim |
-| Biblioteca de QR code (ex.: `qrcode` ou geração via `data:` URI no backend) | — | Exibição do QR code TOTP na ativação de MFA (RF15) | **Não** — decisão pendente (produto/backend pode devolver a imagem pronta) |
-| Componente de color picker / upload de arquivo para logo | — | White Label (RF13) | **Não** — sem biblioteca escolhida; ver `plan.md §3` |
+| React Router | (already in use, `react-router-dom`) | Nested routes `clientes/:tenantId/sistemas/:sistemaId/{telas,regras,versao}` | Yes |
+| vitest + jsdom | (already in use) | Behavior tests for the new screens | Yes |
+| lucide-react | (already in use) | Icons for the new sidebar items (Help, Registration/Profile) | Yes |
+| QR code library (e.g., `qrcode` or generation via a `data:` URI on the backend) | — | Displaying the TOTP QR code when enabling MFA (FR15) | **No** — decision pending (product/backend may return a ready-made image) |
+| Color-picker component / file upload for the logo | — | White Label (FR13) | **No** — no library chosen yet; see `plan.md §3` |
 
 ---
 
-## 3. Referências Externas
+## 3. External References
 
-| Referência | O que resolve |
+| Reference | What it addresses |
 |------------|---------------|
-| RFC 6238 (TOTP) | Formato do segredo/código do MFA (RNF01) |
-| Convenção de domínio próprio via registro DNS TXT | Mecanismo assumido para `dominio_validado` do White Label (RNF03) — implementação real fora de escopo desta spec |
+| RFC 6238 (TOTP) | Format of the MFA secret/code (NFR01) |
+| Custom-domain convention via a DNS TXT record | Assumed mechanism for the White Label's `dominio_validado` (NFR03) — actual implementation out of scope for this spec |
 
 ---
 
-## 4. Alternativas Consideradas
+## 4. Alternatives Considered
 
-### Opção A: Implementar o canvas da aba Telas (RF09) nesta mesma demanda
-- **Prós**: entrega o fluxo Clientes por completo de uma vez.
-- **Contras**: é um editor visual completo (drag-and-drop, seleção, árvore de componentes) — esforço de várias semanas, incompatível com tasks atômicas de ≤ 1 dia; `001-construtor-sistemas-mach-v4 §8` já havia isolado esse item como demanda própria.
-- **Decisão**: Descartada nesta spec — apenas a casca de navegação é entregue (ver `plan.md §2.3` e Riscos).
+### Option A: Implement the Screens-tab canvas (FR09) as part of this same initiative
+- **Pros**: delivers the full Clients flow in one shot.
+- **Cons**: it is a full visual editor (drag-and-drop, selection, component tree) — several weeks of effort, incompatible with ≤1-day atomic tasks; `001-construtor-sistemas-mach-v4 §8` had already isolated this item as its own initiative.
+- **Decision**: Rejected for this spec — only the navigation shell is delivered (see `plan.md §2.3` and Risks).
 
-### Opção B: Bloquear toda a Fase 2 (Dashboard/Configuração) até o backend expor os endpoints de `contracts/api.md`
-- **Prós**: evita retrabalho se o contrato mudar.
-- **Contras**: repete o mesmo bloqueio que `specs/003` evitou deliberadamente (ela assumiu campos "a fornecer pelo Gateway" e seguiu com degradação graciosa).
-- **Decisão**: Descartada — seguir o precedente de 003, implementando a UI contra o contrato assumido com testes usando `fetch` mockado.
+### Option B: Block all of Phase 2 (Dashboard/Settings) until the backend exposes the `contracts/api.md` endpoints
+- **Pros**: avoids rework if the contract changes.
+- **Cons**: repeats the same blocker that `specs/003` deliberately avoided (it assumed fields "to be provided by the Gateway" and proceeded with graceful degradation).
+- **Decision**: Rejected — follow the precedent set by 003, building the UI against the assumed contract with tests using mocked `fetch`.

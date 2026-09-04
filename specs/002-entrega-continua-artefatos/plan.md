@@ -1,105 +1,105 @@
-# Plano de Implementação: Pipeline CI/CD por Entrega de Artefatos Compilados
+# Implementation Plan: CI/CD Pipeline for Compiled Artifact Delivery
 
-A estratégia reaproveita o pipeline de validação da Fase 11 (`.github/workflows/ci.yml`) como *gate* e adiciona um pipeline de release (`cd.yml`) que compila os artefatos no runner, empacota apenas o conteúdo executável e entrega ao host via rsync/SSH com ativação atômica por symlink. A produção passa a executar os serviços sob `systemd` (binários Go e release OTP do `collab`) e o player sob Nginx, a partir de diretórios de release versionados pelo git sha. Toda a lógica de compilação e entrega vive em scripts idempotentes (`build/`) chamados tanto pelo CI quanto localmente, garantindo paridade.
+The strategy reuses the Phase 11 validation pipeline (`.github/workflows/ci.yml`) as a *gate* and adds a release pipeline (`cd.yml`) that compiles the artifacts on the runner, packages only the executable content, and delivers it to the host via rsync/SSH with atomic activation via symlink. Production now runs the services under `systemd` (Go binaries and the OTP release of `collab`) and the player under Nginx, from release directories versioned by the git sha. All compilation and delivery logic lives in idempotent scripts (`build/`) invoked both by CI and locally, guaranteeing parity.
 
 ---
 
-## 1. Arquivos a Criar/Editar
+## 1. Files to Create/Edit
 
 ### 1.1. Pipeline (GitHub Actions)
 
-* **`.github/workflows/ci.yml`** *(editar)*: manter os jobs de validação (Fase 11) e expô-los como *gate* reutilizável (`workflow_call`) para o pipeline de release consumir. [RF01, RF10]
-* **`.github/workflows/cd.yml`** *(criar)*: dispara em push a `main` (→ staging) e em tags `v*` (→ produção); invoca o CI como *gate*, compila os artefatos, empacota, publica e entrega. Usa *environments* `staging` e `production` (este com proteção/approval). [RF02–RF08, RF11, RN02, RN03]
+* **`.github/workflows/ci.yml`** *(edit)*: keep the validation jobs (Phase 11) and expose them as a reusable *gate* (`workflow_call`) for the release pipeline to consume. [FR01, FR10]
+* **`.github/workflows/cd.yml`** *(create)*: triggers on push to `main` (→ staging) and on `v*` tags (→ production); invokes CI as a *gate*, compiles the artifacts, packages, publishes, and delivers. Uses the `staging` and `production` *environments* (the latter with protection/approval). [FR02–FR08, FR11, BR02, BR03]
 
-### 1.2. Compilação de artefatos
+### 1.2. Artifact compilation
 
-* **`build/build-artifacts.sh`** *(criar)*: gera `gen/` (`buf generate`), compila os 7 binários Go (`CGO_ENABLED=0 go build`), o release OTP (`mix release`) e o `player/dist` (`vite build`); empacota cada um em `dist/artifacts/<unidade>-<sha>.tar.gz` contendo só o executável. [RF02, RF03, RN01, RN05, RN06]
-* **`collab/mix.exs`** *(editar)*: adicionar a configuração `releases:` (nome `collab`, `include_executables_for: [:unix]`) para `mix release` produzir um pacote OTP autocontido com ERTS. [RF02]
-* **`collab/rel/env.sh.eex`** *(criar)*: variáveis de ambiente do release em runtime (porta, endpoint do OTel, Redis, DSN gRPC). [RF02]
+* **`build/build-artifacts.sh`** *(create)*: generates `gen/` (`buf generate`), compiles the 7 Go binaries (`CGO_ENABLED=0 go build`), the OTP release (`mix release`), and the `player/dist` (`vite build`); packages each into `dist/artifacts/<unit>-<sha>.tar.gz` containing only the executable. [FR02, FR03, BR01, BR05, BR06]
+* **`collab/mix.exs`** *(edit)*: add the `releases:` configuration (name `collab`, `include_executables_for: [:unix]`) so `mix release` produces a self-contained OTP package with ERTS. [FR02]
+* **`collab/rel/env.sh.eex`** *(create)*: release runtime environment variables (port, OTel endpoint, Redis, gRPC DSN). [FR02]
 
-### 1.3. Entrega (CD)
+### 1.3. Delivery (CD)
 
-* **`build/deploy.sh`** *(criar)*: recebe host/usuário/ambiente e o diretório de artefatos; faz `rsync -a --delete` para `releases/<sha>`, extrai os tarballs, troca o symlink `current` atomicamente (`ln -sfn`), reinicia as unidades `systemd` e serve o player. Idempotente. [RF07, RF08, RN01, RN04]
-* **`build/smoke-test.sh`** *(criar)*: consulta os healthchecks de cada serviço após a ativação; código de saída ≠ 0 sinaliza falha. [RF11]
-* **`build/rollback.sh`** *(criar)*: repointa `current` ao release imediatamente anterior (ou a um sha informado) e reinicia os serviços, sem recompilar. [RF09, RN07, RN08]
+* **`build/deploy.sh`** *(create)*: receives host/user/environment and the artifacts directory; runs `rsync -a --delete` to `releases/<sha>`, extracts the tarballs, atomically swaps the `current` symlink (`ln -sfn`), restarts the `systemd` units, and serves the player. Idempotent. [FR07, FR08, BR01, BR04]
+* **`build/smoke-test.sh`** *(create)*: queries the healthchecks of each service after activation; a non-zero exit code signals failure. [FR11]
+* **`build/rollback.sh`** *(create)*: repoints `current` to the immediately previous release (or a given sha) and restarts the services, without recompiling. [FR09, BR07, BR08]
 
-### 1.4. Runtime de produção
+### 1.4. Production runtime
 
-* **`infra/systemd/machv4-gateway.service`** e demais (`iam`, `design`, `logic`, `deploy`, `export`, `workers`, `collab`) *(criar)*: units `systemd` apontando para `/opt/machv4/current/bin/<unidade>`, executando como usuário non-root, com `Restart=on-failure` e variáveis de ambiente por `EnvironmentFile`. [RF08, RNF01]
-* **`infra/nginx/machv4.conf`** *(criar)*: serve o `player` estático a partir de `/opt/machv4/current/player` e faz proxy reverso para o `gateway` (`:8080`). [RF08]
-* **`infra/deploy/README.md`** *(criar)*: layout do host (`/opt/machv4/{releases,current}`), usuário de serviço, pré-requisitos. [RNF01, RNF04]
+* **`infra/systemd/machv4-gateway.service`** and the rest (`iam`, `design`, `logic`, `deploy`, `export`, `workers`, `collab`) *(create)*: `systemd` units pointing to `/opt/machv4/current/bin/<unit>`, running as a non-root user, with `Restart=on-failure` and environment variables via `EnvironmentFile`. [FR08, NFR01]
+* **`infra/nginx/machv4.conf`** *(create)*: serves the static `player` from `/opt/machv4/current/player` and reverse-proxies to the `gateway` (`:8080`). [FR08]
+* **`infra/deploy/README.md`** *(create)*: host layout (`/opt/machv4/{releases,current}`), service user, prerequisites. [NFR01, NFR04]
 
-### 1.5. Segredos e ambientes
+### 1.5. Secrets and environments
 
-* **GitHub Environments `staging` e `production`** *(configurar)*: secrets `SSH_PRIVATE_KEY`, `SSH_HOST`, `SSH_USER`, `SSH_KNOWN_HOSTS`. O gate de produção é o **disparo manual** do `cd.yml` (`workflow_dispatch`), pois *required reviewers* exigem plano pago/repo público. [RF06, RN03, RNF01]
+* **GitHub Environments `staging` and `production`** *(configure)*: secrets `SSH_PRIVATE_KEY`, `SSH_HOST`, `SSH_USER`, `SSH_KNOWN_HOSTS`. The production gate is the **manual trigger** of `cd.yml` (`workflow_dispatch`), since *required reviewers* require a paid plan/public repo. [FR06, BR03, NFR01]
 
 ---
 
-## 2. Estratégia Técnica
+## 2. Technical Strategy
 
-### 2.1. Artefatos autocontidos, produção sem toolchain
+### 2.1. Self-contained artifacts, toolchain-free production
 
-Cada unidade vira um pacote que **executa sem o ambiente de build**:
+Each unit becomes a package that **runs without the build environment**:
 
 ```bash
-# Go — binário estático, sem libc do host, sem toolchain em produção (RN06)
+# Go — static binary, no host libc, no toolchain in production (BR06)
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
   go build -trimpath -ldflags "-s -w -X main.version=$SHA" \
   -o dist/bin/gateway ./gateway/cmd
 
-# Elixir — release OTP autocontido (traz ERTS + BEAM compilado, sem mix/deps)
+# Elixir — self-contained OTP release (bundles ERTS + compiled BEAM, no mix/deps)
 MIX_ENV=prod mix release collab   # -> _build/prod/rel/collab
 
-# Player — bundle estático minificado (sem node_modules)
+# Player — minified static bundle (no node_modules)
 npm ci && npm run build           # -> player/dist
 ```
 
-O empacotamento inclui **apenas** o diretório de saída de cada build; o `build-artifacts.sh` monta os tarballs a partir de `dist/`, nunca da raiz do repo, garantindo a RN01.
+Packaging includes **only** each build's output directory; `build-artifacts.sh` assembles the tarballs from `dist/`, never from the repo root, guaranteeing BR01.
 
-### 2.2. Ativação atômica por symlink e rollback sem recompilação
+### 2.2. Atomic activation via symlink and rollback without recompilation
 
-O host mantém `/opt/machv4/releases/<sha>/` e um symlink `current`. A ativação troca o alias em uma operação atômica; o rollback é a mesma troca para outro sha:
+The host keeps `/opt/machv4/releases/<sha>/` and a `current` symlink. Activation swaps the alias in a single atomic operation; rollback is the same swap pointed at a different sha:
 
 ```bash
-# ativação (deploy.sh)
+# activation (deploy.sh)
 ln -sfn "/opt/machv4/releases/$SHA" /opt/machv4/current.tmp
-mv -Tf /opt/machv4/current.tmp /opt/machv4/current     # rename atômico
+mv -Tf /opt/machv4/current.tmp /opt/machv4/current     # atomic rename
 systemctl restart 'machv4-*.service'
 
-# rollback (rollback.sh) — aponta ao release anterior, sem build (RN07)
+# rollback (rollback.sh) — points to the previous release, no build (BR07)
 ln -sfn "/opt/machv4/releases/$PREV" /opt/machv4/current.tmp
 mv -Tf /opt/machv4/current.tmp /opt/machv4/current
 systemctl restart 'machv4-*.service'
 ```
 
-`releases/` retém as N versões mais recentes (limpeza no fim do deploy), viabilizando rollback imediato.
+`releases/` retains the N most recent versions (cleanup at the end of deploy), enabling immediate rollback.
 
-### 2.3. Separação rígida CI → artefato → CD
+### 2.3. Strict separation CI → artifact → CD
 
-`ci.yml` só **valida** (gate). `cd.yml` só entra na fase de build/entrega se o gate passou (`needs`/`workflow_call`), materializando o fluxo `[Git] → [Runner compila] → [Produção recebe artefatos]`. O runner é o único ponto com toolchain, dependências de dev e segredos de build; o host de produção só recebe tarballs por rsync e nunca clona o repositório.
+`ci.yml` only **validates** (gate). `cd.yml` only enters the build/delivery phase if the gate passed (`needs`/`workflow_call`), materializing the flow `[Git] → [Runner compiles] → [Production receives artifacts]`. The runner is the only point with a toolchain, dev dependencies, and build secrets; the production host only receives tarballs via rsync and never clones the repository.
 
-### 2.4. Smoke test com rollback automático
+### 2.4. Smoke test with automatic rollback
 
-Após reiniciar os serviços, o `smoke-test.sh` valida os healthchecks; qualquer falha aciona `rollback.sh` no mesmo job, restaurando o release anterior (RN08) antes de marcar o deploy como falho.
-
----
-
-## 3. Dependências e Pré-requisitos
-
-- [ ] Host(s) de staging e produção provisionados: usuário de serviço non-root, `systemd`, `rsync`, Nginx e o diretório `/opt/machv4` com permissão. (Fora de escopo — pré-requisito.)
-- [ ] Estratégia de migração de banco definida: as migrações (`infra/postgres/migrations/`) devem ser aplicadas antes de ativar um release que dependa de novo schema. (Pré-requisito; não automatizado nesta demanda.)
-- [ ] OTel Collector alcançável a partir do host (endpoint por ambiente). [RNF06]
-- [ ] Segredos SSH configurados nos GitHub Environments `staging` e `production`. [RNF01]
-- [ ] Toolchains no runner: Go 1.26, OTP 26.2/Elixir 1.17.3, Node 20, `buf` 1.42.0 (já usados no `ci.yml` da Fase 11).
+After restarting the services, `smoke-test.sh` validates the healthchecks; any failure triggers `rollback.sh` in the same job, restoring the previous release (BR08) before marking the deploy as failed.
 
 ---
 
-## 4. Riscos e Pontos de Atenção
+## 3. Dependencies and Prerequisites
 
-| Risco | Impacto | Mitigação |
+- [ ] Staging and production host(s) provisioned: non-root service user, `systemd`, `rsync`, Nginx, and the `/opt/machv4` directory with the right permissions. (Out of scope — prerequisite.)
+- [ ] Database migration strategy defined: migrations (`infra/postgres/migrations/`) must be applied before activating a release that depends on a new schema. (Prerequisite; not automated in this effort.)
+- [ ] OTel Collector reachable from the host (endpoint per environment). [NFR06]
+- [ ] SSH secrets configured in the GitHub Environments `staging` and `production`. [NFR01]
+- [ ] Toolchains on the runner: Go 1.26, OTP 26.2/Elixir 1.17.3, Node 20, `buf` 1.42.0 (already used in Phase 11's `ci.yml`).
+
+---
+
+## 4. Risks and Points of Attention
+
+| Risk | Impact | Mitigation |
 |-------|---------|-----------|
-| Modelo por artefato/systemd perde o scale-to-zero do KEDA para os `workers` (manifesto k8s existente). | Alto | Rodar `workers` como serviço `systemd` sempre-ativo com réplica fixa **ou** manter os `workers` no substrato container/KEDA e aplicar o modelo por artefato só aos demais. Decisão documentada em `research.md`. |
-| Acoplamento entre deploy e migração de schema pode gerar release incompatível com o banco. | Alto | Adotar migrações *backward-compatible* (expand/contract); aplicar migração antes do deploy no runbook do `quickstart.md`. |
-| Host único de produção é ponto único de falha (SPOF). | Médio | Documentar como limitação; o rsync/symlink é replicável para múltiplos hosts em iteração futura. |
-| Vazamento de artefato de dev para produção por script mal configurado. | Alto | `build-artifacts.sh` monta tarballs só de `dist/`; teste de aceitação inspeciona o host (critério 1). |
-| Chave SSH comprometida concede acesso ao host de produção. | Alto | Chave dedicada por ambiente, escopo mínimo, guardada em GitHub Environment protegido; `production` exige aprovação (RN03). |
+| The per-artifact/systemd model loses KEDA's scale-to-zero for the `workers` (existing k8s manifest). | High | Run `workers` as an always-on `systemd` service with a fixed replica **or** keep `workers` on the container/KEDA substrate and apply the per-artifact model only to the rest. Decision documented in `research.md`. |
+| Coupling between deploy and schema migration can produce a release incompatible with the database. | High | Adopt *backward-compatible* migrations (expand/contract); apply the migration before deploy in the `quickstart.md` runbook. |
+| A single production host is a single point of failure (SPOF). | Medium | Document as a limitation; the rsync/symlink approach is replicable to multiple hosts in a future iteration. |
+| Leakage of a dev artifact into production due to a misconfigured script. | High | `build-artifacts.sh` assembles tarballs only from `dist/`; the acceptance test inspects the host (criterion 1). |
+| A compromised SSH key grants access to the production host. | High | Dedicated key per environment, minimal scope, stored in a protected GitHub Environment; `production` requires approval (BR03). |
